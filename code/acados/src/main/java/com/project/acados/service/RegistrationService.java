@@ -2,6 +2,8 @@ package com.project.acados.service;
 
 import com.project.acados.domain.entity.Registration;
 
+import java.util.List;
+
 /**
  * Student course registration and withdrawal.
  * Reference: class diagram.puml (service), Sequence_diagram.md 04, Implement_Plan-AcadOS.md §14.1-14.2
@@ -24,6 +26,15 @@ public interface RegistrationService {
      * @throws com.project.acados.exception.ResourceNotFoundException when the registration is not the student's
      */
     void withdraw(String universityId, Long registrationId);
+
+    /**
+     * Returns registrations, newest first: a STUDENT sees only their own, an ADMIN sees all.
+     *
+     * @param universityId university ID of the signed-in user
+     * @param sectionId    optional filter; null means every section
+     * @throws com.project.acados.exception.ResourceNotFoundException when the user is not found
+     */
+    List<Registration> getRegistrations(String universityId, Long sectionId);
 
     /**
      * BR-04: true when the student is already registered in a section of this course.

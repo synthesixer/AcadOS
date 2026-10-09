@@ -14,6 +14,7 @@ import com.project.acados.repository.RegistrationRepository;
 import com.project.acados.repository.ScheduleRepository;
 import com.project.acados.repository.SectionRepository;
 import com.project.acados.repository.StudentRepository;
+import com.project.acados.repository.UserRepository;
 import com.project.acados.service.impl.RegistrationServiceImpl;
 import org.junit.jupiter.api.BeforeEach;
 import org.junit.jupiter.api.Test;
@@ -60,6 +61,9 @@ class RegistrationServiceTest {
 
     @Mock
     private StudentRepository studentRepository;
+
+    @Mock
+    private UserRepository userRepository;
 
     @Mock
     private NotificationService notificationService;
@@ -251,6 +255,34 @@ class RegistrationServiceTest {
         when(sectionRepository.findById(999L)).thenReturn(Optional.empty());
 
         assertThatThrownBy(() -> registrationService.register(UNIVERSITY_ID, 999L))
+                .isInstanceOf(ResourceNotFoundException.class);
+    }
+
+    @Test
+    void testGetRegistrationsAsStudentReturnsOnlyOwn() {
+        Registration own = Registration.builder().id(900L).student(student).section(section).course(course).build();
+        when(userRepository.findByUniversityId(UNIVERSITY_ID)).thenReturn(Optional.of(user));
+        when(registrationRepository.findAllWithDetails(STUDENT_ID, null)).thenReturn(List.of(own));
+
+        assertThat(registrationService.getRegistrations(UNIVERSITY_ID, null)).containsExactly(own);
+    }
+
+    @Test
+    void testGetRegistrationsAsAdminReturnsAllOfSection() {
+        User admin = User.builder().id(99L).universityId("admin").email("admin@acados.local")
+                .passwordHash("hashed").role(UserRole.ADMIN).build();
+        Registration any = Registration.builder().id(901L).student(student).section(section).course(course).build();
+        when(userRepository.findByUniversityId("admin")).thenReturn(Optional.of(admin));
+        when(registrationRepository.findAllWithDetails(null, SECTION_ID)).thenReturn(List.of(any));
+
+        assertThat(registrationService.getRegistrations("admin", SECTION_ID)).containsExactly(any);
+    }
+
+    @Test
+    void testGetRegistrationsRejectUnknownUser() {
+        when(userRepository.findByUniversityId("UNKNOWN")).thenReturn(Optional.empty());
+
+        assertThatThrownBy(() -> registrationService.getRegistrations("UNKNOWN", null))
                 .isInstanceOf(ResourceNotFoundException.class);
     }
 
