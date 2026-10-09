@@ -4,6 +4,7 @@ import com.project.acados.domain.entity.TeacherSwapRequest;
 import com.project.acados.dto.request.SwapCreateRequest;
 import com.project.acados.dto.request.SwapResponseRequest;
 import com.project.acados.dto.response.SwapInboxResponse;
+import com.project.acados.dto.response.SwapResponse;
 import com.project.acados.service.TeacherSwapQueryService;
 import com.project.acados.service.TeacherSwapService;
 import com.project.acados.service.UserService;
