@@ -1,0 +1,125 @@
+@startuml
+skinparam backgroundColor #EEF2FF
+
+' Teacher Swap Request Activity Diagram (based on sequence diagram 06)
+
+start
+:Teacher A opens Swap UI;
+:Teacher A submits swap request (requestingScheduleId, targetTeacherId, targetScheduleId) with JWT;
+partition "Security Filter" {
+    :Validate JWT, role = TEACHER;
+    if (JWT invalid?) then (yes)
+        :Return 401 Unauthorized;
+        stop
+    endif
+}
+partition "TeacherSwap Service" {
+    :createSwapRequest(requestingScheduleId, targetTeacherId, targetScheduleId);
+    :Load both schedules (must be PUBLISHED);
+    :Load qualifications & availabilities for both teachers;
+    :Check if either schedule has open request (PENDING or ACCEPTED);
+    if (validation fails (open request exists, BR-01 incl. DRAFT, BR-06, BR-07, same timeslot)?) then (yes)
+        :Throw BusinessRuleException (e.g. 409 DRAFT/Schedule Conflict);
+        :Return error to Teacher A;
+        stop
+    else (no)
+        :Save TeacherSwapRequest with status PENDING;
+        :Send Notification (SWAP_REQUESTED) to Teacher B;
+        :Return 201 Created to Teacher A;
+    endif
+}
+stop
+
+' ----- Teacher A may cancel while PENDING -----
+
+start
+partition "Cancel Flow" {
+    :Teacher A sends cancel request (PUT /teacher-swaps/{id}/cancel) with JWT;
+    partition "Security Filter" { 
+        :Validate JWT, role = TEACHER; 
+    }
+    partition "TeacherSwap Service" {
+        :find request by id;
+        if (not request of A or status != PENDING?) then (yes)
+            :Throw BusinessRuleException;
+            :Return error;
+        else (no)
+            :set status = CANCELLED;
+            :Save request;
+            :Send Notification (SWAP_CANCELLED) to Teacher B;
+            :Return 200 OK to Teacher A;
+        endif
+    }
+}
+stop
+
+' ----- Teacher B responds -----
+
+start
+partition "Respond Flow" {
+    :Teacher B sends response (accept/reject) with JWT;
+    partition "Security Filter" { 
+        :Validate JWT, role = TEACHER; 
+    }
+    partition "TeacherSwap Service" {
+        :find request;
+        if (status != PENDING or caller not B?) then (yes)
+            :Throw BusinessRuleException;
+            :Return error;
+        else (no)
+            if (reject?) then (yes)
+                :set status = REJECTED;
+                :Save request (respondedAt);
+                :Send Notification (SWAP_RESPONDED) to Teacher A;
+                :Return 200 OK to Teacher B;
+            else (accept)
+                :re‑check qualifications & availability;
+                :re‑check schedule conflicts;
+                :set status = ACCEPTED;
+                :Save request (respondedAt);
+                :Send Notification (SWAP_RESPONDED) to Teacher A and Admin;
+                :Return 200 OK to Teacher B;
+            endif
+        endif
+    }
+}
+stop
+
+' ----- Admin review (approve/reject) -----
+
+start
+partition "Admin Review Flow" {
+    :Admin sends approve or reject for request (status must be ACCEPTED) with JWT;
+    partition "Security Filter" { 
+        :Validate JWT, role = ADMIN; 
+    }
+    partition "TeacherSwap Service" {
+        :find request;
+        if (status != ACCEPTED?) then (yes)
+            :Throw BusinessRuleException;
+            :Return error;
+        elseif (Action is reject?) then (yes)
+            :set status = REJECTED;
+            :Save request (reviewedAt);
+            :Send Notification (SWAP_REJECTED) to Teacher A & B;
+            :Return 200 OK to Admin;
+        else (Action is approve)
+            :re‑run BR‑06, BR‑07 on both schedules;
+            :re‑run BR‑01 (teacher conflict) including DRAFT + PUBLISHED;
+            if (validation fails?) then (yes)
+                :Throw BusinessRuleException;
+                :Return error;
+            else (no)
+                :set status = APPROVED;
+                :Swap teachers on the two schedules (permanent);
+                :Save request (reviewedAt);
+                :Send Notification (SWAP_APPROVED) to Teacher A, Teacher B (InApp + Email);
+                :Publish ScheduleChange (affected sections);
+                :Notify students of SCHEDULE_CHANGED;
+                :Return 200 OK to Admin;
+            endif
+        endif
+    }
+}
+stop
+@enduml

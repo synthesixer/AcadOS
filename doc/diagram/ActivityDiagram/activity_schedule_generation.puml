@@ -1,0 +1,86 @@
+@startuml
+skinparam backgroundColor #EEF2FF
+
+' Schedule Generation & Publishing Activity Diagram (based on sequence diagram 05)
+
+start
+:Admin opens Scheduling UI;
+:Admin clicks "Generate Schedule";
+partition "Security Filter" {
+    :Validate JWT, role = ADMIN;
+    if (JWT invalid?) then (yes)
+        :Return 401 Unauthorized;
+        stop
+    endif
+}
+partition "Scheduling Service" {
+    :generateSchedule();
+    :Delete all DRAFT schedules;
+    :Find ACTIVE sections (no complete schedule);
+    while (each Section)
+        :Split periods (define schedule format);
+        :Load teacher preferences & qualifications;
+        :Query RoomRepository for available rooms (capacity >= section capacity);
+        :Build candidate matrix (teacher x room x timeslot);
+        while (each Candidate)
+            :ConstraintEvaluator.validate(candidate);
+            if (candidate rejected?) then (yes)
+                :discard candidate;
+            else (no)
+                :keep candidate;
+            endif
+        endwhile
+        if (no candidate passes?) then (yes)
+            :Record section failure reason;
+        else (no)
+            :ScheduleSelector.selectBest(candidates);
+            while (each ScoringStrategy)
+                :calculateScore(candidate);
+            endwhile
+            :Select best candidate (teacher, room, timeslot);
+            :Save Schedule (status = DRAFT, room saved in Schedule.room_id);
+        endif
+    endwhile
+    :Return DRAFT result + failure list to Controller;
+}
+partition "Controller" {
+    :Return 200 OK with DRAFT timetable;
+}
+stop
+
+' --- Publish or Discard ---
+
+start
+partition "Publish Flow" {
+    :Admin clicks "Publish";
+    partition "Security Filter" {
+        :Validate JWT, role = ADMIN;
+    }
+    partition "Scheduling Service" {
+        :publishSchedule();
+        :Update all DRAFT schedules -> PUBLISHED;
+        :Publish triggers ScheduleChangePublisher;
+        :NotificationService.sendNotification(SCHEDULE_CHANGED) to Teachers & Students;
+    }
+    partition "Controller" {
+        :Return 200 OK;
+    }
+}
+stop
+
+start
+partition "Discard Flow" {
+    :Admin clicks "Discard Draft";
+    partition "Security Filter" {
+        :Validate JWT, role = ADMIN;
+    }
+    partition "Scheduling Service" {
+        :discardDraft();
+        :Delete all DRAFT schedules;
+    }
+    partition "Controller" {
+        :Return 204 No Content;
+    }
+}
+stop
+@enduml

@@ -1,5 +1,5 @@
 # AcadOS: Automated Proctor Scheduling and Academic Operations System
-**Version:** v4  
+**Version:** v6
 **Project Status:** Implementation / Rapid Development  
 **Development Time:** 4 Days  
 **Team Size:** 3 คน  
@@ -171,7 +171,9 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 | **Frontend** | Thymeleaf + HTML5 / CSS3 / JS | เรนเดอร์ฝั่ง Server เรียกใช้งานผ่าน Web Controller และ REST API |
 | **Testing** | JUnit 5 + Mockito + Spring Boot Test | ทดสอบ Unit Test, Service Mocking, Integration Testing และ Testcontainers |
 | **Containerization** | Docker & Docker Compose | ทำ Container สำหรับแอปพลิเคชันและฐานข้อมูล MySQL พร้อม Persistent Volume |
-| **Deployment** | Cloud / Server + Public URL | ผู้ให้บริการ Cloud และ Production URL = TBA |
+| **Deployment** | Cloud / Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose (acados-app Port 8080, acados-db Port 3306), เข้าถึงตรง Port 8080 (No Nginx), กำหนด Persistent Volume สำหรับ MySQL |
+| **Email Service** | Mailtrap (mailtrap.io) Sandbox SMTP | บริการ Sandbox SMTP ทดสอบส่งอีเมลผ่าน `spring-boot-starter-mail` (Host: `sandbox.smtp.mailtrap.io`, Port 587) ตรวจสอบผลบน Web Inbox ตอน Demo ได้ทันที |
+| **External Holiday API** | Nager.Date Public Holiday API | บริการดึงข้อมูลวันหยุดราชการไทยฟรีแบบไม่ต้องมี API Key ผ่าน `https://date.nager.at/api/v3/publicholidays/{year}/TH` |
 
 ---
 
@@ -217,15 +219,15 @@ Database Layer (MySQL Database)
 2. **`Teacher`**: ข้อมูลอาจารย์ผู้สอน (สัมพันธ์กับ User แบบ 1 : 0..1)
 3. **`Student`**: ข้อมูลนักศึกษา (สัมพันธ์กับ User แบบ 1 : 0..1)
 4. **`Course`**: ข้อมูลรายวิชา (รหัสวิชา, ชื่อวิชา, จำนวนชั่วโมงเรียนต่อสัปดาห์)
-5. **`Section`**: กลุ่มเรียนของรายวิชา (มี Capacity, ผูกกับ 1 ห้องเรียนประจำ, มีสถานะ State)
+5. **`Section`**: กลุ่มเรียนของรายวิชา (มี Capacity, มีสถานะ State และจัดสรรห้องเรียนรายคาบใน Schedule)
 6. **`Room`**: ข้อมูลห้องเรียน (ชื่อห้อง, อาคาร, ชั้น, ความจุ Capacity, สถานะความพร้อมใช้งาน)
 7. **`TimeSlot`**: วันและช่วงเวลาของตาราง (วันในสัปดาห์ `dayOfWeek`, เวลาเริ่ม `startTime`, เวลาสิ้นสุด `endTime`)
-8. **`Schedule`**: ตารางเวลาการสอนของ Section (ผูก Section, Teacher, TimeSlot และมีสถานะ status = DRAFT หรือ PUBLISHED) ห้องเรียนของคาบ = ห้องประจำของ Section
+8. **`Schedule`**: ตารางเวลาการสอนของ Section (ผูก Section, Teacher, TimeSlot และจัดเก็บห้องเรียนรายคาบ Schedule.room, มีสถานะ status = DRAFT หรือ PUBLISHED)
 9. **`Registration`**: การลงทะเบียนเรียนของนักศึกษาใน Section
 10. **`TeacherQualification`**: คุณสมบัติรายวิชาที่อาจารย์แต่ละท่านสามารถสอนได้
 11. **`TeacherPreference`**: ความต้องการ/ความพึงพอใจของอาจารย์ต่อรายวิชา พร้อมลำดับความสำคัญ (Priority)
 12. **`TeacherAvailability`**: ช่วงเวลาที่อาจารย์ไม่ว่างสอน (นำมาใช้เป็น Hard Constraint)
-13. **`TeacherSwapRequest`**: คำขอสลับตารางสอนระหว่างอาจารย์ (บันทึกสถานะ PENDING, ACCEPTED, REJECTED, APPROVED)
+13. **`TeacherSwapRequest`**: คำขอสลับตารางสอนระหว่างอาจารย์ (บันทึก requestingSchedule, targetSchedule พร้อม requestingTeacher และ targetTeacher เป็น Audit Snapshot, บันทึกสถานะ PENDING, ACCEPTED, REJECTED, APPROVED, CANCELLED)
 14. **`Notification`**: ข้อมูลการแจ้งเตือนผู้ใช้งาน (หัวข้อ, ข้อความ, ประเภท, ผู้รับ, สถานะการอ่าน)
 15. **`AcademicEvent`**: กำหนดการทางวิชาการ (Semester Start/End, Reg Period, Midterm, Final) *(ไม่มี University Event)*
 16. **`PublicHoliday`**: ข้อมูลวันหยุดราชการที่ได้จาก External API บันทึกลงในระบบ
@@ -241,7 +243,7 @@ Database Layer (MySQL Database)
   - Generate บันทึกผลเป็น DRAFT เสมอ และการ Generate ใหม่ = ลบ DRAFT เดิมทิ้งก่อน
   - Admin Publish → DRAFT ทั้งหมดเปลี่ยนเป็น PUBLISHED / Admin Discard → ลบ DRAFT ทั้งหมด
   - Teacher Swap และ Assign Teacher ทำได้เฉพาะคาบที่ PUBLISHED
-  - Unique Constraint ของตารางนับรวมคาบ DRAFT ด้วย: Swap หรือ Assign Teacher ที่ชนกับคาบ DRAFT จะถูกปฏิเสธ ต้อง Publish หรือ Discard ก่อน
+  - Unique Constraint ของตารางนับรวมคาบ DRAFT ด้วย: Swap หรือ Assign Teacher ที่ชนกับคาบ DRAFT จะถูกปฏิเสธพร้อมข้อความชัดเจนว่าเป็นข้อขัดแย้งกับตารางร่าง (409 Conflict: DRAFT Timetable Conflict) ต้องให้ Admin ดำเนินการ Publish หรือ Discard ก่อน
   - ไม่มีการแจ้งเตือนตอน Generate / เมื่อ Publish แจ้งเตือน `SCHEDULE_CHANGED` แก่อาจารย์ที่ได้คาบใหม่ และนักศึกษาของ Section ที่ตารางเปลี่ยน
 
 | บทบาท | เห็นคาบสถานะ |
@@ -252,7 +254,7 @@ Database Layer (MySQL Database)
 
 - **PK & University ID**: Entity ใช้ `Long id` เป็น Primary Key และจัดเก็บ `universityId` แยกต่างหาก
 - **Course 1 : N Section**: รายวิชาหนึ่งสามารถเปิดสอนได้หลาย Section
-- **1 Section = 1 ห้องเรียนประจำ**: แต่ละ Section จะถูกจัดลงห้องเรียนประจำเพียง 1 ห้องเท่านั้น โดย Section Capacity ต้องไม่เกิน Room Capacity ของห้องดังกล่าว
+- **จัดสรรห้องเรียนรายคาบ (Schedule.room)**: ห้องเรียนถูกจัดสรรลงในแต่ละคาบ (Schedule) ไม่ผูกติดกับ Section โดยความจุห้องที่จัดสรรต้องไม่น้อยกว่า Section Capacity (Section.capacity <= Room.capacity, BR-05)
 - **Section 1 : N Schedule**: แต่ละ Section สามารถกระจายช่วงเวลาเรียนได้หลาย Schedule ตามจำนวนชั่วโมงเรียนต่อสัปดาห์ (เช่น วิชา 6 ชั่วโมง แบ่งเป็น 2 วัน คือ จันทร์ 09:00–12:00 และ พุธ 09:00–12:00)
 - **Flexible TimeSlot**: กำหนดช่วงเวลาแบบยืดหยุ่นด้วย `dayOfWeek` + `startTime` + `endTime`
 - **Teacher Qualification $\rightarrow$ Course**: ความเชี่ยวชาญของอาจารย์ผูกกับรายวิชา
@@ -413,348 +415,7 @@ Course ──── Section ──── Schedule ──┬── Teacher
 
 ## 9. UML Class Diagram (PlantUML)
 
-```@startuml AcadOS_Domain_Model_v3
-
-title AcadOS - Domain Model (v3, aligned with DB design and v4)
-
-hide empty members
-skinparam classAttributeIconSize 0
-skinparam linetype ortho
-
-' ==========================================
-' 1. User and Profiles
-' ==========================================
-
-package "User Domain" {
-    class User {
-        - id: Long
-        - universityId: String
-        - email: String
-        - passwordHash: String
-        - role: UserRole
-    }
-
-    class Student {
-        - id: Long
-        - user: User
-        - fullName: String
-    }
-
-    class Teacher {
-        - id: Long
-        - user: User
-        - fullName: String
-    }
-}
-
-' ==========================================
-' 2. Course and Scheduling Domain
-' ==========================================
-
-package "Academic Scheduling Domain" {
-    class Course {
-        - id: Long
-        - courseCode: String
-        - title: String
-        - weeklyHours: int
-    }
-
-    class Section {
-        - id: Long
-        - course: Course
-        - sectionNumber: int
-        - capacity: int
-        - room: Room
-        - status: SectionStatus
-    }
-
-    class Room {
-        - id: Long
-        - roomNumber: String
-        - building: String
-        - floor: int
-        - capacity: int
-        - isAvailable: boolean
-    }
-
-    class TimeSlot {
-        - id: Long
-        - dayOfWeek: DayOfWeek
-        - startTime: LocalTime
-        - endTime: LocalTime
-    }
-
-        enum ScheduleStatus {
-        DRAFT
-        PUBLISHED
-    }
-
-    class Schedule {
-        - id: Long
-        - section: Section
-        - teacher: Teacher
-        - timeSlot: TimeSlot
-        - status: ScheduleStatus
-    }
-
-    Schedule ..> ScheduleStatus
-
-    class Registration {
-        - id: Long
-        - student: Student
-        - section: Section
-        - course: Course
-        - registeredAt: LocalDateTime
-    }
-}
-
-' ==========================================
-' 3. Teacher Constraints and Preferences
-' ==========================================
-
-package "Teacher Domain" {
-    class TeacherQualification {
-        - id: Long
-        - teacher: Teacher
-        - course: Course
-    }
-
-    class TeacherPreference {
-        - id: Long
-        - teacher: Teacher
-        - course: Course
-        - priority: int
-    }
-
-    class TeacherAvailability {
-        - id: Long
-        - teacher: Teacher
-        - timeSlot: TimeSlot
-        - isAvailable: boolean
-    }
-
-    class TeacherSwapRequest {
-        - id: Long
-        - requestingTeacher: Teacher
-        - targetTeacher: Teacher
-        - requestingSchedule: Schedule
-        - targetSchedule: Schedule
-        - status: SwapStatus
-        - createdAt: LocalDateTime
-        - respondedAt: LocalDateTime
-        - reviewedAt: LocalDateTime
-        + accept(): void
-        + reject(): void
-        + approve(): void
-        + cancel(): void
-    }
-}
-
-' ==========================================
-' 4. Notification Domain
-' ==========================================
-
-package "Notification Domain" {
-    class Notification {
-        - id: Long
-        - user: User
-        - title: String
-        - message: String
-        - type: NotificationType
-        - isRead: boolean
-        - createdAt: LocalDateTime
-        + markAsRead(): void
-    }
-}
-
-' ==========================================
-' 5. Calendar and Public Holiday Domain
-' ==========================================
-
-package "Calendar Domain" {
-    class AcademicEvent {
-        - id: Long
-        - eventName: String
-        - eventType: AcademicEventType
-        - startDate: LocalDate
-        - endDate: LocalDate
-    }
-
-    class PublicHoliday {
-        - id: Long
-        - date: LocalDate
-        - name: String
-        - description: String
-    }
-}
-
-' ==========================================
-' 6. Enumerations (persisted as STRING)
-' ==========================================
-
-enum UserRole {
-    ADMIN
-    TEACHER
-    STUDENT
-}
-
-enum SectionStatus {
-    ACTIVE
-    CANCELLED
-}
-
-enum SwapStatus {
-    PENDING
-    ACCEPTED
-    REJECTED
-    APPROVED
-    CANCELLED
-}
-
-enum AcademicEventType {
-    SEMESTER_START
-    SEMESTER_END
-    REGISTRATION_PERIOD
-    MIDTERM_EXAM
-    FINAL_EXAM
-}
-
-enum NotificationType {
-    REGISTRATION_SUCCESS
-    REGISTRATION_WITHDRAWN
-    SCHEDULE_CHANGED
-    SWAP_REQUESTED
-    SWAP_RESPONDED
-    SWAP_APPROVED
-    SWAP_REJECTED
-    SECTION_CANCELLED
-    CONFLICT_DETECTED
-}
-
-' DayOfWeek = java.time.DayOfWeek (MONDAY..SUNDAY)
-
-' ==========================================
-' 7. Domain Relationships
-' ==========================================
-
-' User and profiles (Admin has neither profile)
-User "1" -- "0..1" Student : student profile
-User "1" -- "0..1" Teacher : teacher profile
-
-' Course, section and schedule
-Course "1" -- "0..*" Section : offers
-Section "1" *-- "0..*" Schedule : has
-Section "0..*" --> "0..1" Room : home room
-Schedule "0..*" --> "1" Teacher : assigned teacher
-Schedule "0..*" --> "1" TimeSlot : scheduled at
-
-' Registration
-Student "1" -- "0..*" Registration
-Section "1" -- "0..*" Registration
-Course "1" -- "0..*" Registration : denormalized for BR-04
-
-' Teacher qualifications and preferences
-Teacher "1" -- "0..*" TeacherQualification
-Course "1" -- "0..*" TeacherQualification
-
-Teacher "1" -- "0..*" TeacherPreference
-Course "1" -- "0..*" TeacherPreference
-
-' Teacher availability
-Teacher "1" -- "0..*" TeacherAvailability
-TimeSlot "1" -- "0..*" TeacherAvailability
-
-' Teacher schedule swap
-Teacher "1" -- "0..*" TeacherSwapRequest : requesting teacher (A)
-Teacher "1" -- "0..*" TeacherSwapRequest : target teacher (B)
-Schedule "1" -- "0..*" TeacherSwapRequest : requesting schedule
-Schedule "1" -- "0..*" TeacherSwapRequest : target schedule
-
-' Notifications
-User "1" -- "0..*" Notification : receives
-
-' Enum usage
-User ..> UserRole
-Section ..> SectionStatus
-TeacherSwapRequest ..> SwapStatus
-AcademicEvent ..> AcademicEventType
-Notification ..> NotificationType
-
-' ==========================================
-' 8. Notes (business constraints)
-' ==========================================
-
-note right of Section
-  - Section capacity <= Room capacity (BR-05, checked in Service)
-  - Room is nullable until assigned (Section can exist before generation)
-  - Room is the Section's home room: all Schedules of a Section
-    use this Room, so Room conflict (BR-02) is checked per TimeSlot
-  - Unique (course, sectionNumber)
-  - Behaviour of ACTIVE/CANCELLED is handled by the State Pattern
-    (SectionState interface in package state); this enum is only
-    the persisted value
-end note
-
-note right of Room
-  BR-08: isAvailable = true (open) / false (closed)
-  - No time dimension: a closed room is closed for every TimeSlot
-  - A Room with isAvailable = false must not be assigned to a Section
-  - Hard constraint (v4 section 12.3 item 5)
-end note
-
-note right of Schedule
-  - 1 Schedule = 1 period of a Section
-  - Teacher is per Schedule (swap exchanges teacher of two Schedules)
-  - Teacher must be qualified for the Course (BR-06)
-  - Teacher availability is a hard constraint (BR-07)
-  - Teacher/Room/Student conflicts use time OVERLAP checks in Service
-    (DB unique on same TimeSlot id is only a safety net)
-  - A Candidate for scheduling = the full set of Schedules of one Section
-end note
-
-note right of Registration
-  - course is copied from section.course
-  - Unique (student, section) and Unique (student, course)
-    -> enforces BR-04 in DB as well as in Service
-end note
-
-note right of TeacherAvailability
-  - isAvailable = false : teacher cannot teach (hard constraint)
-  - No row = available
-  - If rows conflict, false wins
-end note
-
-note right of TeacherPreference
-  - Preference is by Course only (with priority)
-  - Time-based preference is not supported
-    (v4 section 12.4 wording must be updated)
-end note
-
-note right of TeacherSwapRequest
-  Flow: PENDING -> ACCEPTED (Teacher B)
-        ACCEPTED -> APPROVED / REJECTED (Admin)
-        PENDING -> REJECTED (Teacher B) / CANCELLED (Teacher A)
-  - Re-run BR-01, BR-06, BR-07 validation when Admin approves
-end note
-
-note bottom of AcademicEvent
-  AcademicEvent belongs to the academic calendar.
-  REGISTRATION_PERIOD is read by RegistrationService (BR-09),
-  but AcademicEvent is NOT a scheduling constraint and has
-  no relation to Schedule or PublicHoliday (FL-04).
-end note
-
-note bottom of Student
-  Assumptions (v4 scope):
-  - Single semester; no Semester entity
-  - No student cohort/curriculum entity, so Student Conflict
-    is checked at registration time (BR-03)
-end note
-
-@enduml
-
-
-```
+contain in doc/diagram
 
 
 ---
@@ -771,7 +432,7 @@ end note
 | **`Section`** | `cancel()`<br>`setState()`<br>`getState()` | บริหารจัดการสถานะของ Section ผ่าน State Pattern และควบคุม Section Capacity |
 | **`Room`** | — | จัดเก็บข้อมูลห้องเรียน อาคาร ชั้น และความจุ (Room Capacity) |
 | **`TimeSlot`** | — | จัดเก็บข้อมูลวันและช่วงเวลา (Day, Start, End) |
-| **`Schedule`** | — |จัดเก็บความสัมพันธ์ตารางสอนของ Section, Teacher และเวลา (TimeSlot) พร้อมสถานะ DRAFT / PUBLISHED |
+| **`Schedule`** | — | จัดเก็บความสัมพันธ์ตารางสอนของ Section, Room, Teacher และเวลา (TimeSlot) พร้อมสถานะ DRAFT / PUBLISHED |
 | **`Registration`** | — | จัดเก็บบันทึกการลงทะเบียนเรียนของนักศึกษา |
 | **`TeacherQualification`** | — | บันทึกความเชี่ยวชาญในรายวิชาที่อาจารย์สามารถสอนได้ |
 | **`TeacherPreference`** | — | บันทึกวิชาที่อาจารย์ต้องการสอนพร้อมลำดับ Priority |
@@ -823,7 +484,7 @@ end note
 | **BR-07** | **Teacher Availability** | ระบบ **ต้องไม่ Assign อาจารย์ในช่วงเวลาที่อาจารย์ระบุว่าไม่พร้อมสอน** (จัดเป็น Hard Constraint) |
 | **BR-08** | **Room Availability** | ระบบไม่ Assign ห้องเรียน ตอนที่ห้องเรียนไม่พร้อมใช้งาน Admin ห้ามปิดห้องที่มี Section ACTIVE ใช้อยู่ (ต้องย้าย Section ไปห้องอื่นก่อน) ทำง่ายสุดและไม่ต้องมี workflow เพิ่ม |
 | **BR-09** | **Registration Period** | นักศึกษาสามารถลงทะเบียนและถอนรายวิชาได้ **เฉพาะภายในช่วงเวลา Registration Period เท่านั้น** |
-| **BR-10** | **Admin Override** | Admin มีสิทธิ์พิเศษในการ Override ผลการตรวจสอบตารางเรียน/สอนในกรณีจำเป็น |
+
 
 ---
 
@@ -877,6 +538,10 @@ $$\text{Student} \longrightarrow \text{My Registration} \longrightarrow \text{Se
 ### 14.3 Teacher Swap Workflow
 $$\text{Teacher A Request Swap} \longrightarrow \text{Select Teacher B} \longrightarrow \text{System Validation} \longrightarrow \text{Teacher B Respond (Accept / Reject)} \longrightarrow \text{Admin Review (Approve / Reject)} \longrightarrow \text{Update Schedule} \longrightarrow \text{Create Notification}$$
 
+- **การป้องกันคำขอซ้อน (Double Open Swap Prevention):** ตรวจสอบว่าคาบใดคาบหนึ่ง (`requestingSchedule` หรือ `targetSchedule`) มีคำขอที่ค้างอยู่ (สถานะ `PENDING` หรือ `ACCEPTED`) หรือไม่ หากมีให้ปฏิเสธด้วย `409 Conflict` ทันที
+- **การจัดการข้อขัดแย้งกับตารางร่าง (DRAFT Conflict):** หากชนกับคาบสถานะ `DRAFT` ให้ตอบกลับด้วย `409 Conflict: "Time slot conflicts with an unfinalized timetable draft under administrative review."` เพื่อให้อาจารย์เข้าใจสาเหตุชัดเจน
+- **การคงอยู่ของประวัติคำขอ (Audit Trail Retention - ON DELETE SET NULL):** ความสัมพันธ์ Foreign Key ของ `requesting_schedule_id` และ `target_schedule_id` ในฐานข้อมูลถูกกำหนดเป็น `NULLABLE (ON DELETE SET NULL)` เพื่อให้กรณี Section หรือ Schedule ถูกยกเลิก/ลบ ประวัติคำขอ Swap และ Snapshot ครูทั้งสองฝ่าย (`requestingTeacher`, `targetTeacher`) จะยังคงอยู่ครบ 100% ไม่สูญหาย
+
 **การเปลี่ยนสถานะที่อนุญาต**
 
 | จากสถานะ | ไปสถานะ | ผู้กระทำ | หมายเหตุ |
@@ -885,7 +550,7 @@ $$\text{Teacher A Request Swap} \longrightarrow \text{Select Teacher B} \longrig
 | PENDING | ACCEPTED | Teacher B | รอ Admin |
 | PENDING | REJECTED | Teacher B | ตารางไม่เปลี่ยน |
 | PENDING | CANCELLED | Teacher A | ยกเลิกได้เฉพาะตอน PENDING (B ยังไม่ตอบ) / Teacher B ยกเลิกไม่ได้ |
-| ACCEPTED | APPROVED | Admin | สลับ `teacher` ของ 2 คาบแบบถาวร |
+| ACCEPTED | APPROVED | Admin | สลับ `teacher` ของ 2 คาบแบบถาวร (requestingTeacher และ targetTeacher ยังคงบันทึกเป็น Snapshot Audit Log) |
 | ACCEPTED | REJECTED | Admin | Admin ปฏิเสธได้เฉพาะ ACCEPTED ตารางไม่เปลี่ยน |
 
 ```mermaid
@@ -915,12 +580,14 @@ $$\text{Admin Cancel Section} \longrightarrow \text{Update Section State (ACTIVE
 - ส่ง Email ผ่าน `EmailNotificationStrategy` เฉพาะกรณีสำคัญ เช่น:
   - การลงทะเบียนเรียนสำเร็จ (Registration Successful)
   - คำขอสลับผู้สอนได้รับการอนุมัติ (Teacher Swap Approved)
+- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **Mailtrap (mailtrap.io)** เป็น Sandbox SMTP Server (`sandbox.smtp.mailtrap.io`, Port 587) ร่วมกับ `spring-boot-starter-mail` และ `JavaMailSender` เพื่อความสะดวกรวดเร็วในการพัฒนา ไม่ต้องกังวลเรื่องการบล็อก 2FA ของผู้ให้บริการทั่วไป และสามารถเปิด Web Inbox ตรวจสอบผลการส่งอีเมลตอน Demo ได้ทันที
 
 ### 14.7 Academic Calendar & Public Holiday Integration
 - **Academic Calendar:** รองรับ CRUD ผ่าน REST API (Semester Start, Semester End, Registration Period, Midterm Exam, Final Exam)
 - **Public Holiday API Flow:**
-$$\text{External Holiday API} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
+$$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
 *(ระบบไม่เรียก External API ทุกครั้งที่เปิดหน้า Timetable เพื่อป้องกัน Latency และปัญหา API Limit)*
+- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **Nager.Date Public Holiday API** (`https://date.nager.at/api/v3/publicholidays/{year}/TH`) ซึ่งเป็น Open REST API ฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token และได้ผลลัพธ์เป็น JSON วันหยุดประจำปีของไทยทันที ดึงข้อมูลผ่าน Spring `RestClient` / `RestTemplate` ภายใน Adapter
 
 ---
 
@@ -1012,8 +679,8 @@ $$\text{External Holiday API} \longrightarrow \text{ExternalHolidayAdapter} \lon
 | :---: | :--- | :--- | :---: |
 | `GET` | `/api/v1/sections` | ดึงรายการ Section (กรองด้วย `?courseId=`) | Authenticated |
 | `GET` | `/api/v1/sections/{id}` | ดึงข้อมูล Section รายตัว | Authenticated |
-| `POST` | `/api/v1/sections` | สร้าง Section (Course, เลข Sec, Capacity, ห้องประจำ ไม่บังคับ) | ADMIN |
-| `PUT` | `/api/v1/sections/{id}` | แก้ Capacity / ห้องประจำ (เปลี่ยนห้องได้เฉพาะก่อนมีคาบสอน) | ADMIN |
+| `POST` | `/api/v1/sections` | สร้าง Section (Course, เลข Sec, Capacity) | ADMIN |
+| `PUT` | `/api/v1/sections/{id}` | แก้ไข Capacity ของ Section | ADMIN |
 
 *(ไม่มี `DELETE /sections/{id}` ใช้ `PUT /sections/{id}/cancel` แทน)*
 
@@ -1123,7 +790,7 @@ $$\text{External Holiday API} \longrightarrow \text{ExternalHolidayAdapter} \lon
 7. `07-activity-diagram.puml`: Activity Diagram แสดงกระบวนการหลักของระบบ
 8. `08-er-diagram.puml`: ER Diagram แสดง Schema ฐานข้อมูลและความสัมพันธ์
 9. `09-component-diagram.puml`: Component Diagram ของระบบ
-10. `10-deployment-diagram.puml`: Deployment Diagram (Docker, App Server, MySQL)
+10. `10-deployment-diagram.puml` / `doc/diagram/deployment-diagram.puml`: Deployment Diagram (VPS Cloud Host, Docker Compose, Port 8080, MySQL + Persistent Volume)
 11. `11-state-diagram.puml`: State Diagram สำหรับ `Section` (Active/Cancelled)
 
 ---
@@ -1348,7 +1015,7 @@ AcadOS/
 | **Migration Scripts** | Flyway/Liquibase หรือ schema.sql + data.sql | **TBA** | กำหนดให้มี `schema.sql` และ `data.sql` ใน `code/` (รายละเอียด Script = TBA) |
 | **REST API Standards** | ครบ CRUD 2 Resources, Status Codes, Validation | **Complete** | Courses และ Rooms ทำ CRUD ครบ, มี DTO, Bean Validation |
 | **Git Workflow** | Branch `ชื่อ_รหัสนักศึกษา_section`, $\ge$ 15 commits/คน | **Complete** | กำหนดชื่อ Branch ของทั้ง 3 คนถูกต้องตามฟอร์แมต |
-| **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **TBA** | ผู้ให้บริการ Cloud และ Public URL อยู่ระหว่างจัดเตรียม (TBA) |
+| **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **Complete** | สถาปัตยกรรมยืนยัน: Cloud Host (VPS / Cloud VM + Docker Compose) รัน acados-app (Port 8080) และ acados-db พร้อม Persistent Volume `mysql_data` |
 
 ---
 
@@ -1356,7 +1023,7 @@ AcadOS/
 
 ส่วนสรุปรายการที่ยังต้องระบุหรือตัดสินใจเพิ่มเติมในขั้นตอนการพัฒนา (Implementation Phase):
 1. **Database Migration Scripts (TBA):** เนื้อหารายละเอียดของไฟล์ DDL `schema.sql` และ Initial Data `data.sql` ในโฟลเดอร์ `code/` จะถูกจัดทำขึ้นตาม Entity จริง
-2. **Cloud Provider & Public URL (TBA):** ผู้ให้บริการ Cloud Hosting (เช่น Render, Railway, Fly.io, AWS หรือ VPS Docker) และโดเมน Public URL จะถูกระบุในขั้นตอน Deploy
+2. **Cloud Provider & Public URL (Confirmed):** กำหนดใช้ Cloud Host Server (VPS / Cloud VM) พร้อม Docker Compose โดยเข้าถึงแอปพลิเคชันโดยตรงผ่าน Port 8080 (No Nginx Reverse Proxy) และเชื่อมต่อฐานข้อมูล MySQL ผ่าน Docker Internal Network (Port 3306) พร้อม Persistent Volume `mysql_data` (โดเมน Public URL จะผูกกับ IP ของโฮสต์ในวันนำเสนอ)
 3. **Data Dictionary & ER Diagram (TBA):** รายละเอียดพจนานุกรมข้อมูล (ชนิดข้อมูล, ความยาว, Constraints) และไฟล์รูปภาพ ER Diagram ฉบับสมบูรณ์จะจัดทำในโฟลเดอร์ `doc/`
 4. **Use Case Descriptions (TBA):** เอกสารอธิบาย Use Case แต่ละตัวแบบละเอียด (Main Flow, Alternative Flow, Pre/Post-condition) จะถูกจัดทำเพิ่มเติมใน `doc/`
 5. **Teacher B Respond Endpoint & State (TBA):** รูปแบบ Request Body และ Endpoint ย่อยสำหรับการตอบรับคำขอสลับสอนของ Teacher B จะถูกกำหนดในขั้นตอน Implement

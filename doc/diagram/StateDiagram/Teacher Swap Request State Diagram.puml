@@ -1,0 +1,22 @@
+@startuml
+title Teacher Swap Request State Diagram
+
+[*] --> PENDING : Teacher A ส่งคำขอ (Request Swap)
+PENDING --> ACCEPTED : Teacher B ตอบรับ (Accept)
+PENDING --> REJECTED : Teacher B ปฏิเสธ (Reject)
+PENDING --> CANCELLED : Teacher A ยกเลิก (Cancel)
+ACCEPTED --> APPROVED : Admin อนุมัติ (Approve)
+ACCEPTED --> REJECTED : Admin ปฏิเสธ (Reject)
+
+APPROVED --> [*]
+REJECTED --> [*]
+CANCELLED --> [*]
+
+note right of PENDING
+  Teacher A ยกเลิกได้เฉพาะตอน PENDING
+end note
+
+note right of ACCEPTED
+  Admin ปฏิเสธได้เฉพาะตอน ACCEPTED
+end note
+@enduml

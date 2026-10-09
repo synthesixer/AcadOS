@@ -1,0 +1,54 @@
+@startuml
+skinparam backgroundColor #EEF2FF
+
+' Student Registration Activity Diagram (based on sequence diagram 04)
+
+start
+:Student opens registration UI;
+:Student submits registration request (sectionId) with JWT;
+partition "Security Filter" {
+    :Validate JWT, role = STUDENT;
+    if (JWT invalid?) then (yes)
+        :Return 401 Unauthorized;
+        stop
+    endif
+}
+partition "Registration Service" {
+    :RegistrationService.register(studentId, sectionId);
+    :Check Registration Period via AcademicEventRepository;
+    if (Outside Registration Period (BR-09)?) then (yes)
+        :Throw BusinessRuleException (registration closed);
+        :Return error to Student;
+        stop
+    endif
+    :Validate Section status (must be ACTIVE);
+    if (Section Cancelled?) then (yes)
+        :Throw BusinessRuleException (section cancelled);
+        :Return error to Student;
+        stop
+    endif
+    :Check duplicate course registration via RegistrationRepository;
+    if (Duplicate course (BR-04)?) then (yes)
+        :Throw BusinessRuleException (duplicate course);
+        :Return error to Student;
+        stop
+    endif
+    :Check Section capacity via RegistrationRepository count;
+    if (Capacity exceeded (BR-05)?) then (yes)
+        :Throw BusinessRuleException (section full);
+        :Return error to Student;
+        stop
+    endif
+    :Check time‑slot conflict with student's existing PUBLISHED schedules;
+    if (Conflict found (BR-03)?) then (yes)
+        :Send Notification (CONFLICT_DETECTED) to Student;
+        :Throw BusinessRuleException (time conflict);
+        :Return error to Student;
+        stop
+    endif
+    :Save Registration (student, section, course) to DB;
+    :Send Notification (REGISTRATION_SUCCESS) to Student (InApp + Email);
+    :Return 201 Created with Registration DTO;
+}
+stop
+@enduml

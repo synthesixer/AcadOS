@@ -1,0 +1,167 @@
+@startuml AcadOS_Deployment_Diagram
+
+title AcadOS v4 - Deployment Diagram
+
+' ==========================================
+' Global Layout & Styling
+' ==========================================
+left to right direction
+
+skinparam backgroundColor #FDFDFD
+skinparam shadowing false
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam nodesep 45
+skinparam ranksep 55
+skinparam defaultFontName Arial
+skinparam defaultFontSize 12
+skinparam defaultTextAlignment center
+skinparam ArrowColor #64748B
+skinparam ArrowThickness 1.2
+
+skinparam node {
+    BackgroundColor #F1F5F9
+    BorderColor #64748B
+    FontColor #1E293B
+    BorderThickness 1.2
+}
+
+skinparam artifact {
+    BackgroundColor #FFFFFF
+    BorderColor #94A3B8
+    FontColor #334155
+}
+
+skinparam component {
+    BackgroundColor #E8F1FC
+    BorderColor #6093C8
+    FontColor #1E3A5F
+}
+
+skinparam database {
+    BackgroundColor #DCFCE7
+    BorderColor #47976A
+    FontColor #14532D
+}
+
+skinparam cloud {
+    BackgroundColor #FFF7ED
+    BorderColor #D97706
+    FontColor #7C2D12
+}
+
+skinparam storage {
+    BackgroundColor #F3E8FF
+    BorderColor #9333EA
+    FontColor #581C87
+}
+
+skinparam note {
+    BackgroundColor #FFFBEB
+    BorderColor #D4A72C
+    FontColor #713F12
+}
+
+' ==========================================
+' 1. Client Tier
+' ==========================================
+node "<<device>>\nClient Workstation / Mobile" as ClientDevice #EAF2FF {
+
+    node "<<execution environment>>\nWeb Browser" as Browser #F8FAFC {
+
+        artifact "<<artifact>>\nThymeleaf Views\n(HTML5 / CSS3 / JavaScript)" as WebUI
+
+        artifact "<<artifact>>\nSwagger UI\n(/swagger-ui.html)" as SwaggerUI
+
+        artifact "<<artifact>>\nREST Client\n(Fetch API / JSON)" as RestClient
+    }
+}
+
+' ==========================================
+' 2. Cloud Server (VPS / Cloud VM)
+' ==========================================
+node "<<device>>\nCloud Host Server (VPS / Cloud VM)\n[Linux OS]" as CloudHost #E2E8F0 {
+
+    node "<<execution environment>>\nDocker Engine & Docker Compose" as DockerEngine #F1F5F9 {
+
+        ' --------------------------------------
+        ' Application Container
+        ' --------------------------------------
+        node "<<container>>\nacados-app" as AppContainer #DBEAFE {
+
+            node "<<runtime>>\nOpenJDK 21 LTS" as JvmRuntime #EFF6FF {
+
+                node "<<web server>>\nEmbedded Apache Tomcat\n[Port 8080]" as TomcatServer #F8FAFC {
+
+                    artifact "<<artifact>>\nacados-1.0-SNAPSHOT.jar\n(Spring Boot 3.3.4)" as AppJar #FFFFFF {
+
+                        component "Presentation Layer\n(REST & Web Controllers)" as PresentationComp
+
+                        component "Security Filter (JWT)" as SecurityComp
+
+                        component "Service & Business Logic\n(Orchestrator & Rules BR-01..10)" as ServiceComp
+
+                        component "Persistence Layer\n(Spring Data JPA / Hibernate)" as PersistenceComp
+
+                        component "External Adapters\n(Holiday & Email Strategy)" as AdapterComp
+
+                        component "Spring Actuator\n(/actuator/health)" as ActuatorComp
+                    }
+                }
+            }
+        }
+
+        ' --------------------------------------
+        ' Database Container
+        ' --------------------------------------
+        node "<<container>>\nacados-db" as DbContainer #DCFCE7 {
+
+            node "<<database system>>\nMySQL 8.x\n[Port 3306]" as MySQLServer #ECFDF5 {
+
+                database "<<database>>\nacados_db\n(16 Relational Tables)" as DatabaseInstance {
+
+                    artifact "<<artifact>>\nDatabase DDL / Data\n(schema.sql & data.sql)" as DbSchema
+                }
+            }
+        }
+
+        ' --------------------------------------
+        ' Persistent Storage Volume
+        ' --------------------------------------
+        storage "<<volume>>\nmysql_data\n(Docker Persistent Volume - D11)" as DbVolume
+    }
+}
+
+' ==========================================
+' 3. External Services
+' ==========================================
+cloud "<<system>>\nExternal Public Holiday API\n(e.g., Nager.Date API)" as HolidayAPI
+
+cloud "<<system>>\nExternal Mail Server / SMTP Service\n(e.g., Mailtrap / SMTP)" as MailServer
+
+' ==========================================
+' Communication Links & Protocols
+' ==========================================
+Browser -- AppContainer : HTTPS / HTTP [Port 8080]\n(JSON REST API / HTML View)
+
+TomcatServer --> MySQLServer : JDBC / MySQL Protocol [Port 3306]\n(Docker Bridge Network: acados-network)
+
+MySQLServer --> DbVolume : Mounts to /var/lib/mysql\n(Data Persistence)
+
+AdapterComp ..> HolidayAPI : HTTPS [Port 443]\nGET /api/v3/publicholidays/{year}/TH
+
+AdapterComp ..> MailServer : SMTP / TLS [Port 587]\n(Notifications: Success, Swap Approved)
+
+' ==========================================
+' Architecture Decisions
+' ==========================================
+note bottom of CloudHost
+  **Architecture Decisions (v4 Confirmed)**
+
+  1A: Cloud Host (VPS / Cloud VM + Docker Compose)
+  2A: Direct access to acados-app on Port 8080 (No Nginx)
+  D11: Persistent Volume mysql_data prevents DB loss
+  Docker Bridge Network isolates app <-> db
+end note
+
+@enduml

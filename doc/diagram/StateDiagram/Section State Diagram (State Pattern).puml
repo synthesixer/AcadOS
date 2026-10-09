@@ -1,0 +1,15 @@
+@startuml
+title Section State Diagram
+
+[*] --> ACTIVE : สร้าง Section
+ACTIVE --> CANCELLED : Admin ยกเลิก Section (Cancel)
+CANCELLED --> [*]
+
+note right of ACTIVE
+  นักศึกษาลงทะเบียนได้
+end note
+
+note right of CANCELLED
+  ลบ Registration และ Release Schedule
+end note
+@enduml

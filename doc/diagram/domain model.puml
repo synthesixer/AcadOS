@@ -1,0 +1,340 @@
+@startuml AcadOS_Domain_Model_v3
+
+title AcadOS - Domain Model (v3, aligned with DB design and v4)
+
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam linetype ortho
+
+' ==========================================
+' 1. User and Profiles
+' ==========================================
+
+package "User Domain" {
+    class User {
+        - id: Long
+        - universityId: String
+        - email: String
+        - passwordHash: String
+        - role: UserRole
+    }
+
+    class Student {
+        - id: Long
+        - user: User
+        - fullName: String
+    }
+
+    class Teacher {
+        - id: Long
+        - user: User
+        - fullName: String
+    }
+}
+
+' ==========================================
+' 2. Course and Scheduling Domain
+' ==========================================
+
+package "Academic Scheduling Domain" {
+    class Course {
+        - id: Long
+        - courseCode: String
+        - title: String
+        - weeklyHours: int
+    }
+
+    class Section {
+        - id: Long
+        - course: Course
+        - sectionNumber: int
+        - capacity: int
+        - status: SectionStatus
+    }
+
+    class Room {
+        - id: Long
+        - roomNumber: String
+        - building: String
+        - floor: int
+        - capacity: int
+        - isAvailable: boolean
+    }
+
+    class TimeSlot {
+        - id: Long
+        - dayOfWeek: DayOfWeek
+        - startTime: LocalTime
+        - endTime: LocalTime
+    }
+
+        enum ScheduleStatus {
+        DRAFT
+        PUBLISHED
+    }
+
+    class Schedule {
+        - id: Long
+        - section: Section
+        - teacher: Teacher
+        - room: Room
+        - timeSlot: TimeSlot
+        - status: ScheduleStatus
+    }
+
+    Schedule ..> ScheduleStatus
+
+    class Registration {
+        - id: Long
+        - student: Student
+        - section: Section
+        - course: Course
+        - registeredAt: LocalDateTime
+    }
+}
+
+' ==========================================
+' 3. Teacher Constraints and Preferences
+' ==========================================
+
+package "Teacher Domain" {
+    class TeacherQualification {
+        - id: Long
+        - teacher: Teacher
+        - course: Course
+    }
+
+    class TeacherPreference {
+        - id: Long
+        - teacher: Teacher
+        - course: Course
+        - priority: int
+    }
+
+    class TeacherAvailability {
+        - id: Long
+        - teacher: Teacher
+        - timeSlot: TimeSlot
+        - isAvailable: boolean
+    }
+
+    class TeacherSwapRequest {
+        - id: Long
+        - requestingTeacher: Teacher
+        - requestingSchedule: Schedule
+        - targetTeacher: Teacher
+        - targetSchedule: Schedule
+        - status: SwapStatus
+        - createdAt: LocalDateTime
+        - respondedAt: LocalDateTime
+        - reviewedAt: LocalDateTime
+        + accept(): void
+        + reject(): void
+        + approve(): void
+        + cancel(): void
+    }
+}
+
+' ==========================================
+' 4. Notification Domain
+' ==========================================
+
+package "Notification Domain" {
+    class Notification {
+        - id: Long
+        - user: User
+        - title: String
+        - message: String
+        - type: NotificationType
+        - isRead: boolean
+        - createdAt: LocalDateTime
+        + markAsRead(): void
+    }
+}
+
+' ==========================================
+' 5. Calendar and Public Holiday Domain
+' ==========================================
+
+package "Calendar Domain" {
+    class AcademicEvent {
+        - id: Long
+        - eventName: String
+        - eventType: AcademicEventType
+        - startDate: LocalDate
+        - endDate: LocalDate
+    }
+
+    class PublicHoliday {
+        - id: Long
+        - date: LocalDate
+        - name: String
+        - description: String
+    }
+}
+
+' ==========================================
+' 6. Enumerations (persisted as STRING)
+' ==========================================
+
+enum UserRole {
+    ADMIN
+    TEACHER
+    STUDENT
+}
+
+enum SectionStatus {
+    ACTIVE
+    CANCELLED
+}
+
+enum SwapStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+    APPROVED
+    CANCELLED
+}
+
+enum AcademicEventType {
+    SEMESTER_START
+    SEMESTER_END
+    REGISTRATION_PERIOD
+    MIDTERM_EXAM
+    FINAL_EXAM
+}
+
+enum NotificationType {
+    REGISTRATION_SUCCESS
+    REGISTRATION_WITHDRAWN
+    SCHEDULE_CHANGED
+    SWAP_REQUESTED
+    SWAP_RESPONDED
+    SWAP_APPROVED
+    SWAP_REJECTED
+    SWAP_CANCELLED
+    SECTION_CANCELLED
+    CONFLICT_DETECTED
+}
+
+' DayOfWeek = java.time.DayOfWeek (MONDAY..SUNDAY)
+
+' ==========================================
+' 7. Domain Relationships
+' ==========================================
+
+' User and profiles (Admin has neither profile)
+User "1" -- "0..1" Student : student profile
+User "1" -- "0..1" Teacher : teacher profile
+
+' Course, section and schedule
+Course "1" -- "0..*" Section : offers
+Section "1" *-- "0..*" Schedule : has
+Schedule "0..*" --> "0..1" Room : assigned room
+Schedule "0..*" --> "1" Teacher : assigned teacher
+Schedule "0..*" --> "1" TimeSlot : scheduled at
+
+' Registration
+Student "1" -- "0..*" Registration
+Section "1" -- "0..*" Registration
+Course "1" -- "0..*" Registration : denormalized for BR-04
+
+' Teacher qualifications and preferences
+Teacher "1" -- "0..*" TeacherQualification
+Course "1" -- "0..*" TeacherQualification
+
+Teacher "1" -- "0..*" TeacherPreference
+Course "1" -- "0..*" TeacherPreference
+
+' Teacher availability
+Teacher "1" -- "0..*" TeacherAvailability
+TimeSlot "1" -- "0..*" TeacherAvailability
+
+' Teacher schedule swap
+Teacher "1" -- "0..*" TeacherSwapRequest : requesting teacher (snapshot)
+Teacher "1" -- "0..*" TeacherSwapRequest : target teacher (snapshot)
+Schedule "0..1" -- "0..*" TeacherSwapRequest : requesting schedule (SET NULL)
+Schedule "0..1" -- "0..*" TeacherSwapRequest : target schedule (SET NULL)
+
+' Notifications
+User "1" -- "0..*" Notification : receives
+
+' Enum usage
+User ..> UserRole
+Section ..> SectionStatus
+TeacherSwapRequest ..> SwapStatus
+AcademicEvent ..> AcademicEventType
+Notification ..> NotificationType
+
+' ==========================================
+' 8. Notes (business constraints)
+' ==========================================
+
+note right of Section
+  - Section capacity <= Room capacity (BR-05, checked in Service)
+  - Unique (course, sectionNumber)
+  - Behaviour of ACTIVE/CANCELLED is handled by the State Pattern
+    (SectionState interface in package state); this enum is only
+    the persisted value
+end note
+
+note right of Room
+  BR-08: isAvailable = true (open) / false (closed)
+  - No time dimension: a closed room is closed for every TimeSlot
+  - A Room with isAvailable = false must not be assigned to a Section
+  - Hard constraint (v4 section 12.3 item 5)
+end note
+
+note right of Schedule
+  - 1 Schedule = 1 period of a Section
+  - Room and Teacher are per Schedule (enables per-period swaps)
+  - Room is nullable (Schedule.room is 0..1 in database.md)
+  - Teacher must be qualified for the Course (BR-06)
+  - Teacher availability is a hard constraint (BR-07)
+  - Teacher/Room/Student conflicts use time OVERLAP checks in Service
+  - A Candidate for scheduling = the full set of Schedules of one Section
+end note
+
+note right of Registration
+  - course is copied from section.course
+  - Unique (student, section) and Unique (student, course)
+    -> enforces BR-04 in DB as well as in Service
+end note
+
+note right of TeacherAvailability
+  - isAvailable = false : teacher cannot teach (hard constraint)
+  - No row = available
+  - If rows conflict, false wins
+end note
+
+note right of TeacherPreference
+  - Preference is by Course only (with priority)
+  - Time-based preference is not supported
+    (v4 section 12.4 wording must be updated)
+end note
+
+note right of TeacherSwapRequest
+  - Stores requestingTeacher and targetTeacher as audit snapshots
+  - Schedule references are nullable (SET NULL on delete to retain audit trail)
+  - Checks if either schedule has an open request before creation
+  Flow: PENDING -> ACCEPTED (Teacher B)
+        ACCEPTED -> APPROVED / REJECTED (Admin)
+        PENDING -> REJECTED (Teacher B) / CANCELLED (Teacher A)
+  - Re-run BR-01, BR-06, BR-07 validation when Admin approves
+end note
+
+note bottom of AcademicEvent
+  AcademicEvent belongs to the academic calendar.
+  REGISTRATION_PERIOD is read by RegistrationService (BR-09),
+  but AcademicEvent is NOT a scheduling constraint and has
+  no relation to Schedule or PublicHoliday (FL-04).
+end note
+
+note bottom of Student
+  Assumptions (v4 scope):
+  - Single semester; no Semester entity
+  - No student cohort/curriculum entity, so Student Conflict
+    is checked at registration time (BR-03)
+end note
+
+@enduml
