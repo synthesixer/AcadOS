@@ -116,9 +116,9 @@ entity teacher_swap_requests {
   * id : BIGINT <<PK>>
   --
   * requesting_teacher_id : BIGINT <<FK>>
-  * requesting_schedule_id : BIGINT <<FK>>
+  requesting_schedule_id : BIGINT <<FK>>
   * target_teacher_id : BIGINT <<FK>>
-  * target_schedule_id : BIGINT <<FK>>
+  target_schedule_id : BIGINT <<FK>>
   * status : VARCHAR(20)
   * created_at : DATETIME
   responded_at : DATETIME
@@ -180,8 +180,8 @@ time_slots ||--o{ teacher_availabilities : at (CASCADE)
 
 teachers ||--o{ teacher_swap_requests : requesting teacher (RESTRICT, snapshot)
 teachers ||--o{ teacher_swap_requests : target teacher (RESTRICT, snapshot)
-schedules ||--o{ teacher_swap_requests : requesting schedule (CASCADE)
-schedules ||--o{ teacher_swap_requests : target schedule (CASCADE)
+schedules ||--o{ teacher_swap_requests : requesting schedule (SET NULL)
+schedules ||--o{ teacher_swap_requests : target schedule (SET NULL)
 
 ' ---------- Notes: composite UNIQUE / INDEX ----------
 note top of users
@@ -228,7 +228,7 @@ note bottom of teacher_availabilities
 end note
 
 note bottom of teacher_swap_requests
-  Refers to both schedules directly.
+  Refers to both schedules directly (SET NULL on delete).
   requesting_teacher_id & target_teacher_id
   are immutable point-in-time snapshots for audit trail.
   status: PENDING, ACCEPTED, REJECTED,

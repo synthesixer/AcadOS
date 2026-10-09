@@ -243,7 +243,7 @@ Database Layer (MySQL Database)
   - Generate บันทึกผลเป็น DRAFT เสมอ และการ Generate ใหม่ = ลบ DRAFT เดิมทิ้งก่อน
   - Admin Publish → DRAFT ทั้งหมดเปลี่ยนเป็น PUBLISHED / Admin Discard → ลบ DRAFT ทั้งหมด
   - Teacher Swap และ Assign Teacher ทำได้เฉพาะคาบที่ PUBLISHED
-  - Unique Constraint ของตารางนับรวมคาบ DRAFT ด้วย: Swap หรือ Assign Teacher ที่ชนกับคาบ DRAFT จะถูกปฏิเสธ ต้อง Publish หรือ Discard ก่อน
+  - Unique Constraint ของตารางนับรวมคาบ DRAFT ด้วย: Swap หรือ Assign Teacher ที่ชนกับคาบ DRAFT จะถูกปฏิเสธพร้อมข้อความชัดเจนว่าเป็นข้อขัดแย้งกับตารางร่าง (409 Conflict: DRAFT Timetable Conflict) ต้องให้ Admin ดำเนินการ Publish หรือ Discard ก่อน
   - ไม่มีการแจ้งเตือนตอน Generate / เมื่อ Publish แจ้งเตือน `SCHEDULE_CHANGED` แก่อาจารย์ที่ได้คาบใหม่ และนักศึกษาของ Section ที่ตารางเปลี่ยน
 
 | บทบาท | เห็นคาบสถานะ |
@@ -537,6 +537,10 @@ $$\text{Student} \longrightarrow \text{My Registration} \longrightarrow \text{Se
 
 ### 14.3 Teacher Swap Workflow
 $$\text{Teacher A Request Swap} \longrightarrow \text{Select Teacher B} \longrightarrow \text{System Validation} \longrightarrow \text{Teacher B Respond (Accept / Reject)} \longrightarrow \text{Admin Review (Approve / Reject)} \longrightarrow \text{Update Schedule} \longrightarrow \text{Create Notification}$$
+
+- **การป้องกันคำขอซ้อน (Double Open Swap Prevention):** ตรวจสอบว่าคาบใดคาบหนึ่ง (`requestingSchedule` หรือ `targetSchedule`) มีคำขอที่ค้างอยู่ (สถานะ `PENDING` หรือ `ACCEPTED`) หรือไม่ หากมีให้ปฏิเสธด้วย `409 Conflict` ทันที
+- **การจัดการข้อขัดแย้งกับตารางร่าง (DRAFT Conflict):** หากชนกับคาบสถานะ `DRAFT` ให้ตอบกลับด้วย `409 Conflict: "Time slot conflicts with an unfinalized timetable draft under administrative review."` เพื่อให้อาจารย์เข้าใจสาเหตุชัดเจน
+- **การคงอยู่ของประวัติคำขอ (Audit Trail Retention - ON DELETE SET NULL):** ความสัมพันธ์ Foreign Key ของ `requesting_schedule_id` และ `target_schedule_id` ในฐานข้อมูลถูกกำหนดเป็น `NULLABLE (ON DELETE SET NULL)` เพื่อให้กรณี Section หรือ Schedule ถูกยกเลิก/ลบ ประวัติคำขอ Swap และ Snapshot ครูทั้งสองฝ่าย (`requestingTeacher`, `targetTeacher`) จะยังคงอยู่ครบ 100% ไม่สูญหาย
 
 **การเปลี่ยนสถานะที่อนุญาต**
 
