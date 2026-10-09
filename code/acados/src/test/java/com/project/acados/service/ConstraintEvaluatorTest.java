@@ -25,7 +25,7 @@ import static org.mockito.ArgumentMatchers.anyLong;
 import static org.mockito.Mockito.when;
 
 @ExtendWith(MockitoExtension.class)
-@DisplayName("ConstraintEvaluator Unit Tests for 7 Hard Constraints")
+@DisplayName("ConstraintEvaluator Unit Tests for 7 Hard Constraints (Class Diagram Spec)")
 class ConstraintEvaluatorTest {
 
     @Mock
@@ -96,6 +96,13 @@ class ConstraintEvaluatorTest {
     @Test
     @DisplayName("Should pass when all 7 hard constraints are satisfied")
     void shouldPassWhenAllConstraintsSatisfied() {
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1, timeSlot2))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 101L)).thenReturn(Optional.empty());
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 102L)).thenReturn(Optional.empty());
@@ -103,27 +110,41 @@ class ConstraintEvaluatorTest {
         when(scheduleRepository.findByRoomId(30L)).thenReturn(Collections.emptyList());
         when(scheduleRepository.findBySectionId(10L)).thenReturn(Collections.emptyList());
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1, timeSlot2));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertTrue(passed);
-        assertNull(evaluator.getLastFailureReason());
+        assertTrue(result.isPassed());
+        assertNull(result.getReason());
     }
 
     @Test
     @DisplayName("BR-06: Should fail when teacher lacks qualification")
     void shouldFailWhenTeacherNotQualified() {
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(false);
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-06"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-06"));
     }
 
     @Test
     @DisplayName("BR-07: Should fail when teacher is marked unavailable")
     void shouldFailWhenTeacherUnavailable() {
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
 
         TeacherAvailability unavailable = TeacherAvailability.builder()
@@ -135,16 +156,23 @@ class ConstraintEvaluatorTest {
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 101L))
                 .thenReturn(Optional.of(unavailable));
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-07"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-07"));
     }
 
     @Test
     @DisplayName("BR-01: Should fail when teacher has overlapping schedule")
     void shouldFailWhenTeacherHasConflict() {
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 101L)).thenReturn(Optional.empty());
 
@@ -159,16 +187,23 @@ class ConstraintEvaluatorTest {
 
         when(scheduleRepository.findByTeacherId(20L)).thenReturn(List.of(conflictSchedule));
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-01"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-01"));
     }
 
     @Test
     @DisplayName("BR-02: Should fail when room has overlapping schedule")
     void shouldFailWhenRoomHasConflict() {
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 101L)).thenReturn(Optional.empty());
         when(scheduleRepository.findByTeacherId(20L)).thenReturn(Collections.emptyList());
@@ -184,11 +219,11 @@ class ConstraintEvaluatorTest {
 
         when(scheduleRepository.findByRoomId(30L)).thenReturn(List.of(conflictSchedule));
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-02"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-02"));
     }
 
     @Test
@@ -196,16 +231,23 @@ class ConstraintEvaluatorTest {
     void shouldFailWhenRoomNotAvailable() {
         room.setIsAvailable(false);
 
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 101L)).thenReturn(Optional.empty());
         when(scheduleRepository.findByTeacherId(20L)).thenReturn(Collections.emptyList());
         when(scheduleRepository.findByRoomId(30L)).thenReturn(Collections.emptyList());
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-08"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-08"));
     }
 
     @Test
@@ -213,17 +255,24 @@ class ConstraintEvaluatorTest {
     void shouldFailWhenRoomCapacityInsufficient() {
         room.setCapacity(30); // Section capacity is 40
 
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(20L, 101L)).thenReturn(Optional.empty());
         when(scheduleRepository.findByTeacherId(20L)).thenReturn(Collections.emptyList());
         when(scheduleRepository.findByRoomId(30L)).thenReturn(Collections.emptyList());
         when(scheduleRepository.findBySectionId(10L)).thenReturn(Collections.emptyList());
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-05"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-05"));
     }
 
     @Test
@@ -236,16 +285,22 @@ class ConstraintEvaluatorTest {
                 .endTime(LocalTime.of(11, 0))
                 .build();
 
+        Candidate candidate = Candidate.builder()
+                .section(section)
+                .teacher(teacher)
+                .room(room)
+                .timeSlots(List.of(timeSlot1, overlappingSlot))
+                .build();
+
         when(teacherQualificationRepository.existsByTeacherIdAndCourseId(20L, 1L)).thenReturn(true);
         when(teacherAvailabilityRepository.findByTeacherIdAndTimeSlotId(anyLong(), anyLong())).thenReturn(Optional.empty());
         when(scheduleRepository.findByTeacherId(20L)).thenReturn(Collections.emptyList());
         when(scheduleRepository.findByRoomId(30L)).thenReturn(Collections.emptyList());
 
-        boolean passed = evaluator.validate(teacher, room, section, List.of(timeSlot1, overlappingSlot));
+        ValidationResult result = evaluator.validate(candidate);
 
-        assertFalse(passed);
-        assertNotNull(evaluator.getLastFailureReason());
-        assertTrue(evaluator.getLastFailureReason().contains("BR-03"));
+        assertFalse(result.isPassed());
+        assertNotNull(result.getReason());
+        assertTrue(result.getReason().contains("BR-03"));
     }
 }
-

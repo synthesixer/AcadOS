@@ -1,23 +1,18 @@
 package com.project.acados.strategy;
 
-import com.project.acados.domain.entity.Room;
-import com.project.acados.domain.entity.Section;
-import com.project.acados.domain.entity.Teacher;
+import com.project.acados.service.Candidate;
 
 /**
- * Strategy interface for calculating soft factor scores for schedule assignments.
- * Reference: Implement_Plan-AcadOS.md §7 (strategy/), §10.3, §12.4
+ * Strategy interface for calculating soft factor scores for candidate schedules.
+ * Reference: class diagram.puml (§6 strategy), Implement_Plan-AcadOS.md §7 (strategy/), §10.3, §12.4
  */
 public interface ScoringStrategy {
 
     /**
-     * Calculates soft factor score for a teacher, room, and section combination.
+     * Calculates soft factor score for a candidate schedule.
      *
-     * @param teacher candidate teacher
-     * @param room candidate room
-     * @param section section to be scheduled
+     * @param candidate candidate containing section, teacher, room, and timeSlots
      * @return soft factor score (e.g. +30, +20)
      */
-    int calculateScore(Teacher teacher, Room room, Section section);
+    int calculateScore(Candidate candidate);
 }
-

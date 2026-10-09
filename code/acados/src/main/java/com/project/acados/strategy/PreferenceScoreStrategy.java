@@ -1,17 +1,16 @@
 package com.project.acados.strategy;
 
 import com.project.acados.domain.entity.Course;
-import com.project.acados.domain.entity.Room;
-import com.project.acados.domain.entity.Section;
 import com.project.acados.domain.entity.Teacher;
 import com.project.acados.repository.TeacherPreferenceRepository;
+import com.project.acados.service.Candidate;
 import lombok.RequiredArgsConstructor;
 import org.springframework.stereotype.Component;
 
 /**
  * Concrete scoring strategy: Teacher Preference (+30 points).
  * Awards 30 points if the teacher expressed preference for teaching the section's course.
- * Reference: Implement_Plan-AcadOS.md §7 (strategy/), §10.3, §12.4
+ * Reference: class diagram.puml (§6 strategy), Implement_Plan-AcadOS.md §7 (strategy/), §10.3, §12.4
  */
 @Component
 @RequiredArgsConstructor
@@ -22,16 +21,20 @@ public class PreferenceScoreStrategy implements ScoringStrategy {
     private final TeacherPreferenceRepository teacherPreferenceRepository;
 
     @Override
-    public int calculateScore(Teacher teacher, Room room, Section section) {
-        if (teacher == null || section == null || section.getCourse() == null) {
+    public int calculateScore(Candidate candidate) {
+        if (candidate == null || candidate.getTeacher() == null || candidate.getSection() == null) {
             return 0;
         }
 
-        Course course = section.getCourse();
+        Teacher teacher = candidate.getTeacher();
+        Course course = candidate.getSection().getCourse();
+        if (course == null) {
+            return 0;
+        }
+
         boolean hasPreference = teacherPreferenceRepository
                 .existsByTeacherIdAndCourseId(teacher.getId(), course.getId());
 
         return hasPreference ? PREFERENCE_BONUS : 0;
     }
 }
-

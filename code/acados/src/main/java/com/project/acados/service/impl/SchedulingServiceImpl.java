@@ -4,9 +4,7 @@ import com.project.acados.domain.entity.*;
 import com.project.acados.domain.enums.ScheduleStatus;
 import com.project.acados.domain.enums.SectionStatus;
 import com.project.acados.repository.*;
-import com.project.acados.service.ConstraintEvaluator;
-import com.project.acados.service.SchedulingService;
-import com.project.acados.strategy.ScoringStrategy;
+import com.project.acados.service.*;
 import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
@@ -16,7 +14,8 @@ import org.springframework.transaction.annotation.Transactional;
 import java.util.*;
 
 /**
- * Implementation of SchedulingService coordinating ConstraintEvaluator and ScoringStrategy implementations.
+ * Implementation of SchedulingService coordinating ConstraintEvaluator and ScheduleSelector.
+ * Follows the flow defined in Sequence Diagram 05, class diagram.puml, and §12.
  * Reference: Implement_Plan-AcadOS.md §7 (service/impl/), §10.2, §12
  */
 @Service
@@ -24,7 +23,6 @@ import java.util.*;
 public class SchedulingServiceImpl implements SchedulingService {
 
     private static final Logger log = LoggerFactory.getLogger(SchedulingServiceImpl.class);
-    private static final int BASELINE_SCORE = 100;
     private static final int MAX_SLOT_COMBINATIONS = 50;
 
     private final SectionRepository sectionRepository;
@@ -33,15 +31,13 @@ public class SchedulingServiceImpl implements SchedulingService {
     private final TeacherQualificationRepository teacherQualificationRepository;
     private final ScheduleRepository scheduleRepository;
     private final ConstraintEvaluator constraintEvaluator;
-    private final List<ScoringStrategy> scoringStrategies;
-
-    private final Random random = new Random();
+    private final ScheduleSelector scheduleSelector;
 
     @Override
     @Transactional
     public void generateSchedule() {
         log.info("Starting automated schedule generation for all active sections");
-        // 1. Discard existing draft schedules
+        // 1. Discard existing draft schedules (Sequence 05)
         discardDraft();
 
         // 2. Fetch all ACTIVE sections
@@ -87,46 +83,50 @@ public class SchedulingServiceImpl implements SchedulingService {
                 continue;
             }
 
-            // Evaluate valid combinations and calculate scores
-            List<ScheduleCandidate> validCandidates = new ArrayList<>();
+            // Build and evaluate candidates using ConstraintEvaluator
+            List<Candidate> validCandidates = new ArrayList<>();
+            String lastFailureReason = "No candidate combinations passed all 7 hard constraints";
 
             for (Teacher teacher : qualifiedTeachers) {
                 for (Room room : eligibleRooms) {
                     for (List<TimeSlot> slots : slotCombinations) {
-                        boolean passed = constraintEvaluator.validate(teacher, room, section, slots);
-                        if (passed) {
-                            int totalScore = BASELINE_SCORE;
-                            if (scoringStrategies != null) {
-                                for (ScoringStrategy strategy : scoringStrategies) {
-                                    totalScore += strategy.calculateScore(teacher, room, section);
-                                }
-                            }
-                            validCandidates.add(new ScheduleCandidate(teacher, room, slots, totalScore));
+                        Candidate candidate = Candidate.builder()
+                                .section(section)
+                                .teacher(teacher)
+                                .room(room)
+                                .timeSlots(slots)
+                                .build();
+
+                        ValidationResult valResult = constraintEvaluator.validate(candidate);
+                        if (valResult.isPassed()) {
+                            validCandidates.add(candidate);
+                        } else {
+                            lastFailureReason = valResult.getReason();
                         }
                     }
                 }
             }
 
             if (validCandidates.isEmpty()) {
-                log.warn("Section {} failed scheduling: {}", section.getId(), constraintEvaluator.getLastFailureReason());
+                log.warn("Section {} failed scheduling: {}", section.getId(), lastFailureReason);
                 continue;
             }
 
-            // Select highest scoring candidate (with tie-breaking)
-            ScheduleCandidate winner = selectWinner(validCandidates);
+            // Select highest scoring candidate using ScheduleSelector (ranks and breaks ties)
+            Candidate winner = scheduleSelector.selectBest(validCandidates);
             log.info("Section {} scheduled with Teacher '{}', Room '{} {}', Score: {}",
                     section.getId(),
-                    winner.teacher().getFullName(),
-                    winner.room().getBuilding(),
-                    winner.room().getRoomNumber(),
-                    winner.score());
+                    winner.getTeacher().getFullName(),
+                    winner.getRoom().getBuilding(),
+                    winner.getRoom().getRoomNumber(),
+                    winner.getScore());
 
-            // Persist as DRAFT schedules
-            for (TimeSlot slot : winner.timeSlots()) {
+            // Persist as DRAFT schedules (1 row per TimeSlot)
+            for (TimeSlot slot : winner.getTimeSlots()) {
                 Schedule schedule = Schedule.builder()
                         .section(section)
-                        .teacher(winner.teacher())
-                        .room(winner.room())
+                        .teacher(winner.getTeacher())
+                        .room(winner.getRoom())
                         .timeSlot(slot)
                         .status(ScheduleStatus.DRAFT)
                         .build();
@@ -165,26 +165,6 @@ public class SchedulingServiceImpl implements SchedulingService {
     @Transactional(readOnly = true)
     public List<Schedule> getPublishedSchedules() {
         return scheduleRepository.findByStatus(ScheduleStatus.PUBLISHED);
-    }
-
-    /**
-     * Selects candidate with highest score, applying random tie-breaking if scores match.
-     */
-    private ScheduleCandidate selectWinner(List<ScheduleCandidate> candidates) {
-        int maxScore = candidates.stream()
-                .mapToInt(ScheduleCandidate::score)
-                .max()
-                .orElse(0);
-
-        List<ScheduleCandidate> topCandidates = candidates.stream()
-                .filter(c -> c.score() == maxScore)
-                .toList();
-
-        if (topCandidates.size() == 1) {
-            return topCandidates.get(0);
-        }
-
-        return topCandidates.get(random.nextInt(topCandidates.size()));
     }
 
     /**
@@ -233,11 +213,4 @@ public class SchedulingServiceImpl implements SchedulingService {
             }
         }
     }
-
-    /**
-     * Internal record representing candidate scheduling options during calculation.
-     */
-    private record ScheduleCandidate(Teacher teacher, Room room, List<TimeSlot> timeSlots, int score) {
-    }
 }
-
