@@ -137,7 +137,7 @@ Sec -> Ctrl : forward request
 Ctrl -> Svc : generateSchedule()
 activate Svc
 Svc -> SchRepo : delete all DRAFT schedules
-Svc -> SectionRepo : find ACTIVE sections without complete schedule\n(+ course weekly hours, home room if any)
+Svc -> SectionRepo : find ACTIVE sections without complete schedule\n(+ course weekly hours)
 SectionRepo --> Svc : sections
 
 loop each section
@@ -148,12 +148,8 @@ loop each section
     D32: teacher without Preference
     -> random course the teacher is Qualified for
   end note
-  alt section has home room
-    Svc -> Svc : room options = home room
-  else no home room (room = null)
-    Svc -> RoomRepo : open rooms (isAvailable = true)\nwith capacity >= section capacity
-    RoomRepo --> Svc : room options
-  end
+  Svc -> RoomRepo : open rooms (isAvailable = true)\nwith capacity >= section capacity
+  RoomRepo --> Svc : room options
   Svc -> Svc : build Candidates (teacher x room x TimeSlots)\n1 Candidate = all periods of the Section
   loop each candidate
     Svc -> CE : validate(candidate)
@@ -191,7 +187,6 @@ Ctrl -> Svc : publishSchedule()
 activate Svc
 Svc -> SchRepo : update all DRAFT -> PUBLISHED
 SchRepo --> Svc : published schedules
-Svc -> SectionRepo : save room chosen by Generate\nas section.room (sections that had none)
 Svc -> Pub : schedule changed (affected sections)
 Pub -> Notif : sendNotification(SCHEDULE_CHANGED)\nteachers with new periods +\nstudents of affected sections
 Notif -> Channel : send() [InApp]
@@ -254,9 +249,9 @@ Svc -> SchRepo : load both schedules (must be PUBLISHED)
 Svc -> TRepo : qualifications / availabilities of A and B
 Svc -> SchRepo : teaching periods of A and B (conflict check)
 Svc -> SwapRepo : open request (PENDING / ACCEPTED) on either schedule?
-alt B = A, BR-06, BR-07, BR-01 failed,\nsame time slot or open request exists
+alt B = A, BR-06, BR-07, BR-01 failed (incl. DRAFT conflict),\nsame time slot or open request exists on either schedule
   Svc --> Err : throw BusinessRuleException
-  Err --> A : ErrorResponse
+  Err --> A : ErrorResponse (409 Conflict with DRAFT / Rule)
 else all checks pass
   Svc -> SwapRepo : save request (status = PENDING)
   Svc -> Notif : sendNotification(B, SWAP_REQUESTED)
