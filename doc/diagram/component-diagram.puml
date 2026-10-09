@@ -1,0 +1,140 @@
+@startuml AcadOS_Component_Diagram
+
+title AcadOS - UML Component Diagram
+left to right direction
+skinparam componentStyle uml2
+skinparam linetype ortho
+skinparam shadowing false
+
+actor "Admin / Teacher / Student" as Users
+cloud "External Holiday API" as HolidayAPI
+database "MySQL 8.x" as MySQL
+
+component "AcadOS Application" as AcadOS {
+    component "Presentation Layer" as Presentation {
+        component "Thymeleaf Web Controllers" as WebControllers {
+            component "AuthWebController" as AuthWebController
+            component "DashboardWebController" as DashboardWebController
+            component "TimetableWebController" as TimetableWebController
+        }
+        component "Thymeleaf Views" as Views
+        component "REST API Controllers" as ApiControllers {
+            component "AuthApiController" as AuthApiController
+            component "CourseApiController" as CourseApiController
+            component "RoomApiController" as RoomApiController
+            component "RegistrationApiController" as RegistrationApiController
+            component "ScheduleApiController" as ScheduleApiController
+            component "TeacherSwapApiController" as TeacherSwapApiController
+            component "SectionApiController" as SectionApiController
+            component "NotificationApiController" as NotificationApiController
+            component "UserApiController" as UserApiController
+            component "AcademicEventApiController" as AcademicEventApiController
+            component "HolidayApiController" as HolidayApiController
+        }
+    }
+
+    component "Security / API Support" as ApiSupport {
+        component "JWT Security Filter\nRole Authorization" as SecurityFilter
+        component "SecurityConfig" as SecurityConfig
+        component "SwaggerConfig" as SwaggerConfig
+        component "Request / Response DTOs" as Dtos
+        component "MapStruct Mappers" as Mappers
+        component "Swagger / OpenAPI" as Swagger
+        component "GlobalExceptionHandler" as ExceptionHandler
+        component "Common Utilities / Constants" as Common
+    }
+
+    component "Service Layer" as Services {
+        component "RegistrationService" as RegistrationService
+        component "SchedulingService\n(Orchestrator)" as SchedulingService
+        component "TeacherSwapService" as TeacherSwapService
+        component "SectionCancellationService" as CancellationService
+        component "NotificationService" as NotificationService
+        component "HolidayService" as HolidayService
+        component "UserService" as UserService
+        component "SectionService" as SectionService
+        component "TeacherAssignmentService" as TeacherAssignmentService
+        component "AcademicEventService" as AcademicEventService
+    }
+
+    component "Scheduling Engine" as SchedulingEngine {
+        component "ConstraintEvaluator" as ConstraintEvaluator
+        component "ScheduleSelector" as ScheduleSelector
+        interface "ScoringStrategy" as ScoringStrategy
+        component "PreferenceScoreStrategy" as PreferenceScoreStrategy
+        component "WorkloadScoreStrategy" as WorkloadScoreStrategy
+        component "RoomSuitabilityScoreStrategy\n(TBA)" as RoomSuitabilityScoreStrategy
+    }
+
+    component "Design Pattern Components" as Patterns {
+        component "ScheduleChangePublisher" as SchedulePublisher
+        interface "NotificationStrategy" as NotificationStrategy
+        component "InAppNotificationStrategy" as InAppNotificationStrategy
+        component "EmailNotificationStrategy" as EmailNotificationStrategy
+        interface "HolidayProvider" as HolidayProvider
+        component "ExternalHolidayAdapter" as HolidayAdapter
+        interface "SectionState" as SectionState
+        component "ActiveSectionState" as ActiveSectionState
+        component "CancelledSectionState" as CancelledSectionState
+    }
+
+    component "Persistence / Domain" as Persistence {
+        component "Spring Data JPA Repositories" as Repositories
+        component "Domain Entities\n(16 entities)" as Entities
+    }
+
+    ' Layout constraints: keep the architecture groups in a left-to-right row.
+    Presentation -[hidden]right-> ApiSupport
+    ApiSupport -[hidden]right-> Services
+    Services -[hidden]right-> SchedulingEngine
+    SchedulingEngine -[hidden]right-> Patterns
+    Patterns -[hidden]right-> Persistence
+}
+
+Users --> WebControllers : เปิดหน้าเว็บ
+WebControllers --> Views : render หน้าเว็บ
+Views --> SecurityFilter : JavaScript เรียก REST API
+SecurityFilter --> ApiControllers : ตรวจ JWT / Role\n(/auth/login เป็น Public)
+SecurityFilter --> WebControllers : ตรวจสอบก่อนเข้า Controller
+
+SecurityConfig ..> SecurityFilter : กำหนดค่า
+SwaggerConfig ..> Swagger : กำหนดค่าเอกสาร API
+Swagger ..> ApiControllers : เอกสาร API
+ApiControllers ..> Dtos : Request / Response
+ApiControllers ..> Mappers : แปลง DTO / Entity
+Mappers ..> Dtos : Entity <-> DTO
+Mappers ..> Entities : Entity <-> DTO
+ApiControllers --> Services : Controller เรียก Service Layer
+
+Services --> Repositories : Service Layer เรียก Repository Layer
+Repositories --> Entities : อ่าน / บันทึก Entity
+Repositories --> MySQL : Spring Data JPA / Hibernate
+
+SchedulingService --> ConstraintEvaluator : ตรวจ Hard Constraints
+SchedulingService --> ScheduleSelector : เลือก Candidate
+ScheduleSelector --> ScoringStrategy : ประเมิน Candidate
+PreferenceScoreStrategy ..|> ScoringStrategy
+WorkloadScoreStrategy ..|> ScoringStrategy
+RoomSuitabilityScoreStrategy ..|> ScoringStrategy
+SchedulingService ..> SchedulePublisher : ตารางเปลี่ยน / Publish
+TeacherSwapService ..> SchedulePublisher : อนุมัติการแลกคาบ
+SchedulePublisher --> NotificationService : แจ้ง Schedule Changed
+
+CancellationService --> SectionState : cancel()
+ActiveSectionState ..|> SectionState
+CancelledSectionState ..|> SectionState
+CancellationService --> NotificationService : แจ้งยกเลิก Section
+
+NotificationService --> NotificationStrategy : ส่งการแจ้งเตือน
+InAppNotificationStrategy ..|> NotificationStrategy
+EmailNotificationStrategy ..|> NotificationStrategy
+
+HolidayService --> HolidayProvider : syncHolidays()
+HolidayAdapter ..|> HolidayProvider
+HolidayAdapter --> HolidayAPI : fetchHolidays()
+
+Presentation ..> ExceptionHandler : Exception จาก Controller
+Services ..> ExceptionHandler : Exception จาก Service Layer
+Persistence ..> ExceptionHandler : Exception จาก Repository / Domain Layer
+
+@enduml
