@@ -1,0 +1,20 @@
+package com.project.acados.repository;
+
+import com.project.acados.domain.entity.Course;
+import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.stereotype.Repository;
+
+import java.util.Optional;
+
+/**
+ * Spring Data JPA repository for Course entity.
+ * Reference: class diagram.puml, Implement_Plan-AcadOS.md §7
+ */
+@Repository
+public interface CourseRepository extends JpaRepository<Course, Long> {
+
+    Optional<Course> findByCourseCode(String courseCode);
+
+    boolean existsByCourseCode(String courseCode);
+}
+

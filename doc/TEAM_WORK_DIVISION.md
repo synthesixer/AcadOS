@@ -367,4 +367,3 @@ gantt
 - [ ] สามารถส่ง Email แจ้งเตือนจริงผ่าน Mailtrap Sandbox SMTP
 - [ ] Container ทำงานผ่าน `docker compose up -d` และออนไลน์ผ่าน Public URL บน Cloud VPS
 - [ ] เอกสารและไดอะแกรมใน `doc/` อัปเดตตรงกับซอร์สโค้ดจริง 100%
-
