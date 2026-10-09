@@ -7,7 +7,7 @@
     <parent>
         <groupId>org.springframework.boot</groupId>
         <artifactId>spring-boot-starter-parent</artifactId>
-        <version>3.3.13</version>
+        <version>3.3.4</version>
         <relativePath/> <!-- lookup parent from repository -->
     </parent>
 
@@ -20,13 +20,14 @@
     <properties>
         <java.version>21</java.version>
         <springdoc-openapi.version>2.6.0</springdoc-openapi.version>
+        <jjwt.version>0.12.6</jjwt.version>
         <org.mapstruct.version>1.5.5.Final</org.mapstruct.version>
         <lombok-mapstruct-binding.version>0.2.0</lombok-mapstruct-binding.version>
     </properties>
 
     <dependencies>
         <!-- ========================================== -->
-        <!-- Core Web & API                             -->
+        <!-- Core Web, Validation & OpenAPI             -->
         <!-- ========================================== -->
         <!-- Spring Web: REST API / Controller -->
         <dependency>
@@ -48,12 +49,51 @@
         </dependency>
 
         <!-- ========================================== -->
-        <!-- Security & Authentication                  -->
+        <!-- Frontend View (Thymeleaf)                  -->
+        <!-- ========================================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-thymeleaf</artifactId>
+        </dependency>
+        <dependency>
+            <groupId>org.thymeleaf.extras</groupId>
+            <artifactId>thymeleaf-extras-springsecurity6</artifactId>
+        </dependency>
+
+        <!-- ========================================== -->
+        <!-- Security & Authentication (JWT)            -->
         <!-- ========================================== -->
         <!-- Spring Security: Login + Role (ADMIN/TEACHER/STUDENT) -->
         <dependency>
             <groupId>org.springframework.boot</groupId>
             <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
+        <!-- JJWT for Stateless JWT Authentication -->
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-api</artifactId>
+            <version>${jjwt.version}</version>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-impl</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+        <dependency>
+            <groupId>io.jsonwebtoken</groupId>
+            <artifactId>jjwt-jackson</artifactId>
+            <version>${jjwt.version}</version>
+            <scope>runtime</scope>
+        </dependency>
+
+        <!-- ========================================== -->
+        <!-- Email Notification (Mailtrap SMTP)         -->
+        <!-- ========================================== -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-mail</artifactId>
         </dependency>
 
         <!-- ========================================== -->
@@ -70,6 +110,13 @@
             <groupId>com.mysql</groupId>
             <artifactId>mysql-connector-j</artifactId>
             <scope>runtime</scope>
+        </dependency>
+
+        <!-- H2 In-Memory Database: สำหรับ Fast Unit/Integration Testing -->
+        <dependency>
+            <groupId>com.h2database</groupId>
+            <artifactId>h2</artifactId>
+            <scope>test</scope>
         </dependency>
 
         <!-- Flyway: Database Migration (แยก flyway-mysql สำหรับ Spring Boot 3 / Flyway 9+) -->

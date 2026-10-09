@@ -1,12 +1,13 @@
-package com.project;
+package com.project.acados;
 
 import org.springframework.boot.SpringApplication;
 import org.springframework.boot.autoconfigure.SpringBootApplication;
 
 @SpringBootApplication
-public class App {
+public class AcadosApplication {
 
     public static void main(String[] args) {
-        SpringApplication.run(App.class, args);
+        SpringApplication.run(AcadosApplication.class, args);
     }
 }
+
