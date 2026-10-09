@@ -1,5 +1,5 @@
 @startuml 03-class-diagram
-title AcadOS - Class Diagram (Domain + Service + Design Patterns)\nอ้างอิง Implement Plan v6 §6, §7, §8, §10, §14, §17 · field ที่เอกสารไม่ระบุ ใช้ชื่อตาม database.md / Sequence Diagram
+title AcadOS - Class Diagram (Domain + Service + Repository + Design Patterns)\nอ้างอิง Implement Plan v6 §6, §7, §8, §10, §14, §16, §17 · field ที่เอกสารไม่ระบุ ใช้ชื่อตาม database.md / Sequence Diagram
 hide empty members
 skinparam classAttributeIconSize 0
 skinparam linetype polyline
@@ -178,7 +178,7 @@ package "domain.enums" {
 }
 
 ' =====================================================================
-' 3. Service Layer (§10.2 + Service ใหม่ใน §7)
+' 3. Service Layer (§10.2 + Service ใหม่ใน §7 · method ของ Service ใหม่ดึงจาก §16 / Userflow)
 ' =====================================================================
 package "service" {
   class RegistrationService {
@@ -211,46 +211,130 @@ package "service" {
     + getHolidays(): List<PublicHoliday>
     + syncHolidays(): void
   }
-  class UserService
-  class SectionService
-  class TeacherAssignmentService
-  class AcademicEventService
-  note bottom of AcademicEventService
-    UserService, SectionService,
-    TeacherAssignmentService, AcademicEventService:
-    มีใน §7 แต่ §10.2 ยังไม่ระบุ method
+  class UserService {
+    + getUsers(pageable: Pageable): Page<User>
+    + getUser(id: Long): User
+    + createUser(req: UserCreateRequest): User
+    + updateUser(id: Long, req: UserUpdateRequest): User
+    + deleteUser(id: Long): void
+  }
+  class SectionService {
+    + getSections(courseId: Long): List<Section>
+    + getSection(id: Long): Section
+    + createSection(req: SectionRequest): Section
+    + updateSection(id: Long, req: SectionRequest): Section
+  }
+  class TeacherAssignmentService {
+    + assignTeacher(sectionId: Long, teacherId: Long): void
+  }
+  class AcademicEventService {
+    + getEvents(): List<AcademicEvent>
+    + createEvent(req: AcademicEventRequest): AcademicEvent
+    + updateEvent(id: Long, req: AcademicEventRequest): AcademicEvent
+    + deleteEvent(id: Long): void
+  }
+  note bottom of UserService
+    method ของ UserService, SectionService,
+    TeacherAssignmentService, AcademicEventService
+    ดึงจาก §16 (Account, Section, Assign Teacher, Academic Event)
+    และ Userflow A09, A11, A12, A13 · §10.2 ยังไม่ระบุ
   end note
 }
 
 ' =====================================================================
-' 4. Scheduling Engine + Strategy (§10.3, §17.2)
+' 4. Repository Layer (§7 repository · Repository Pattern §17.1)
+' =====================================================================
+package "repository" <<Repository>> {
+  interface UserRepository
+  interface StudentRepository
+  interface TeacherRepository
+  interface CourseRepository
+  interface SectionRepository
+  interface RoomRepository
+  interface TimeSlotRepository
+  interface ScheduleRepository
+  interface RegistrationRepository
+  interface TeacherQualificationRepository
+  interface TeacherPreferenceRepository
+  interface TeacherAvailabilityRepository
+  interface TeacherSwapRequestRepository
+  interface NotificationRepository
+  interface AcademicEventRepository
+  interface PublicHolidayRepository
+  note bottom of PublicHolidayRepository
+    ทุก Repository extends JpaRepository<Entity, Long>
+    (Spring Data JPA) · 1 Repository ต่อ 1 Entity
+    6 ตัวที่ยังไม่มีใน §7: TimeSlot, TeacherQualification,
+    TeacherPreference, TeacherAvailability,
+    TeacherSwapRequest, Notification
+  end note
+}
+
+' =====================================================================
+' 5. Exception (§5.1 ข้อ 4, §7 exception, §10.3)
+' =====================================================================
+package "exception" {
+  class GlobalExceptionHandler <<@RestControllerAdvice>> {
+    + handleException(ex: Exception): ResponseEntity<ErrorResponse>
+  }
+  class BusinessRuleException
+  class ResourceNotFoundException
+  class ErrorResponse
+  note bottom of ErrorResponse
+    field ของ ErrorResponse ยังไม่ระบุในเอกสาร
+  end note
+}
+class RuntimeException <<java.lang>>
+
+' =====================================================================
+' 6. Scheduling Engine + Strategy (§10.3, §12, §17.2 · Sequence 05)
 ' =====================================================================
 package "scheduling" {
   class ConstraintEvaluator {
-    + validate(): boolean
+    + validate(candidate: Candidate): ValidationResult
   }
   class ScheduleSelector {
-    + selectBest(): Schedule
+    + selectBest(candidates: List<Candidate>): Candidate
   }
+  class Candidate {
+    - section: Section
+    - teacher: Teacher
+    - room: Room
+    - timeSlots: List<TimeSlot>
+    - score: int
+  }
+  class ValidationResult {
+    - passed: boolean
+    - reason: String
+  }
+  note bottom of Candidate
+    1 Candidate = ทุกคาบของ 1 Section (Sequence 05)
+    อาจารย์ x ห้อง x ชุด TimeSlot
+    ผู้ชนะถูกบันทึกเป็น Schedule สถานะ DRAFT คาบละ 1 แถว
+  end note
+  note bottom of ValidationResult
+    reason = Hard Constraint ข้อที่ไม่ผ่าน (§12.3)
+    ใช้สรุปสาเหตุหลักเมื่อจัด Section ไม่ได้ (D28)
+  end note
 }
 package "strategy" <<Strategy>> {
   interface ScoringStrategy {
-    + calculateScore(): int
+    + calculateScore(candidate: Candidate): int
   }
   class PreferenceScoreStrategy {
-    + calculateScore(): int
+    + calculateScore(candidate: Candidate): int
   }
   class WorkloadScoreStrategy {
-    + calculateScore(): int
+    + calculateScore(candidate: Candidate): int
   }
   class RoomSuitabilityScoreStrategy {
-    + calculateScore(): int
+    + calculateScore(candidate: Candidate): int
   }
   note bottom of RoomSuitabilityScoreStrategy : เงื่อนไข = TBA (§12.4, §28)
 }
 
 ' =====================================================================
-' 5. State Pattern (§10.3, §17.2)
+' 7. State Pattern (§10.3, §17.2)
 ' =====================================================================
 package "state" <<State>> {
   interface SectionState {
@@ -265,7 +349,7 @@ package "state" <<State>> {
 }
 
 ' =====================================================================
-' 6. Notification Strategy (§10.3, §14.6, §17.2)
+' 8. Notification Strategy (§10.3, §14.6, §17.2)
 ' =====================================================================
 package "notification.strategy" <<Strategy>> {
   interface NotificationStrategy {
@@ -280,7 +364,7 @@ package "notification.strategy" <<Strategy>> {
 }
 
 ' =====================================================================
-' 7. Observer Pattern (§7 observer, §17.2)
+' 9. Observer Pattern (§7 observer, §17.2)
 ' =====================================================================
 package "observer" <<Observer>> {
   interface ScheduleChangeSubject
@@ -289,7 +373,7 @@ package "observer" <<Observer>> {
 }
 
 ' =====================================================================
-' 8. Adapter Pattern (§10.3, §14.7, §17.2)
+' 10. Adapter Pattern (§10.3, §14.7, §17.2)
 ' =====================================================================
 package "holiday" <<Adapter>> {
   interface HolidayProvider {
@@ -308,7 +392,7 @@ User "1" -- "0..1" Teacher : teacher profile
 User "1" -- "0..*" Notification : receives
 Course "1" -- "0..*" Section : offers
 Section "1" *-- "0..*" Schedule : has
-Schedule "0..*" --> "1" Room : assigned room
+Schedule "0..*" --> "0..1" Room : assigned room
 Schedule "0..*" --> "1" Teacher : assigned teacher
 Schedule "0..*" --> "1" TimeSlot : scheduled at
 Student "1" -- "0..*" Registration
@@ -320,8 +404,10 @@ Teacher "1" -- "0..*" TeacherPreference
 Course "1" -- "0..*" TeacherPreference
 Teacher "1" -- "0..*" TeacherAvailability
 TimeSlot "1" -- "0..*" TeacherAvailability
-Teacher "1" -- "0..*" TeacherSwapRequest : A / B
-Schedule "1" -- "0..*" TeacherSwapRequest : 2 คาบที่แลก
+TeacherSwapRequest "0..*" --> "1" Teacher : requestingTeacher (A)
+TeacherSwapRequest "0..*" --> "1" Teacher : targetTeacher (B)
+TeacherSwapRequest "0..*" --> "1" Schedule : requestingSchedule (คาบของ A)
+TeacherSwapRequest "0..*" --> "1" Schedule : targetSchedule (คาบของ B)
 
 User ..> UserRole
 Section ..> SectionStatus
@@ -351,6 +437,33 @@ ScheduleChangeObserver <|.. NotificationService
 HolidayProvider <|.. ExternalHolidayAdapter
 
 ' =====================================================================
+' Scheduling Engine relationships (Sequence 05)
+' =====================================================================
+Candidate --> "1" Section
+Candidate --> "1" Teacher
+Candidate --> "1" Room
+Candidate --> "1..*" TimeSlot
+ConstraintEvaluator ..> Candidate : validates
+ConstraintEvaluator ..> ValidationResult : returns
+ScheduleSelector ..> Candidate : ranks
+ScoringStrategy ..> Candidate : scores
+SchedulingService ..> Candidate : builds
+
+' =====================================================================
+' Exception relationships (§5.1 ข้อ 4)
+' =====================================================================
+RuntimeException <|-- BusinessRuleException
+RuntimeException <|-- ResourceNotFoundException
+GlobalExceptionHandler ..> BusinessRuleException : handles
+GlobalExceptionHandler ..> ResourceNotFoundException : handles
+GlobalExceptionHandler ..> ErrorResponse : creates
+note right of GlobalExceptionHandler
+  Service ทุกตัว throw BusinessRuleException
+  (ผิด Business Rule) / ResourceNotFoundException (ไม่พบข้อมูล)
+  ส่งต่อมาที่ GlobalExceptionHandler → ErrorResponse
+end note
+
+' =====================================================================
 ' Service dependencies (§8, §10, §17)
 ' =====================================================================
 SchedulingService --> ConstraintEvaluator
@@ -363,14 +476,65 @@ SectionCancellationService ..> Section : cancel()
 SectionCancellationService --> NotificationService
 RegistrationService --> NotificationService
 TeacherSwapService --> NotificationService
+TeacherAssignmentService --> NotificationService : A13 แจ้งอาจารย์ + นักศึกษา
 TeacherSwapService ..> TeacherSwapRequest
 RegistrationService ..> Registration
 SchedulingService ..> Schedule
 
+' =====================================================================
+' Service -> Repository (Sequence 04-06, Userflow A08, A11-A13)
+' =====================================================================
+RegistrationService --> AcademicEventRepository
+RegistrationService --> SectionRepository
+RegistrationService --> RegistrationRepository
+RegistrationService --> ScheduleRepository
+
+SchedulingService --> ScheduleRepository
+SchedulingService --> SectionRepository
+SchedulingService --> RoomRepository
+SchedulingService --> TimeSlotRepository
+SchedulingService --> TeacherQualificationRepository
+SchedulingService --> TeacherPreferenceRepository
+SchedulingService --> TeacherAvailabilityRepository
+
+TeacherSwapService --> TeacherSwapRequestRepository
+TeacherSwapService --> ScheduleRepository
+TeacherSwapService --> TeacherQualificationRepository
+TeacherSwapService --> TeacherAvailabilityRepository
+
+SectionCancellationService --> SectionRepository
+SectionCancellationService --> RegistrationRepository
+SectionCancellationService --> ScheduleRepository
+SectionCancellationService --> TeacherSwapRequestRepository
+
+NotificationService --> NotificationRepository
+HolidayService --> PublicHolidayRepository
+
+UserService --> UserRepository
+UserService --> StudentRepository
+UserService --> TeacherRepository
+UserService --> RegistrationRepository : A11-4 ตรวจข้อมูลผูกอยู่
+UserService --> ScheduleRepository : A11-4 ตรวจข้อมูลผูกอยู่
+
+SectionService --> SectionRepository
+SectionService --> CourseRepository
+SectionService --> RegistrationRepository : A12-3 Capacity >= ผู้ลงทะเบียน
+
+TeacherAssignmentService --> SectionRepository
+TeacherAssignmentService --> ScheduleRepository
+TeacherAssignmentService --> TeacherRepository
+TeacherAssignmentService --> TeacherQualificationRepository
+TeacherAssignmentService --> TeacherAvailabilityRepository
+
+AcademicEventService --> AcademicEventRepository
+
+' =====================================================================
+' Notes
+' =====================================================================
 note right of Schedule
   1 Schedule = 1 คาบของ Section
-  Room และ Teacher จัดเก็บรายคาบ (Schedule.room)
-  รองรับการจัดสรรห้องตั้งแต่สถานะ DRAFT (§6.2, §12)
+  Room เก็บรายคาบ (Schedule.room · ว่างได้ ตาม database.md)
+  Section ไม่มี room ของตัวเอง
   Teacher อยู่รายคาบ (การแลกคาบสลับ teacher ของ 2 คาบ, §14.3)
   DRAFT เห็นเฉพาะ Admin · PUBLISHED ใช้งานจริง (§6.2)
 end note
@@ -379,6 +543,8 @@ note right of Section
   status = ค่าที่บันทึก · state = State Pattern (§8 ข้อ 5)
 end note
 note right of TeacherSwapRequest
+  เก็บ Teacher A / B แยกจาก Schedule เพื่อใช้ตรวจตอน Approve
+  ว่าคาบยังเป็นของ A และ B (Sequence 06)
   PENDING -> ACCEPTED / REJECTED (Teacher B)
   PENDING -> CANCELLED (Teacher A)
   ACCEPTED -> APPROVED / REJECTED (Admin)  (§14.3)
