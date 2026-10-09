@@ -49,7 +49,6 @@ entity sections {
   * course_id : BIGINT <<FK>>
   * section_number : INT
   * capacity : INT
-  room_id : BIGINT <<FK>>
   * status : VARCHAR(20)
 }
 
@@ -75,6 +74,7 @@ entity schedules {
   * id : BIGINT <<PK>>
   --
   * section_id : BIGINT <<FK>>
+  * room_id : BIGINT <<FK>>
   * teacher_id : BIGINT <<FK>>
   * time_slot_id : BIGINT <<FK>>
   * status : VARCHAR(20)
@@ -116,9 +116,9 @@ entity teacher_swap_requests {
   * id : BIGINT <<PK>>
   --
   * requesting_teacher_id : BIGINT <<FK>>
-  * requesting_schedule_id : BIGINT <<FK>>
+  requesting_schedule_id : BIGINT <<FK>>
   * target_teacher_id : BIGINT <<FK>>
-  * target_schedule_id : BIGINT <<FK>>
+  target_schedule_id : BIGINT <<FK>>
   * status : VARCHAR(20)
   * created_at : DATETIME
   responded_at : DATETIME
@@ -159,7 +159,7 @@ users ||--o| teachers : has profile (CASCADE)
 users ||--o{ notifications : receives (CASCADE)
 
 courses ||--o{ sections : has (RESTRICT)
-rooms |o--o{ sections : home room (RESTRICT)
+rooms ||--o{ schedules : takes place in (RESTRICT)
 
 sections ||--o{ schedules : has (CASCADE)
 teachers ||--o{ schedules : teaches (RESTRICT)
@@ -178,10 +178,10 @@ courses ||--o{ teacher_preferences : preferred (CASCADE)
 teachers ||--o{ teacher_availabilities : declares (CASCADE)
 time_slots ||--o{ teacher_availabilities : at (CASCADE)
 
-teachers ||--o{ teacher_swap_requests : requests A (RESTRICT)
-teachers ||--o{ teacher_swap_requests : target B (RESTRICT)
-schedules ||--o{ teacher_swap_requests : requesting schedule (CASCADE)
-schedules ||--o{ teacher_swap_requests : target schedule (CASCADE)
+teachers ||--o{ teacher_swap_requests : requesting teacher (RESTRICT, snapshot)
+teachers ||--o{ teacher_swap_requests : target teacher (RESTRICT, snapshot)
+schedules ||--o{ teacher_swap_requests : requesting schedule (SET NULL)
+schedules ||--o{ teacher_swap_requests : target schedule (SET NULL)
 
 ' ---------- Notes: composite UNIQUE / INDEX ----------
 note top of users
@@ -191,8 +191,6 @@ end note
 
 note bottom of sections
   UNIQUE (course_id, section_number)
-  room_id is the home room of every
-  schedule of the section
 end note
 
 note bottom of rooms
@@ -206,10 +204,8 @@ end note
 
 note bottom of schedules
   One row = one class period.
-  Room is taken from sections.room_id.
   status: DRAFT or PUBLISHED.
   UNIQUE (section_id, time_slot_id)
-  UNIQUE (teacher_id, time_slot_id)
   INDEX (status, section_id)
 end note
 
@@ -232,7 +228,9 @@ note bottom of teacher_availabilities
 end note
 
 note bottom of teacher_swap_requests
-  Refers to both teachers and both schedules.
+  Refers to both schedules directly (SET NULL on delete).
+  requesting_teacher_id & target_teacher_id
+  are immutable point-in-time snapshots for audit trail.
   status: PENDING, ACCEPTED, REJECTED,
   APPROVED, CANCELLED.
   INDEX (status)
