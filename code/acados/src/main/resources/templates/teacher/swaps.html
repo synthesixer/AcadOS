@@ -1,0 +1,170 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>แลกคาบสอน | AcadOS</title>
+    <style>
+        :root{font-family:Arial,"IBM Plex Sans Thai",sans-serif;color:#1e293b;background:#f1f5f9}*{box-sizing:border-box}body{margin:0}.bar{display:flex;align-items:center;justify-content:space-between;padding:16px max(24px,calc((100% - 1000px)/2));background:#fff;border-bottom:1px solid #dbe3ee}.brand{font-weight:700;color:#1f5f8b;text-decoration:none;font-size:1.25rem}.bar nav{display:flex;gap:16px;align-items:center}.bar nav a{color:#1f5f8b;text-decoration:none}.bar button,.button{border:0;border-radius:8px;background:#1f5f8b;color:#fff;padding:9px 12px;font:inherit;cursor:pointer}.button--secondary{background:#475569}.button--danger{background:#b42318}.wrap{max-width:1000px;margin:32px auto;padding:0 20px}.muted{color:#64748b}.card{background:white;border:1px solid #dbe3ee;border-radius:12px;padding:20px;margin:18px 0}.card h2{margin-top:0;font-size:1.1rem}.form-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(200px,1fr));gap:14px}label{display:block;font-weight:600;margin-bottom:6px}input{width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:8px;font:inherit}.list{display:grid;gap:12px}.item{border:1px solid #e2e8f0;border-radius:8px;padding:14px}.actions{display:flex;gap:8px;flex-wrap:wrap;margin-top:12px}.message{min-height:1.5em;color:#475569}.error{color:#b42318}.success{color:#18794e}.badge{display:inline-block;background:#e2e8f0;padding:3px 8px;border-radius:20px;font-size:.85rem}.tabs{display:flex;gap:8px;margin-bottom:14px}.tab{background:#e2e8f0;color:#1e293b}.tab[aria-selected="true"]{background:#1f5f8b;color:#fff}footer{padding:24px;text-align:center;color:#64748b}
+    </style>
+</head>
+<body>
+<header class="bar">
+    <a class="brand" th:href="@{/teacher/dashboard}">AcadOS</a>
+    <nav aria-label="เมนูอาจารย์"><a th:href="@{/teacher/dashboard}">หน้าหลัก</a><a th:href="@{/teacher/swaps}">แลกคาบสอน</a><button id="logout-button" type="button">ออกจากระบบ</button></nav>
+</header>
+<main class="wrap">
+    <h1>คำขอแลกคาบสอน</h1>
+    <p class="muted">สร้างคำขอ ตอบรับหรือปฏิเสธคำขอที่ส่งถึงคุณ และยกเลิกคำขอที่ยังรอดำเนินการ</p>
+    <section class="card">
+        <h2>ส่งคำขอแลกคาบ</h2>
+        <p class="muted">กรอก ID ของคาบ ตารางสอน และอาจารย์ตามข้อมูลในระบบ คำขอจะถูกตรวจสอบสิทธิ์และเงื่อนไขโดยระบบ</p>
+        <form id="create-form">
+            <div class="form-grid">
+                <div><label for="requesting-schedule">ID คาบของฉัน</label><input id="requesting-schedule" type="number" min="1" required></div>
+                <div><label for="target-teacher">ID อาจารย์ที่ต้องการแลก</label><input id="target-teacher" type="number" min="1" required></div>
+                <div><label for="target-schedule">ID คาบของอาจารย์อีกฝ่าย</label><input id="target-schedule" type="number" min="1" required></div>
+            </div>
+            <div class="actions"><button class="button" type="submit">ส่งคำขอ</button></div>
+        </form>
+        <p id="form-message" class="message" role="status" aria-live="polite"></p>
+    </section>
+    <section class="card">
+        <h2>สถานะคำขอ</h2>
+        <div class="tabs" role="tablist" aria-label="คำขอแลกคาบ">
+            <button class="button tab" id="sent-tab" role="tab" aria-selected="true" type="button">คำขอที่ฉันส่ง</button>
+            <button class="button tab" id="received-tab" role="tab" aria-selected="false" type="button">คำขอที่ส่งถึงฉัน</button>
+        </div>
+        <p id="list-message" class="message" aria-live="polite">กำลังโหลดคำขอ…</p>
+        <div id="request-list" class="list"></div>
+    </section>
+</main>
+<footer>AcadOS · Teacher Swap</footer>
+<script>
+    const token = sessionStorage.getItem('acadosToken');
+    if (!token || sessionStorage.getItem('acadosRole') !== 'TEACHER') window.location.replace('/login');
+    const authHeaders = {'Authorization': 'Bearer ' + token, 'Accept': 'application/json'};
+    const inboxUrl = '/api/v1/teacher-swaps';
+    const message = document.getElementById('list-message');
+    const list = document.getElementById('request-list');
+    let inbox = {sent: [], received: []};
+    let activeTab = 'sent';
+
+    document.getElementById('logout-button').addEventListener('click', () => {
+        sessionStorage.removeItem('acadosToken');
+        sessionStorage.removeItem('acadosRole');
+        window.location.assign('/login');
+    });
+
+    async function request(url, method, body) {
+        const headers = {...authHeaders};
+        const options = {method, headers};
+        if (body !== undefined) {
+            headers['Content-Type'] = 'application/json';
+            options.body = JSON.stringify(body);
+        }
+        const response = await fetch(url, options);
+        const payload = response.status === 204 ? null : await response.json().catch(() => null);
+        if (!response.ok) throw new Error(payload && payload.message ? payload.message : 'ดำเนินการไม่สำเร็จ');
+        return payload;
+    }
+
+    function actionButton(label, method, body, requestId, style) {
+        const button = document.createElement('button');
+        button.type = 'button';
+        button.className = 'button ' + (style || '');
+        button.textContent = label;
+        button.addEventListener('click', async () => {
+            button.disabled = true;
+            try {
+                await request(inboxUrl + '/' + requestId + method, 'PUT', body);
+                message.textContent = 'อัปเดตคำขอแล้ว';
+                message.className = 'message success';
+                await loadInbox();
+            } catch (error) {
+                message.textContent = error.message;
+                message.className = 'message error';
+                button.disabled = false;
+            }
+        });
+        return button;
+    }
+
+    function renderList() {
+        list.replaceChildren();
+        const requests = inbox[activeTab] || [];
+        if (!requests.length) {
+            message.textContent = 'ไม่มีคำขอในรายการนี้';
+            message.className = 'message';
+            return;
+        }
+        message.textContent = '';
+        requests.forEach((item) => {
+            const card = document.createElement('article');
+            card.className = 'item';
+            const heading = document.createElement('strong');
+            heading.textContent = 'คำขอ #' + item.id + ' · ' + item.status;
+            const details = document.createElement('p');
+            details.textContent = 'คาบผู้ขอ: ' + (item.requestingScheduleId || 'ถูกลบ') +
+                ' · คาบอีกฝ่าย: ' + (item.targetScheduleId || 'ถูกลบ') +
+                ' · ส่งเมื่อ: ' + (item.createdAt || '');
+            const actions = document.createElement('div');
+            actions.className = 'actions';
+            if (activeTab === 'sent' && item.status === 'PENDING') {
+                actions.appendChild(actionButton('ยกเลิกคำขอ', '/cancel', undefined, item.id, 'button--danger'));
+            }
+            if (activeTab === 'received' && item.status === 'PENDING') {
+                actions.appendChild(actionButton('ตอบรับ', '/respond', {accept: true}, item.id));
+                actions.appendChild(actionButton('ปฏิเสธ', '/respond', {accept: false}, item.id, 'button--secondary'));
+            }
+            card.append(heading, details, actions);
+            list.appendChild(card);
+        });
+    }
+
+    async function loadInbox() {
+        message.textContent = 'กำลังโหลดคำขอ…';
+        try {
+            inbox = await request(inboxUrl, 'GET') || {sent: [], received: []};
+            renderList();
+        } catch (error) {
+            message.textContent = error.message;
+            message.className = 'message error';
+        }
+    }
+
+    document.getElementById('sent-tab').addEventListener('click', () => {
+        activeTab = 'sent';
+        document.getElementById('sent-tab').setAttribute('aria-selected', 'true');
+        document.getElementById('received-tab').setAttribute('aria-selected', 'false');
+        renderList();
+    });
+    document.getElementById('received-tab').addEventListener('click', () => {
+        activeTab = 'received';
+        document.getElementById('sent-tab').setAttribute('aria-selected', 'false');
+        document.getElementById('received-tab').setAttribute('aria-selected', 'true');
+        renderList();
+    });
+    document.getElementById('create-form').addEventListener('submit', async (event) => {
+        event.preventDefault();
+        const formMessage = document.getElementById('form-message');
+        formMessage.textContent = '';
+        try {
+            await request(inboxUrl, 'POST', {
+                requestingScheduleId: Number(document.getElementById('requesting-schedule').value),
+                targetTeacherId: Number(document.getElementById('target-teacher').value),
+                targetScheduleId: Number(document.getElementById('target-schedule').value)
+            });
+            formMessage.textContent = 'ส่งคำขอแล้ว';
+            formMessage.className = 'message success';
+            event.target.reset();
+            await loadInbox();
+        } catch (error) {
+            formMessage.textContent = error.message;
+            formMessage.className = 'message error';
+        }
+    });
+    loadInbox();
+</script>
+</body>
+</html>
