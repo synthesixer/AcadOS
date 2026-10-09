@@ -6,6 +6,7 @@ import com.project.acados.domain.enums.NotificationType;
 import com.project.acados.domain.enums.UserRole;
 import com.project.acados.notification.strategy.InAppNotificationStrategy;
 import com.project.acados.notification.strategy.NotificationChannel;
+import com.project.acados.pattern.observer.ScheduleChangePublisher;
 import com.project.acados.service.impl.NotificationServiceImpl;
 import org.junit.jupiter.api.Test;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -16,14 +17,17 @@ import org.springframework.test.context.ActiveProfiles;
 
 import java.util.List;
 
+import com.project.acados.exception.ResourceNotFoundException;
+
 import static org.assertj.core.api.Assertions.assertThat;
+import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 /**
  * Runs NotificationServiceImpl with the real in-app strategy against the test database.
  */
 @DataJpaTest
 @ActiveProfiles("test")
-@Import({NotificationServiceImpl.class, InAppNotificationStrategy.class})
+@Import({NotificationServiceImpl.class, InAppNotificationStrategy.class, ScheduleChangePublisher.class})
 class NotificationServiceIntegrationTest {
 
     @Autowired
@@ -52,13 +56,32 @@ class NotificationServiceIntegrationTest {
         entityManager.flush();
         entityManager.clear();
 
-        List<Notification> notifications = notificationService.getNotifications(recipient.getId());
+        List<Notification> notifications = notificationService.getNotifications("S001");
         assertThat(notifications).hasSize(1);
         Notification stored = notifications.get(0);
         assertThat(stored.getType()).isEqualTo(NotificationType.REGISTRATION_SUCCESS);
         assertThat(stored.getTitle()).isEqualTo("Registration successful");
         assertThat(stored.getIsRead()).isFalse();
         assertThat(stored.getCreatedAt()).isNotNull();
-        assertThat(notificationService.getNotifications(otherUser.getId())).isEmpty();
+        assertThat(notificationService.getNotifications(otherUser.getUniversityId())).isEmpty();
+    }
+
+    @Test
+    void markAsRead_updatesOwnNotificationAndRejectsOtherUsers() {
+        User recipient = persistUser("S001");
+        persistUser("S002");
+        notificationService.sendNotification(recipient, NotificationType.SCHEDULE_CHANGED,
+                "Schedule changed", "The timetable has changed.", NotificationChannel.IN_APP);
+        entityManager.flush();
+        Long notificationId = notificationService.getNotifications("S001").get(0).getId();
+
+        assertThatThrownBy(() -> notificationService.markAsRead("S002", notificationId))
+                .isInstanceOf(ResourceNotFoundException.class);
+
+        notificationService.markAsRead("S001", notificationId);
+        entityManager.flush();
+        entityManager.clear();
+
+        assertThat(notificationService.getNotifications("S001").get(0).getIsRead()).isTrue();
     }
 }

@@ -1,6 +1,9 @@
 package com.project.acados.domain.entity;
 
 import com.project.acados.domain.enums.SectionStatus;
+import com.project.acados.state.ActiveSectionState;
+import com.project.acados.state.CancelledSectionState;
+import com.project.acados.state.SectionState;
 import jakarta.persistence.*;
 import jakarta.validation.constraints.Min;
 import jakarta.validation.constraints.NotNull;
@@ -48,5 +51,31 @@ public class Section {
     @Enumerated(EnumType.STRING)
     @Column(name = "status", nullable = false, length = 20)
     private SectionStatus status = SectionStatus.ACTIVE;
+
+    /**
+     * State Pattern: state object matching the stored status. Not a column.
+     */
+    @Transient
+    private SectionState state;
+
+    public void cancel() {
+        getState().cancel(this);
+    }
+
+    public SectionState getState() {
+        if (state == null) {
+            state = status == SectionStatus.CANCELLED ? new CancelledSectionState() : new ActiveSectionState();
+        }
+        return state;
+    }
+
+    public void setState(SectionState state) {
+        this.state = state;
+    }
+
+    public void setStatus(SectionStatus status) {
+        this.status = status;
+        this.state = null;
+    }
 }
 
