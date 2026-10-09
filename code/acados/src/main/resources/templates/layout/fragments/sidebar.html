@@ -1,0 +1,48 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Sidebar menu by role. Routes follow the site map (one link per page, owner track in the comment). -->
+<aside th:fragment="sidebar" class="sidebar" id="sidebar" aria-label="เมนูหลัก">
+    <a class="sidebar__brand" th:href="@{/}">AcadOS <small>v4</small></a>
+
+    <nav class="sidebar__nav">
+        <th:block sec:authorize="hasRole('ADMIN')">
+            <div class="sidebar__group">ผู้ดูแลระบบ</div>
+            <a class="sidebar__link" th:href="@{/admin/dashboard}">ภาพรวมระบบ</a>
+            <a class="sidebar__link" th:href="@{/admin/courses}">รายวิชา</a>
+            <a class="sidebar__link" th:href="@{/admin/rooms}">ห้องเรียน</a>
+            <a class="sidebar__link" th:href="@{/admin/sections}">กลุ่มเรียน</a>
+            <a class="sidebar__link" th:href="@{/admin/schedules}">จัดตารางสอน</a>
+            <a class="sidebar__link" th:href="@{/admin/registrations}">การลงทะเบียน</a>
+            <a class="sidebar__link" th:href="@{/admin/swaps}">คำขอแลกคาบ</a>
+            <a class="sidebar__link" th:href="@{/admin/users}">บัญชีผู้ใช้</a>
+            <a class="sidebar__link" th:href="@{/admin/calendar}">จัดการปฏิทินการศึกษา</a>
+            <a class="sidebar__link" th:href="@{/admin/holidays}">วันหยุดราชการ</a>
+        </th:block>
+
+        <th:block sec:authorize="hasRole('TEACHER')">
+            <div class="sidebar__group">อาจารย์</div>
+            <a class="sidebar__link" th:href="@{/teacher/dashboard}">หน้าหลัก</a>
+            <a class="sidebar__link" th:href="@{/teacher/timetable}">ตารางสอน</a>
+            <a class="sidebar__link" th:href="@{/teacher/availability}">เวลาว่าง</a>
+            <a class="sidebar__link" th:href="@{/teacher/qualifications}">วิชาที่สอนได้</a>
+            <a class="sidebar__link" th:href="@{/teacher/swaps}">แลกคาบสอน</a>
+        </th:block>
+
+        <th:block sec:authorize="hasRole('STUDENT')">
+            <div class="sidebar__group">นักศึกษา</div>
+            <a class="sidebar__link" th:href="@{/student/dashboard}">หน้าหลัก</a>
+            <a class="sidebar__link" th:href="@{/student/courses}">ค้นหาและลงทะเบียน</a>
+            <a class="sidebar__link" th:href="@{/student/registrations}">รายวิชาที่ลงทะเบียน</a>
+            <a class="sidebar__link" th:href="@{/student/timetable}">ตารางเรียน</a>
+        </th:block>
+
+        <th:block sec:authorize="isAuthenticated()">
+            <div class="sidebar__group">ทั่วไป</div>
+            <a class="sidebar__link" th:href="@{/calendar}">ปฏิทินการศึกษา</a>
+            <a class="sidebar__link" th:href="@{/notifications}">การแจ้งเตือน</a>
+        </th:block>
+    </nav>
+</aside>
+</body>
+</html>
