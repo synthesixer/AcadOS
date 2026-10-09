@@ -1,0 +1,31 @@
+@startuml
+skinparam backgroundColor #EEF2FF
+
+' Section Cancellation Activity Diagram (invented to match Implement Plan and services)
+
+start
+:Admin opens Section Management UI;
+:Admin selects a Section to cancel and clicks "Cancel";
+partition "Security Filter" {
+    :Validate JWT, role = ADMIN;
+    if (JWT invalid?) then (yes)
+        :Return 401 Unauthorized;
+        stop
+    endif
+}
+partition "SectionCancellation Service" {
+    :SectionCancellationService.cancelSection(sectionId);
+    :Load Section (must be ACTIVE);
+    if (Section not ACTIVE?) then (yes)
+        :Throw BusinessRuleException (cannot cancel);
+        :Return error to Admin;
+        stop
+    endif
+    :Set Section state to CANCELLED (State Pattern);
+    :Delete all Registrations for this Section;
+    :Release all Schedule entries for this Section (delete DRAFT/PUBLISHED schedules);
+    :Send Notification (SECTION_CANCELLED) to affected Teachers and Students;
+    :Return 200 OK to Admin;
+}
+stop
+@enduml
