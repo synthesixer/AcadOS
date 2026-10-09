@@ -21,7 +21,7 @@ import org.springframework.security.core.userdetails.UserDetailsService;
 /**
  * Renders the welcome page through the master layout and checks the role-based sidebar.
  */
-@WebMvcTest
+@WebMvcTest(controllers = com.project.acados.controller.web.HomeWebController.class)
 @ActiveProfiles("test")
 class LayoutRenderingTests {
 
