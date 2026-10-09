@@ -2,8 +2,9 @@ package com.project.acados.web;
 
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
-import org.springframework.beans.factory.annotation.Autowired;
+import com.project.acados.controller.web.HomeWebController;
 import com.project.acados.security.TokenProvider;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.test.autoconfigure.web.servlet.WebMvcTest;
 import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.security.core.userdetails.UserDetailsService;
@@ -17,14 +18,10 @@ import static org.springframework.test.web.servlet.request.MockMvcRequestBuilder
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.content;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
-import com.project.acados.security.TokenProvider;
-import org.springframework.boot.test.mock.mockito.MockBean;
-import org.springframework.security.core.userdetails.UserDetailsService;
-
 /**
  * Renders the welcome page through the master layout and checks the role-based sidebar.
  */
-@WebMvcTest(controllers = com.project.acados.controller.web.HomeWebController.class)
+@WebMvcTest(HomeWebController.class)
 @ActiveProfiles("test")
 class LayoutRenderingTests {
 
