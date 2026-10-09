@@ -48,16 +48,17 @@ users ─┬─ 1:0..1 ── students ── 1:N ── registrations ──┬
        ├─ 1:0..1 ── teachers                          └─ N:1 ── courses (copy จาก section.course, BR-04)
        └─ 1:N ───── notifications
 
-courses ── 1:N ── sections ── N:1 ── rooms (ห้องประจำ · ทุกคาบของ Section ใช้ห้องนี้)
+courses ── 1:N ── sections
                      │
-                     └── 1:N ── schedules ──┬─ N:1 ── teachers
+                     └── 1:N ── schedules ──┬─ N:1 ── rooms (จัดเก็บห้องเรียนรายคาบ)
+                                            ├─ N:1 ── teachers
                                             ├─ N:1 ── time_slots
                                             └─ 1:N ── teacher_swap_requests
                                                        (×2: คาบของ A, คาบของ B)
-                                                       └─ N:1 ── teachers (×2: A, B)
 
 teachers ── N:M ── courses     ผ่าน teacher_qualifications, teacher_preferences
 teachers ── N:M ── time_slots  ผ่าน teacher_availabilities
+teachers ── 1:N ── teacher_swap_requests (×2: Snapshot ผู้ขอ A, ผู้ถูกขอ B สำหรับ Audit Log)
 students ── N:M ── sections    ผ่าน registrations
 
 academic_events, public_holidays : อิสระ ไม่มี FK (FL-04)
@@ -104,11 +105,10 @@ academic_events, public_holidays : อิสระ ไม่มี FK (FL-04)
 |---|---|---|---|
 | course_id | BIGINT | NN, FK → courses | เป็น Sec ของวิชาไหน |
 | section_number | INT | NN, > 0 | เลข Sec |
-| capacity | INT | NN, > 0 | จำนวนที่นั่ง (ต้องไม่เกินความจุห้อง, BR-05) |
-| room_id | BIGINT | ว่างได้, FK → rooms | ห้องประจำ (ทุกคาบของ Section ใช้ห้องนี้) |
+| capacity | INT | NN, > 0 | จำนวนที่นั่ง |
 | status | VARCHAR(20) | NN, ค่าเริ่มต้น ACTIVE | ACTIVE / CANCELLED (SectionStatus) |
 
-ห้ามซ้ำ: (course_id, section_number) · ไม่มี teacher_id เพราะครูอยู่ที่ schedules รายคาบ (C-16)
+ห้ามซ้ำ: (course_id, section_number) · ไม่มี teacher_id และ room_id เพราะอยู่ที่ schedules รายคาบ
 
 ### 2.6 rooms
 
@@ -137,11 +137,12 @@ academic_events, public_holidays : อิสระ ไม่มี FK (FL-04)
 | คอลัมน์ | ชนิด | เงื่อนไข | เก็บอะไร |
 |---|---|---|---|
 | section_id | BIGINT | NN, FK → sections | Sec ไหน |
-| teacher_id | BIGINT | NN, FK → teachers | ใครสอน (เปลี่ยนเมื่อ Admin อนุมัติการแลกคาบ หรือ Assign Teacher) |
+| room_id | BIGINT | ว่างได้, FK → rooms | เรียนที่ห้องไหน |
+| teacher_id | BIGINT | NN, FK → teachers | ใครสอน (เปลี่ยนเมื่อ Admin อนุมัติการแลกคาบ) |
 | time_slot_id | BIGINT | NN, FK → time_slots | เวลาไหน |
 | status | VARCHAR(20) | NN, CHECK, ไม่มีค่าเริ่มต้น | DRAFT = ผล Generate รอ Admin ตรวจ (เห็นเฉพาะ Admin) · PUBLISHED = ใช้งานจริง |
 
-ห้ามซ้ำ: (section_id, time_slot_id) · (teacher_id, time_slot_id) · วิชา 6 ชั่วโมง = 2 แถว (คาบละ 3 ชั่วโมง) · ไม่มี room_id: ห้องของคาบ = ห้องประจำของ Section (sections.room_id) · ห้องชน (BR-02) ตรวจที่ Service · status: Generate บันทึกเป็น DRAFT → Publish เปลี่ยนเป็น PUBLISHED · Discard หรือ Generate ใหม่ = ลบแถว DRAFT · Teacher / Student เห็นและใช้เฉพาะ PUBLISHED · UNIQUE นับรวม DRAFT ด้วย: Swap / Assign Teacher ที่ชนกับคาบ DRAFT ถูกปฏิเสธ ต้อง Publish หรือ Discard ก่อน
+ห้ามซ้ำ: (section_id, time_slot_id) · วิชา 6 ชั่วโมง = 2 แถว (คาบละ 3 ชั่วโมง) · status: Generate บันทึกเป็น DRAFT → Publish เปลี่ยนเป็น PUBLISHED · Discard หรือ Generate ใหม่ = ลบแถว DRAFT · Teacher / Student เห็นและใช้เฉพาะ PUBLISHED · Swap ที่ชนกับคาบ DRAFT ถูกปฏิเสธพร้อมแจ้งข้อความชัดเจนว่าเป็นข้อขัดแย้งกับตารางร่าง (409 Conflict: DRAFT Timetable Conflict) ต้อง Publish หรือ Discard ก่อน
 
 ### 2.9 registrations
 
@@ -187,10 +188,11 @@ academic_events, public_holidays : อิสระ ไม่มี FK (FL-04)
 
 | คอลัมน์ | ชนิด | เงื่อนไข | เก็บอะไร |
 |---|---|---|---|
-| requesting_teacher_id | BIGINT | NN, FK → teachers | อาจารย์ A (ผู้ขอ) |
-| requesting_schedule_id | BIGINT | NN, FK → schedules | คาบของ A ที่จะยกให้ B |
-| target_teacher_id | BIGINT | NN, FK → teachers | อาจารย์ B (ผู้ถูกขอ) |
-| target_schedule_id | BIGINT | NN, FK → schedules | คาบของ B ที่จะยกให้ A |
+| id | BIGINT | PK, AUTO_INCREMENT | รหัสคำขอ |
+| requesting_teacher_id | BIGINT | NN, FK → teachers | ครู A ผู้ยื่นคำขอ (Snapshot สำหรับ Audit Log) |
+| requesting_schedule_id | BIGINT | ว่างได้ (SET NULL), FK → schedules | คาบของ A ที่จะยกให้ B (SET NULL เมื่อคาบถูกลบ เพื่อรักษา Audit Trail) |
+| target_teacher_id | BIGINT | NN, FK → teachers | ครู B ผู้ถูกขอ (Snapshot สำหรับ Audit Log) |
+| target_schedule_id | BIGINT | ว่างได้ (SET NULL), FK → schedules | คาบของ B ที่จะยกให้ A (SET NULL เมื่อคาบถูกลบ เพื่อรักษา Audit Trail) |
 | status | VARCHAR(20) | NN, ค่าเริ่มต้น PENDING | PENDING / ACCEPTED / REJECTED / APPROVED / CANCELLED |
 | created_at | DATETIME | NN, ค่าเริ่มต้นเวลาปัจจุบัน | เวลาที่ A ส่งคำขอ |
 | responded_at | DATETIME | ว่างได้ | เวลาที่ B ตอบ |
@@ -209,7 +211,7 @@ stateDiagram-v2
     CANCELLED --> [*]
 ```
 
-APPROVED = สลับ `schedules.teacher_id` ของทั้ง 2 คาบแบบถาวร · Admin ปฏิเสธได้เฉพาะ ACCEPTED · A ยกเลิกได้เฉพาะ PENDING (B ยังไม่ตอบ) · ทั้ง 2 คาบต้องเป็น PUBLISHED
+APPROVED = สลับ `schedules.teacher_id` ของทั้ง 2 คาบแบบถาวร (ฟิลด์ `requesting_teacher_id` และ `target_teacher_id` ยังคงเก็บ Snapshot เพื่อใช้เป็น Audit History ย้อนหลัง แม้คาบใน Schedule จะถูกลบ/ยกเลิกด้วย ON DELETE SET NULL) · Admin ปฏิเสธได้เฉพาะ ACCEPTED · A ยกเลิกได้เฉพาะ PENDING (B ยังไม่ตอบ) · ทั้ง 2 คาบต้องเป็น PUBLISHED
 
 ### 2.14 notifications
 
@@ -252,16 +254,16 @@ APPROVED = สลับ `schedules.teacher_id` ของทั้ง 2 คาบ
 | students.user_id → users | 1:0..1 | CASCADE | ลบโปรไฟล์ตามบัญชี |
 | teachers.user_id → users | 1:0..1 | CASCADE | ลบโปรไฟล์ตามบัญชี |
 | sections.course_id → courses | N:1 | RESTRICT | ลบวิชาที่ยังมี Section ไม่ได้ |
-| sections.room_id → rooms | N:1 | RESTRICT | ลบห้องที่ Section ใช้อยู่ไม่ได้ |
 | schedules.section_id → sections | N:1 | CASCADE | ลบคาบตาม Section |
+| schedules.room_id → rooms | N:1 | RESTRICT | ลบห้องที่ตารางใช้อยู่ไม่ได้ |
 | schedules.teacher_id / time_slot_id | N:1 | RESTRICT | ลบครู หรือ slot ที่มีคาบสอนไม่ได้ |
 | registrations.student_id → students | N:1 | RESTRICT | ลบนักศึกษาที่มีประวัติลงทะเบียนไม่ได้ |
 | registrations.section_id → sections | N:1 | RESTRICT | ต้องลบ registration ใน Service ก่อน |
 | registrations.course_id → courses | N:1 | RESTRICT | ลบวิชาที่มีผู้ลงทะเบียนไม่ได้ |
 | teacher_qualifications / teacher_preferences → teachers, courses | N:1 | CASCADE | ลบตามเจ้าของ |
 | teacher_availabilities → teachers, time_slots | N:1 | CASCADE | ลบตามเจ้าของ |
-| teacher_swap_requests.requesting / target teacher → teachers | N:1 | RESTRICT | รักษาประวัติคำขอ |
-| teacher_swap_requests.requesting / target schedule → schedules | N:1 | CASCADE | ลบคำขอเมื่อคาบถูกลบ (แจ้งครูทั้งสองฝ่ายก่อน) |
+| teacher_swap_requests.requesting / target teacher → teachers | N:1 | RESTRICT | ลบครูที่มีประวัติคำขอสลับสอนไม่ได้ (Audit Trail) |
+| teacher_swap_requests.requesting / target schedule → schedules | N:1 | SET NULL | คาบถูกลบให้เซ็ตเป็น NULL เพื่อรักษาประวัติคำขอ (Audit Trail ไม่สูญหาย) |
 | notifications.user_id → users | N:1 | CASCADE | ลบตามบัญชี |
 
 ---
@@ -274,7 +276,7 @@ erDiagram
     users ||--o| teachers : "has profile"
     users ||--o{ notifications : receives
     courses ||--o{ sections : has
-    rooms |o--o{ sections : "home room"
+    rooms ||--o{ schedules : "takes place in"
     sections ||--o{ schedules : has
     teachers ||--o{ schedules : teaches
     time_slots ||--o{ schedules : at
@@ -287,10 +289,10 @@ erDiagram
     courses ||--o{ teacher_preferences : preferred
     teachers ||--o{ teacher_availabilities : declares
     time_slots ||--o{ teacher_availabilities : at
-    teachers ||--o{ teacher_swap_requests : "requests (A)"
-    teachers ||--o{ teacher_swap_requests : "targeted (B)"
-    schedules ||--o{ teacher_swap_requests : "requesting schedule"
-    schedules ||--o{ teacher_swap_requests : "target schedule"
+    teachers ||--o{ teacher_swap_requests : "requesting teacher (snapshot)"
+    teachers ||--o{ teacher_swap_requests : "target teacher (snapshot)"
+    schedules ||--o{ teacher_swap_requests : "requesting schedule (SET NULL)"
+    schedules ||--o{ teacher_swap_requests : "target schedule (SET NULL)"
 
     users {
         bigint id PK
@@ -334,12 +336,12 @@ erDiagram
         bigint course_id FK
         int section_number
         int capacity
-        bigint room_id FK "nullable"
         varchar status
     }
     schedules {
         bigint id PK
         bigint section_id FK
+        bigint room_id FK "nullable"
         bigint teacher_id FK
         bigint time_slot_id FK
         varchar status
