@@ -1,0 +1,390 @@
+@startuml 03-class-diagram
+title AcadOS - Class Diagram (Domain + Service + Design Patterns)\nอ้างอิง Implement Plan v6 §6, §7, §8, §10, §14, §17 · field ที่เอกสารไม่ระบุ ใช้ชื่อตาม database.md / Sequence Diagram
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 50
+
+' =====================================================================
+' 1. Domain Entities (§6.1 · 16 Entities)
+' =====================================================================
+package "domain.entity" {
+  class User {
+    - id: Long
+    - universityId: String
+    - email: String
+    - passwordHash: String
+    - role: UserRole
+  }
+  class Student {
+    - id: Long
+    - user: User
+    - fullName: String
+  }
+  class Teacher {
+    - id: Long
+    - user: User
+    - fullName: String
+  }
+  class Course {
+    - id: Long
+    - courseCode: String
+    - title: String
+    - weeklyHours: int
+  }
+  class Section {
+    - id: Long
+    - course: Course
+    - sectionNumber: int
+    - capacity: int
+    - status: SectionStatus
+    - state: SectionState
+    + cancel(): void
+    + setState(state: SectionState): void
+    + getState(): SectionState
+  }
+  class Room {
+    - id: Long
+    - roomNumber: String
+    - building: String
+    - floor: int
+    - capacity: int
+    - isAvailable: boolean
+  }
+  class TimeSlot {
+    - id: Long
+    - dayOfWeek: DayOfWeek
+    - startTime: LocalTime
+    - endTime: LocalTime
+  }
+  class Schedule {
+    - id: Long
+    - section: Section
+    - teacher: Teacher
+    - room: Room
+    - timeSlot: TimeSlot
+    - status: ScheduleStatus
+  }
+  class Registration {
+    - id: Long
+    - student: Student
+    - section: Section
+    - course: Course
+    - registeredAt: LocalDateTime
+  }
+  class TeacherQualification {
+    - id: Long
+    - teacher: Teacher
+    - course: Course
+  }
+  class TeacherPreference {
+    - id: Long
+    - teacher: Teacher
+    - course: Course
+    - priority: int
+  }
+  class TeacherAvailability {
+    - id: Long
+    - teacher: Teacher
+    - timeSlot: TimeSlot
+    - isAvailable: boolean
+  }
+  class TeacherSwapRequest {
+    - id: Long
+    - requestingTeacher: Teacher
+    - requestingSchedule: Schedule
+    - targetTeacher: Teacher
+    - targetSchedule: Schedule
+    - status: SwapStatus
+    - createdAt: LocalDateTime
+    - respondedAt: LocalDateTime
+    - reviewedAt: LocalDateTime
+    + accept(): void
+    + reject(): void
+    + approve(): void
+    + cancel(): void
+  }
+  class Notification {
+    - id: Long
+    - user: User
+    - title: String
+    - message: String
+    - type: NotificationType
+    - isRead: boolean
+    - createdAt: LocalDateTime
+    + markAsRead(): void
+  }
+  class AcademicEvent {
+    - id: Long
+    - eventName: String
+    - eventType: AcademicEventType
+    - startDate: LocalDate
+    - endDate: LocalDate
+  }
+  class PublicHoliday {
+    - id: Long
+    - date: LocalDate
+    - name: String
+    - description: String
+  }
+}
+
+' =====================================================================
+' 2. Enums (§7 domain.enums + ค่าที่เอกสารระบุใน §6.1, §14.5)
+' =====================================================================
+package "domain.enums" {
+  enum UserRole {
+    ADMIN
+    TEACHER
+    STUDENT
+  }
+  enum SectionStatus {
+    ACTIVE
+    CANCELLED
+  }
+  enum ScheduleStatus {
+    DRAFT
+    PUBLISHED
+  }
+  enum SwapStatus {
+    PENDING
+    ACCEPTED
+    REJECTED
+    APPROVED
+    CANCELLED
+  }
+  enum AcademicEventType {
+    SEMESTER_START
+    SEMESTER_END
+    REGISTRATION_PERIOD
+    MIDTERM_EXAM
+    FINAL_EXAM
+  }
+  enum NotificationType {
+    REGISTRATION_SUCCESS
+    REGISTRATION_WITHDRAWN
+    SCHEDULE_CHANGED
+    SWAP_REQUESTED
+    SWAP_RESPONDED
+    SWAP_APPROVED
+    SWAP_REJECTED
+    SWAP_CANCELLED
+    SECTION_CANCELLED
+    CONFLICT_DETECTED
+  }
+}
+
+' =====================================================================
+' 3. Service Layer (§10.2 + Service ใหม่ใน §7)
+' =====================================================================
+package "service" {
+  class RegistrationService {
+    + register(): Registration
+    + withdraw(): void
+    + checkDuplicate(): boolean
+    + checkConflict(): boolean
+  }
+  class SchedulingService <<Orchestrator>> {
+    + generateSchedule(): void
+    + publishSchedule(): void
+    + discardDraft(): void
+  }
+  class TeacherSwapService {
+    + createSwapRequest(): TeacherSwapRequest
+    + respondSwap(): void
+    + approveSwap(): void
+    + rejectSwap(): void
+    + cancelSwap(): void
+  }
+  class SectionCancellationService {
+    + cancelSection(): void
+  }
+  class NotificationService {
+    + sendNotification(): void
+    + getNotifications(): List<Notification>
+    + markAsRead(): void
+  }
+  class HolidayService {
+    + getHolidays(): List<PublicHoliday>
+    + syncHolidays(): void
+  }
+  class UserService
+  class SectionService
+  class TeacherAssignmentService
+  class AcademicEventService
+  note bottom of AcademicEventService
+    UserService, SectionService,
+    TeacherAssignmentService, AcademicEventService:
+    มีใน §7 แต่ §10.2 ยังไม่ระบุ method
+  end note
+}
+
+' =====================================================================
+' 4. Scheduling Engine + Strategy (§10.3, §17.2)
+' =====================================================================
+package "scheduling" {
+  class ConstraintEvaluator {
+    + validate(): boolean
+  }
+  class ScheduleSelector {
+    + selectBest(): Schedule
+  }
+}
+package "strategy" <<Strategy>> {
+  interface ScoringStrategy {
+    + calculateScore(): int
+  }
+  class PreferenceScoreStrategy {
+    + calculateScore(): int
+  }
+  class WorkloadScoreStrategy {
+    + calculateScore(): int
+  }
+  class RoomSuitabilityScoreStrategy {
+    + calculateScore(): int
+  }
+  note bottom of RoomSuitabilityScoreStrategy : เงื่อนไข = TBA (§12.4, §28)
+}
+
+' =====================================================================
+' 5. State Pattern (§10.3, §17.2)
+' =====================================================================
+package "state" <<State>> {
+  interface SectionState {
+    + cancel(): void
+  }
+  class ActiveSectionState {
+    + cancel(): void
+  }
+  class CancelledSectionState {
+    + cancel(): void
+  }
+}
+
+' =====================================================================
+' 6. Notification Strategy (§10.3, §14.6, §17.2)
+' =====================================================================
+package "notification.strategy" <<Strategy>> {
+  interface NotificationStrategy {
+    + send(): void
+  }
+  class InAppNotificationStrategy {
+    + send(): void
+  }
+  class EmailNotificationStrategy {
+    + send(): void
+  }
+}
+
+' =====================================================================
+' 7. Observer Pattern (§7 observer, §17.2)
+' =====================================================================
+package "observer" <<Observer>> {
+  interface ScheduleChangeSubject
+  interface ScheduleChangeObserver
+  class ScheduleChangePublisher
+}
+
+' =====================================================================
+' 8. Adapter Pattern (§10.3, §14.7, §17.2)
+' =====================================================================
+package "holiday" <<Adapter>> {
+  interface HolidayProvider {
+    + fetchHolidays(): List<PublicHoliday>
+  }
+  class ExternalHolidayAdapter {
+    + fetchHolidays(): List<PublicHoliday>
+  }
+}
+
+' =====================================================================
+' Domain relationships (§6.1, §6.2)
+' =====================================================================
+User "1" -- "0..1" Student : student profile
+User "1" -- "0..1" Teacher : teacher profile
+User "1" -- "0..*" Notification : receives
+Course "1" -- "0..*" Section : offers
+Section "1" *-- "0..*" Schedule : has
+Schedule "0..*" --> "1" Room : assigned room
+Schedule "0..*" --> "1" Teacher : assigned teacher
+Schedule "0..*" --> "1" TimeSlot : scheduled at
+Student "1" -- "0..*" Registration
+Section "1" -- "0..*" Registration
+Course "1" -- "0..*" Registration : BR-04
+Teacher "1" -- "0..*" TeacherQualification
+Course "1" -- "0..*" TeacherQualification
+Teacher "1" -- "0..*" TeacherPreference
+Course "1" -- "0..*" TeacherPreference
+Teacher "1" -- "0..*" TeacherAvailability
+TimeSlot "1" -- "0..*" TeacherAvailability
+Teacher "1" -- "0..*" TeacherSwapRequest : A / B
+Schedule "1" -- "0..*" TeacherSwapRequest : 2 คาบที่แลก
+
+User ..> UserRole
+Section ..> SectionStatus
+Schedule ..> ScheduleStatus
+TeacherSwapRequest ..> SwapStatus
+AcademicEvent ..> AcademicEventType
+Notification ..> NotificationType
+
+' =====================================================================
+' Pattern relationships
+' =====================================================================
+Section o--> SectionState : state
+SectionState <|.. ActiveSectionState
+SectionState <|.. CancelledSectionState
+
+ScoringStrategy <|.. PreferenceScoreStrategy
+ScoringStrategy <|.. WorkloadScoreStrategy
+ScoringStrategy <|.. RoomSuitabilityScoreStrategy
+
+NotificationStrategy <|.. InAppNotificationStrategy
+NotificationStrategy <|.. EmailNotificationStrategy
+
+ScheduleChangeSubject <|.. ScheduleChangePublisher
+ScheduleChangePublisher o--> ScheduleChangeObserver : observers
+ScheduleChangeObserver <|.. NotificationService
+
+HolidayProvider <|.. ExternalHolidayAdapter
+
+' =====================================================================
+' Service dependencies (§8, §10, §17)
+' =====================================================================
+SchedulingService --> ConstraintEvaluator
+SchedulingService --> ScheduleSelector
+SchedulingService --> ScheduleChangePublisher : notify on Publish
+ScheduleSelector --> "1..*" ScoringStrategy
+NotificationService --> "1..*" NotificationStrategy
+HolidayService --> HolidayProvider
+SectionCancellationService ..> Section : cancel()
+SectionCancellationService --> NotificationService
+RegistrationService --> NotificationService
+TeacherSwapService --> NotificationService
+TeacherSwapService ..> TeacherSwapRequest
+RegistrationService ..> Registration
+SchedulingService ..> Schedule
+
+note right of Schedule
+  1 Schedule = 1 คาบของ Section
+  Room และ Teacher จัดเก็บรายคาบ (Schedule.room)
+  รองรับการจัดสรรห้องตั้งแต่สถานะ DRAFT (§6.2, §12)
+  Teacher อยู่รายคาบ (การแลกคาบสลับ teacher ของ 2 คาบ, §14.3)
+  DRAFT เห็นเฉพาะ Admin · PUBLISHED ใช้งานจริง (§6.2)
+end note
+note right of Section
+  Section capacity <= Room capacity ของแต่ละคาบ (BR-05)
+  status = ค่าที่บันทึก · state = State Pattern (§8 ข้อ 5)
+end note
+note right of TeacherSwapRequest
+  PENDING -> ACCEPTED / REJECTED (Teacher B)
+  PENDING -> CANCELLED (Teacher A)
+  ACCEPTED -> APPROVED / REJECTED (Admin)  (§14.3)
+end note
+note bottom of ScheduleChangeObserver
+  §17.2: ScheduleChangePublisher แจ้งไปยัง NotificationService
+  ชื่อ method ของ Subject / Observer ยังไม่ระบุในเอกสาร
+end note
+@enduml
