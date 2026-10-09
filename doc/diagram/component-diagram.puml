@@ -8,6 +8,7 @@ skinparam shadowing false
 
 actor "Admin / Teacher / Student" as Users
 cloud "External Holiday API" as HolidayAPI
+cloud "External Mail Server\n(Mailtrap Sandbox SMTP)" as MailServer
 database "MySQL 8.x" as MySQL
 
 component "AcadOS Application" as AcadOS {
@@ -128,6 +129,7 @@ CancellationService --> NotificationService : แจ้งยกเลิก Sec
 NotificationService --> NotificationStrategy : ส่งการแจ้งเตือน
 InAppNotificationStrategy ..|> NotificationStrategy
 EmailNotificationStrategy ..|> NotificationStrategy
+EmailNotificationStrategy --> MailServer : SMTP / TLS [Port 587]
 
 HolidayService --> HolidayProvider : syncHolidays()
 HolidayAdapter ..|> HolidayProvider
