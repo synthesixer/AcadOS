@@ -1,0 +1,22 @@
+@startuml
+skinparam backgroundColor #EEF2FF
+
+' Authentication Activity Diagram
+
+start
+:User opens login page;
+:User enters University ID & Password;
+partition "Auth Service" {
+    :AuthApiController receives POST /login;
+    :Validate credentials via UserRepository;
+    if (credentials valid?) then (yes)
+        :Generate JWT (role embedded);
+        :Return JWT to User;
+    else (no)
+        :Return 401 Unauthorized;
+        stop
+    endif
+}
+:User stores JWT for subsequent requests;
+stop
+@enduml

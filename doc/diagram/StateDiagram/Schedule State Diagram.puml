@@ -1,0 +1,16 @@
+@startuml
+title Schedule State Diagram
+
+[*] --> DRAFT : Admin สั่ง Generate Schedule
+DRAFT --> PUBLISHED : Admin กด Publish
+DRAFT --> [*] : Admin กด Discard หรือ Generate ใหม่ (ลบแถว DRAFT ทิ้ง)
+PUBLISHED --> [*] : Section ถูกยกเลิก (Release Schedule / ลบคาบสอน)
+
+note right of DRAFT
+  เห็นเฉพาะ Admin
+end note
+
+note right of PUBLISHED
+  เห็นทุก Role (Teacher / Student ใช้งานจริง)
+end note
+@enduml

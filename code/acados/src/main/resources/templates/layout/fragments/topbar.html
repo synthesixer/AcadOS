@@ -1,0 +1,35 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security">
+<body>
+<!-- Topbar: drawer toggle (mobile), user name + role badge, notification bell, logout. -->
+<header th:fragment="topbar" class="topbar">
+    <button type="button" class="btn btn--secondary btn--sm topbar__menu" id="menu-toggle"
+            aria-controls="sidebar" aria-expanded="false">เมนู</button>
+
+    <div class="topbar__spacer"></div>
+
+    <th:block sec:authorize="isAuthenticated()">
+        <a class="bell" th:href="@{/notifications}" aria-label="การแจ้งเตือน">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"
+                 stroke-linecap="round" stroke-linejoin="round" aria-hidden="true">
+                <path d="M6 8a6 6 0 0 1 12 0c0 7 3 9 3 9H3s3-2 3-9"/>
+                <path d="M10.3 21a1.94 1.94 0 0 0 3.4 0"/>
+            </svg>
+            <span class="bell__count hidden" id="unread-count">0</span>
+        </a>
+
+        <div class="topbar__user">
+            <!-- Shows the login id first; ui.js replaces it with fullName from /api/v1/auth/me. -->
+            <span class="topbar__name" id="current-user-name" sec:authentication="name">ผู้ใช้</span>
+            <span class="badge badge--info" sec:authorize="hasRole('ADMIN')">ADMIN</span>
+            <span class="badge badge--info" sec:authorize="hasRole('TEACHER')">TEACHER</span>
+            <span class="badge badge--info" sec:authorize="hasRole('STUDENT')">STUDENT</span>
+        </div>
+
+        <button type="button" class="btn btn--secondary btn--sm" id="logout-button">ออกจากระบบ</button>
+    </th:block>
+
+    <a class="btn btn--sm" th:href="@{/login}" sec:authorize="isAnonymous()">เข้าสู่ระบบ</a>
+</header>
+</body>
+</html>
