@@ -4,7 +4,10 @@ import com.project.acados.domain.entity.Registration;
 import com.project.acados.domain.entity.Schedule;
 import com.project.acados.domain.entity.Section;
 import com.project.acados.domain.entity.Student;
+import com.project.acados.domain.entity.User;
 import com.project.acados.domain.enums.AcademicEventType;
+import com.project.acados.domain.enums.UserRole;
+import com.project.acados.repository.UserRepository;
 import com.project.acados.domain.enums.NotificationType;
 import com.project.acados.domain.enums.ScheduleStatus;
 import com.project.acados.domain.enums.SectionStatus;
@@ -38,6 +41,7 @@ public class RegistrationServiceImpl implements RegistrationService {
     private final RegistrationRepository registrationRepository;
     private final ScheduleRepository scheduleRepository;
     private final StudentRepository studentRepository;
+    private final UserRepository userRepository;
     private final NotificationService notificationService;
 
     @Override
@@ -96,6 +100,18 @@ public class RegistrationServiceImpl implements RegistrationService {
                 "ถอนรายวิชาสำเร็จ",
                 "คุณถอน " + label + " เรียบร้อยแล้ว",
                 NotificationChannel.IN_APP);
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List<Registration> getRegistrations(String universityId, Long sectionId) {
+        User user = userRepository.findByUniversityId(universityId)
+                .orElseThrow(() -> new ResourceNotFoundException("ไม่พบข้อมูลผู้ใช้"));
+        if (user.getRole() == UserRole.ADMIN) {
+            return registrationRepository.findAllWithDetails(null, sectionId);
+        }
+        Student student = findStudent(universityId);
+        return registrationRepository.findAllWithDetails(student.getId(), sectionId);
     }
 
     @Override

@@ -46,10 +46,11 @@ public class TimeSlot {
      * Checks if this TimeSlot overlaps with another TimeSlot on the same day (BR-03, C-01).
      */
     public boolean overlapsWith(TimeSlot other) {
-        if (other == null || this.dayOfWeek != other.dayOfWeek) {
+        // Read the other slot through getters: it may be a lazy Hibernate proxy whose fields are null.
+        if (other == null || this.dayOfWeek != other.getDayOfWeek()) {
             return false;
         }
-        return this.startTime.isBefore(other.endTime) && other.startTime.isBefore(this.endTime);
+        return this.startTime.isBefore(other.getEndTime()) && other.getStartTime().isBefore(this.endTime);
     }
 }
 
