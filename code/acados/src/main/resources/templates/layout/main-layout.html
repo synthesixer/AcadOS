@@ -1,24 +1,50 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org"
-      xmlns:layout="http://www.ultraq.net.nz/thymeleaf/layout">
+<!--
+  AcadOS master layout. Owner: Track C.
+
+  How to use it in a page (no extra dependency, plain Thymeleaf fragment parameters):
+
+    <!DOCTYPE html>
+    <html lang="th" xmlns:th="http://www.thymeleaf.org"
+          th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+    <head><title>รายวิชา</title></head>
+    <body>
+    <main> ... page content ... </main>
+    <script th:src="@{/js/pages/courses.js}"></script>
+    </body>
+    </html>
+
+  - title   : the page <title> element
+  - content : the page <main> element (rendered inside the content area)
+  - scripts : the page <script> elements, loaded after api.js and ui.js; pass ~{} when the page has none
+-->
+<html lang="th" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content, scripts)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AcadOS - Academic Operations System</title>
-    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title th:replace="${title}">AcadOS</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link rel="stylesheet"
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+    <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
-    <header>
-        <nav>
-            <div class="logo">AcadOS v4</div>
-        </nav>
-    </header>
-    <main layout:fragment="content">
-        <!-- Content will be injected here -->
-    </main>
-    <footer>
-        <p>&copy; 2026 AcadOS Project - SQA CP353002</p>
-    </footer>
+<aside th:replace="~{layout/fragments/sidebar :: sidebar}"></aside>
+<div class="sidebar-backdrop" id="sidebar-backdrop"></div>
+
+<div class="app">
+    <header th:replace="~{layout/fragments/topbar :: topbar}"></header>
+
+    <div class="content">
+        <main th:replace="${content}"></main>
+    </div>
+
+    <footer class="footer">AcadOS v4 · CP353002 Principles of Software Design and Development</footer>
+</div>
+
+<script th:src="@{/js/api.js}"></script>
+<script th:src="@{/js/ui.js}"></script>
+<th:block th:replace="${scripts}"></th:block>
 </body>
 </html>
-

@@ -1,13 +1,20 @@
 <!DOCTYPE html>
-<html xmlns:th="http://www.thymeleaf.org">
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{})}">
 <head>
-    <meta charset="UTF-8">
-    <title>AcadOS - Home</title>
-    <link rel="stylesheet" th:href="@{/css/main.css}">
+    <title>AcadOS</title>
 </head>
 <body>
-    <h1>Welcome to AcadOS v4</h1>
-    <p>Automated Proctor Scheduling and Academic Operations System</p>
+<main>
+    <div class="page-header">
+        <div>
+            <h1>AcadOS</h1>
+            <p>Automated Proctor Scheduling and Academic Operations System</p>
+        </div>
+    </div>
+    <div class="card">
+        <p>เลือกเมนูทางซ้ายเพื่อเริ่มใช้งาน</p>
+    </div>
+</main>
 </body>
 </html>
-
