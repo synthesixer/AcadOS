@@ -230,7 +230,7 @@ User "1" -- "0..1" Teacher : teacher profile
 ' Course, section and schedule
 Course "1" -- "0..*" Section : offers
 Section "1" *-- "0..*" Schedule : has
-Schedule "0..*" --> "1" Room : assigned room
+Schedule "0..*" --> "0..1" Room : assigned room
 Schedule "0..*" --> "1" Teacher : assigned teacher
 Schedule "0..*" --> "1" TimeSlot : scheduled at
 
@@ -288,6 +288,7 @@ end note
 note right of Schedule
   - 1 Schedule = 1 period of a Section
   - Room and Teacher are per Schedule (enables per-period swaps)
+  - Room is nullable (Schedule.room is 0..1 in database.md)
   - Teacher must be qualified for the Course (BR-06)
   - Teacher availability is a hard constraint (BR-07)
   - Teacher/Room/Student conflicts use time OVERLAP checks in Service
