@@ -1,4 +1,4 @@
-﻿package com.project.acados.domain.entity;
+package com.project.acados.domain.entity;
 
 import jakarta.persistence.*;
 import jakarta.validation.constraints.NotNull;
