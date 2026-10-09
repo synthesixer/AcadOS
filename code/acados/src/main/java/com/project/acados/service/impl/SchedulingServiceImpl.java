@@ -3,6 +3,7 @@ package com.project.acados.service.impl;
 import com.project.acados.domain.entity.*;
 import com.project.acados.domain.enums.ScheduleStatus;
 import com.project.acados.domain.enums.SectionStatus;
+import com.project.acados.pattern.observer.ScheduleChangePublisher;
 import com.project.acados.repository.*;
 import com.project.acados.service.*;
 import lombok.RequiredArgsConstructor;
@@ -15,7 +16,7 @@ import java.util.*;
 
 /**
  * Implementation of SchedulingService coordinating ConstraintEvaluator and ScheduleSelector.
- * Follows the flow defined in Sequence Diagram 05, class diagram.puml, and §12.
+ * Follows the flow defined in Sequence Diagram 05, class diagram.puml, activity_schedule_generation.puml, and §12.
  * Reference: Implement_Plan-AcadOS.md §7 (service/impl/), §10.2, §12
  */
 @Service
@@ -32,6 +33,7 @@ public class SchedulingServiceImpl implements SchedulingService {
     private final ScheduleRepository scheduleRepository;
     private final ConstraintEvaluator constraintEvaluator;
     private final ScheduleSelector scheduleSelector;
+    private final ScheduleChangePublisher scheduleChangePublisher;
 
     @Override
     @Transactional
@@ -146,6 +148,16 @@ public class SchedulingServiceImpl implements SchedulingService {
             scheduleRepository.save(schedule);
         }
         log.info("Successfully published {} schedules", draftSchedules.size());
+
+        List<Section> affectedSections = draftSchedules.stream()
+                .map(Schedule::getSection)
+                .filter(Objects::nonNull)
+                .distinct()
+                .toList();
+
+        if (!affectedSections.isEmpty() && scheduleChangePublisher != null) {
+            scheduleChangePublisher.notifyObservers(affectedSections);
+        }
     }
 
     @Override
