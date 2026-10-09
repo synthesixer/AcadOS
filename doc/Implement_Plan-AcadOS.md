@@ -704,8 +704,9 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 | Method | Endpoint | คำอธิบาย | สิทธิ์ผู้ใช้ |
 | :---: | :--- | :--- | :---: |
 | `GET` | `/api/v1/holidays` | ดึงวันหยุดที่บันทึกไว้ในฐานข้อมูล | Authenticated |
+| `POST` | `/api/v1/holidays/sync` | สั่ง Sync วันหยุดราชการจาก Nager.Date API ลงฐานข้อมูล (Admin Extension เพื่อการทดสอบและการ Demo สด) | ADMIN |
 
-*(ไม่มี Endpoint สั่ง Sync: ระบบดึงจาก External API เองเดือนละครั้ง)*
+*(ระบบรองรับ `POST /api/v1/holidays/sync` สำหรับ ADMIN ในการ Trigger ทดสอบ และสามารถดึงจาก External API อัตโนมัติในเบื้องหลังได้)*
 
 **Registration (ดูรายการ)**
 

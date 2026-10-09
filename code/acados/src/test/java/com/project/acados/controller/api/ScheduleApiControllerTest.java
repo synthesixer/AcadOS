@@ -95,6 +95,28 @@ class ScheduleApiControllerTest {
 
     @Test
     @WithMockUser(roles = "ADMIN")
+    @DisplayName("GET /api/v1/schedules?status=DRAFT: ADMIN can query draft schedules via status param")
+    void getSchedulesWithDraftStatusParam() throws Exception {
+        Course course = Course.builder().courseCode("CP353002").title("Architecture").build();
+        Section section = Section.builder().id(10L).sectionNumber(1).course(course).build();
+        Schedule schedule = Schedule.builder()
+                .id(1L)
+                .section(section)
+                .status(ScheduleStatus.DRAFT)
+                .build();
+
+        when(schedulingService.getDraftSchedules()).thenReturn(List.of(schedule));
+
+        mockMvc.perform(get("/api/v1/schedules").param("status", "DRAFT"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$[0].id").value(1L))
+                .andExpect(jsonPath("$[0].status").value("DRAFT"));
+
+        verify(schedulingService).getDraftSchedules();
+    }
+
+    @Test
+    @WithMockUser(roles = "ADMIN")
     @DisplayName("PUT /api/v1/schedules/publish: ADMIN can publish drafts")
     void adminCanPublishSchedules() throws Exception {
         doNothing().when(schedulingService).publishSchedule();

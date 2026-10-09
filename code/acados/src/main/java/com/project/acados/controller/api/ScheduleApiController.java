@@ -52,15 +52,6 @@ public class ScheduleApiController {
         return ResponseEntity.ok(response);
     }
 
-    @GetMapping("/drafts")
-    @PreAuthorize("hasRole('ADMIN')")
-    public ResponseEntity<List<ScheduleResponse>> getDraftSchedules() {
-        List<ScheduleResponse> drafts = schedulingService.getDraftSchedules().stream()
-                .map(ScheduleResponse::fromEntity)
-                .toList();
-        return ResponseEntity.ok(drafts);
-    }
-
     @PutMapping("/publish")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> publishSchedule() {
@@ -68,7 +59,7 @@ public class ScheduleApiController {
         return ResponseEntity.ok().build();
     }
 
-    @DeleteMapping({"/draft", "/drafts"})
+    @DeleteMapping("/draft")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<Void> discardDraft() {
         schedulingService.discardDraft();

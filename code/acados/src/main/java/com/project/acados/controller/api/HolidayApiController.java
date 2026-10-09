@@ -28,6 +28,11 @@ public class HolidayApiController {
         return ResponseEntity.ok(holidays);
     }
 
+    /**
+     * NOTE [CONFIRMED ADMIN EXTENSION]:
+     * Endpoint สำหรับ ADMIN สั่ง Sync วันหยุดจาก Nager.Date API ลงฐานข้อมูล
+     * กำหนดไว้ใน Implement_Plan-AcadOS.md §16 เพื่อรองรับการทดสอบ, การทดสอบผ่าน Swagger UI, และการ Demo สด
+     */
     @PostMapping("/sync")
     @PreAuthorize("hasRole('ADMIN')")
     public ResponseEntity<List<HolidayResponse>> syncHolidays(
