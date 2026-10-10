@@ -1,76 +1,162 @@
 <!DOCTYPE html>
-<html lang="th" xmlns:th="http://www.thymeleaf.org">
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Teacher Dashboard | AcadOS</title>
-    <style>
-        :root{font-family:Arial,"IBM Plex Sans Thai",sans-serif;color:#1e293b;background:#f1f5f9}*{box-sizing:border-box}body{margin:0}.bar{display:flex;align-items:center;justify-content:space-between;padding:16px max(24px,calc((100% - 1000px)/2));background:#fff;border-bottom:1px solid #dbe3ee}.brand{font-weight:700;color:#1f5f8b;text-decoration:none;font-size:1.25rem}.bar nav{display:flex;gap:16px;align-items:center}.bar nav a{color:#1f5f8b;text-decoration:none}.bar button,.primary{border:0;border-radius:8px;background:#1f5f8b;color:#fff;padding:10px 14px;font:inherit;cursor:pointer}.wrap{max-width:1000px;margin:32px auto;padding:0 20px}.muted{color:#64748b}.grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(240px,1fr));gap:16px;margin:24px 0}.card{background:white;border:1px solid #dbe3ee;border-radius:12px;padding:20px}.card h2{margin-top:0;font-size:1.1rem}.list{display:grid;gap:10px}.item{border:1px solid #e2e8f0;border-radius:8px;padding:12px;overflow-wrap:anywhere}.error{color:#b42318}.status{font-size:.9rem;color:#475569}footer{padding:24px;text-align:center;color:#64748b}@media(max-width:520px){.bar{align-items:flex-start;gap:12px}.bar nav{gap:8px;flex-wrap:wrap;justify-content:flex-end}}
-    </style>
+    <title>ศูนย์อาจารย์ผู้สอน | AcadOS</title>
 </head>
 <body>
-<header class="bar">
-    <a class="brand" th:href="@{/}">AcadOS</a>
-    <nav aria-label="เมนูอาจารย์">
-        <a th:href="@{/teacher/dashboard}">หน้าหลัก</a>
-        <a th:href="@{/teacher/swaps}">แลกคาบสอน</a>
-        <button id="logout-button" type="button">ออกจากระบบ</button>
-    </nav>
-</header>
-<main class="wrap">
-    <h1>Teacher Dashboard</h1>
-    <p class="muted">ดูตารางสอนและไปยังคำขอแลกคาบของคุณ</p>
-    <section class="grid" aria-label="เมนูอาจารย์">
-        <article class="card"><h2>ตารางสอน</h2><p class="muted">แสดงตารางที่เผยแพร่แล้วของอาจารย์ที่เข้าสู่ระบบ</p><a class="primary" th:href="@{/teacher/swaps}">จัดการคำขอแลกคาบ</a></article>
-        <article class="card"><h2>คำขอแลกคาบ</h2><p class="muted">ดูคำขอที่ส่งและคำขอที่ส่งถึงคุณ</p><a th:href="@{/teacher/swaps}">เปิดหน้าแลกคาบ</a></article>
-    </section>
-    <section class="card">
-        <h2>ตารางสอนที่เผยแพร่</h2>
-        <p id="schedule-message" class="status" aria-live="polite">กำลังโหลดตารางสอน…</p>
-        <div id="schedule-list" class="list"></div>
-    </section>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Faculty Portal · ภาค 1/2569</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">ศูนย์อาจารย์ผู้สอน (Faculty Command Center)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">จัดการตารางสอน การขอแลกเปลี่ยนคาบสอน และติดตามประกาศทางวิชาการ</p>
+        </div>
+        <div>
+            <a th:href="@{/teacher/swaps}" class="btn btn--primary" style="font-size:0.88rem;">
+                ⇄ จัดการคำขอแลกคาบ
+            </a>
+        </div>
+    </div>
+
+    <!-- Quick Status Signals -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--teal-primary);">
+            <div class="muted" style="font-size:0.85rem; font-weight:600;">ตารางสอนที่เผยแพร่แล้ว</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+                <span class="num" id="stat-schedule-count" style="font-size:1.8rem; font-weight:700; color:var(--ink-navy);">-</span>
+                <a th:href="@{/teacher/timetable}" class="muted" style="font-size:0.82rem; text-decoration:none;">ดูตารางสอน →</a>
+            </div>
+        </div>
+
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--amber-draft);">
+            <div class="muted" style="font-size:0.85rem; font-weight:600;">คำขอแลกคาบที่รอดำเนินการ</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+                <span class="num" id="stat-swap-count" style="font-size:1.8rem; font-weight:700; color:var(--ink-navy);">-</span>
+                <a th:href="@{/teacher/swaps}" class="muted" style="font-size:0.82rem; text-decoration:none;">เปิดรายการคำขอ →</a>
+            </div>
+        </div>
+
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--ok-green);">
+            <div class="muted" style="font-size:0.85rem; font-weight:600;">การแจ้งเตือนทางวิชาการ</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+                <span class="num" id="stat-unread-count" style="font-size:1.8rem; font-weight:700; color:var(--ink-navy);">-</span>
+                <a th:href="@{/notifications}" class="muted" style="font-size:0.82rem; text-decoration:none;">ดูกล่องข้อความ →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Published Teaching Schedule Ledger Card -->
+    <div class="card" style="padding:20px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+                <h3 style="margin:0; font-size:1.1rem; color:var(--ink-navy);">ตารางสอนที่ได้รับมอบหมาย</h3>
+                <span class="muted" style="font-size:0.85rem;">คาบสอนและกลุ่มเรียนที่เผยแพร่แล้ว (PUBLISHED)</span>
+            </div>
+            <div>
+                <a th:href="@{/teacher/timetable}" class="btn btn--secondary btn--sm">
+                    เปิดผังตารางเต็ม (Grid View) ↗
+                </a>
+            </div>
+        </div>
+
+        <div id="schedule-list" style="display:grid; gap:10px;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
 </main>
-<footer>AcadOS · Teacher</footer>
+
 <script>
     const token = sessionStorage.getItem('acadosToken');
     const role = sessionStorage.getItem('acadosRole');
-    if (!token || role !== 'TEACHER') window.location.replace('/login');
+    if (!token || role !== 'TEACHER') {
+        window.location.replace('/login');
+    }
 
-    document.getElementById('logout-button').addEventListener('click', () => {
-        sessionStorage.removeItem('acadosToken');
-        sessionStorage.removeItem('acadosRole');
-        window.location.assign('/login');
-    });
-
-    async function loadSchedules() {
-        const message = document.getElementById('schedule-message');
+    async function loadDashboardData() {
         const list = document.getElementById('schedule-list');
+        ui.renderLoading(list, 2);
+
         try {
-            const response = await fetch('/api/v1/schedules', {
-                headers: {Authorization: 'Bearer ' + token, Accept: 'application/json'}
-            });
-            const payload = await response.json().catch(() => null);
-            if (!response.ok) throw new Error(payload && payload.message ? payload.message : 'โหลดตารางสอนไม่สำเร็จ');
-            const schedules = Array.isArray(payload) ? payload : (payload && Array.isArray(payload.content) ? payload.content : []);
-            if (!schedules.length) {
-                message.textContent = 'ยังไม่มีตารางสอนที่แสดงได้';
-                return;
+            // Load my teaching schedules
+            const schedRes = await api.get('/api/v1/teacher-swaps/my-schedules');
+            if (schedRes.ok) {
+                const schedules = Array.isArray(schedRes.data) ? schedRes.data : (schedRes.data.content || []);
+                document.getElementById('stat-schedule-count').textContent = schedules.length;
+
+                if (schedules.length === 0) {
+                    ui.renderEmpty(list, 'ยังไม่มีคาบสอนที่มอบหมายให้ท่านในภาคการศึกษานี้');
+                } else {
+                    list.innerHTML = '';
+                    schedules.forEach(s => {
+                        const card = document.createElement('div');
+                        card.style.padding = '16px 20px';
+                        card.style.background = 'var(--surface)';
+                        card.style.border = '1px solid var(--border-subtle)';
+                        card.style.borderLeft = '4px solid var(--teal-primary)';
+                        card.style.borderRadius = '8px';
+                        card.style.display = 'flex';
+                        card.style.justifyContent = 'space-between';
+                        card.style.alignItems = 'center';
+                        card.style.flexWrap = 'wrap';
+                        card.style.gap = '14px';
+
+                        const timeStr = `${s.dayOfWeek || ''} ${s.startTime ? s.startTime.substring(0, 5) : ''}-${s.endTime ? s.endTime.substring(0, 5) : ''}`;
+
+                        card.innerHTML = `
+                            <div>
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                    <span class="mono" style="font-weight:700; font-size:1.05rem; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || 'วิชา')}</span>
+                                    <span style="font-size:0.85rem; font-weight:600; color:var(--slate-neutral); background:var(--bg-canvas); padding:2px 8px; border-radius:4px; border:1px solid var(--border-subtle);">
+                                        กลุ่ม ${s.sectionNumber || 1}
+                                    </span>
+                                    ${ui.badge(s.status || 'PUBLISHED')}
+                                    <span class="muted mono" style="font-size:0.75rem;">ID: #${s.id}</span>
+                                </div>
+                                <div style="font-size:0.95rem; font-weight:500; color:var(--ink-navy); margin-bottom:4px;">
+                                    ${ui.escapeHtml(s.courseTitle || '')}
+                                </div>
+                                <div class="muted" style="font-size:0.85rem;">
+                                    <span>🕒 ${timeStr}</span>
+                                    <span style="margin-left:12px;">📍 ${ui.escapeHtml(s.roomName || 'TBA')}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/teacher/swaps" class="btn btn--secondary btn--sm">
+                                    ⇄ ขอแลกคาบนี้
+                                </a>
+                            </div>
+                        `;
+                        list.appendChild(card);
+                    });
+                }
+            } else {
+                ui.renderError(list, schedRes.error);
             }
-            message.textContent = '';
-            schedules.forEach((schedule) => {
-                const item = document.createElement('div');
-                item.className = 'item';
-                const sectionId = schedule.section && schedule.section.id != null ? schedule.section.id : '—';
-                const slotId = schedule.timeSlot && schedule.timeSlot.id != null ? schedule.timeSlot.id : '—';
-                item.textContent = 'Schedule #' + schedule.id + ' · Section #' + sectionId + ' · Time slot #' + slotId + ' · ' + (schedule.status || '');
-                list.appendChild(item);
-            });
-        } catch (error) {
-            message.textContent = error.message || 'โหลดตารางสอนไม่สำเร็จ';
-            message.classList.add('error');
+
+            // Load swap counts
+            const swapRes = await api.get('/api/v1/teacher-swaps');
+            if (swapRes.ok) {
+                const inbox = swapRes.data || { sent: [], received: [] };
+                const pendingCount = (inbox.received || []).filter(r => r.status === 'PENDING').length;
+                document.getElementById('stat-swap-count').textContent = pendingCount;
+            }
+
+            // Load unread notifs
+            const notifRes = await api.get('/api/v1/notifications');
+            if (notifRes.ok) {
+                const notifs = Array.isArray(notifRes.data) ? notifRes.data : (notifRes.data.content || []);
+                const unread = notifs.filter(n => !n.isRead).length;
+                document.getElementById('stat-unread-count').textContent = unread;
+            }
+        } catch (e) {
+            ui.renderEmpty(list, 'ไม่สามารถเชื่อมต่อข้อมูลได้ในขณะนี้');
         }
     }
-    loadSchedules();
+
+    loadDashboardData();
 </script>
 </body>
 </html>

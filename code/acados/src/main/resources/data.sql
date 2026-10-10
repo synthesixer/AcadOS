@@ -51,7 +51,8 @@ INSERT IGNORE INTO `courses` (`id`, `course_code`, `title`, `weekly_hours`) VALU
 (2, 'CP353002', 'Database Systems', 3),
 (3, 'CP353003', 'Software Quality Assurance and Testing', 3),
 (4, 'CP353004', 'Cloud Architecture and DevOps', 3),
-(5, 'CP351001', 'Computer Programming I', 1);
+(5, 'CP351001', 'Computer Programming I', 1),
+(6, 'EN012001', 'Technical English for Computing', 4);
 
 -- -----------------------------------------------------------------------------
 -- 5. rooms
@@ -94,7 +95,14 @@ INSERT IGNORE INTO `time_slots` (`id`, `day_of_week`, `start_time`, `end_time`) 
 (22, 'THURSDAY', '11:00:00', '12:00:00'),
 (23, 'FRIDAY', '09:00:00', '10:00:00'),
 (24, 'FRIDAY', '10:00:00', '11:00:00'),
-(25, 'FRIDAY', '11:00:00', '12:00:00');
+(25, 'FRIDAY', '11:00:00', '12:00:00'),
+-- 2-hour slots (09:00-11:00, 13:00-15:00)
+(26, 'MONDAY', '09:00:00', '11:00:00'),
+(27, 'MONDAY', '13:00:00', '15:00:00'),
+(28, 'WEDNESDAY', '09:00:00', '11:00:00'),
+(29, 'WEDNESDAY', '13:00:00', '15:00:00'),
+(30, 'FRIDAY', '09:00:00', '11:00:00'),
+(31, 'FRIDAY', '13:00:00', '15:00:00');
 
 -- -----------------------------------------------------------------------------
 -- 7. teacher_qualifications (BR-06)
@@ -111,7 +119,8 @@ INSERT IGNORE INTO `teacher_qualifications` (`id`, `teacher_id`, `course_id`) VA
 (9, 3, 2), -- T003 qualifies for CP353002
 (10, 3, 3), -- T003 qualifies for CP353003
 (11, 3, 4), -- T003 qualifies for CP353004
-(12, 3, 5); -- T003 qualifies for CP351001
+(12, 3, 5), -- T003 qualifies for CP351001
+(13, 2, 6); -- T002 qualifies for EN012001
 
 -- -----------------------------------------------------------------------------
 -- 8. teacher_preferences (Priority: 1=highest +30, 2=+20, 3=+10)
@@ -125,7 +134,8 @@ INSERT IGNORE INTO `teacher_preferences` (`id`, `teacher_id`, `course_id`, `prio
 (6, 2, 5, 2),
 (7, 3, 3, 1),
 (8, 3, 4, 1),
-(9, 3, 5, 3);
+(9, 3, 5, 3),
+(10, 2, 6, 1);
 
 -- -----------------------------------------------------------------------------
 -- 9. teacher_availabilities (BR-07)
@@ -151,7 +161,9 @@ INSERT IGNORE INTO `teacher_availabilities` (`id`, `teacher_id`, `time_slot_id`,
 (18, 3, 5, true),
 (19, 3, 6, true),
 (20, 3, 7, true),
-(21, 3, 8, true);
+(21, 3, 8, true),
+(22, 2, 26, true),
+(23, 2, 28, true);
 
 -- -----------------------------------------------------------------------------
 -- 10. sections
@@ -163,7 +175,8 @@ INSERT IGNORE INTO `sections` (`id`, `course_id`, `section_number`, `capacity`, 
 (4, 2, 2, 30, 'ACTIVE'), -- CP353002 Sec 2 (Has schedule and S002 registered; for Section Cancellation demo)
 (5, 3, 1, 40, 'ACTIVE'), -- CP353003 Sec 1 (Published schedule with T003; enrolled by S001)
 (6, 5, 1, 30, 'ACTIVE'), -- CP351001 Sec 1 (Unscheduled; for Scenario 2 Auto Scheduling demo)
-(7, 4, 1, 25, 'ACTIVE'); -- CP353004 Sec 1 (Unscheduled; for Scenario 2 Auto Scheduling demo)
+(7, 4, 1, 25, 'ACTIVE'), -- CP353004 Sec 1 (Unscheduled; for Scenario 2 Auto Scheduling demo)
+(8, 6, 1, 40, 'ACTIVE'); -- EN012001 Sec 1 (2 sessions/week: Mon 09:00-11:00 and Wed 09:00-11:00 = 4 hrs/week)
 
 -- -----------------------------------------------------------------------------
 -- 11. schedules
@@ -177,7 +190,10 @@ INSERT IGNORE INTO `schedules` (`id`, `section_id`, `room_id`, `teacher_id`, `ti
 -- Schedule 3: CP353002 Sec 2, Room SC0201, Teacher T001, Wed 09:00-12:00 (For cancellation demo)
 (3, 4, 3, 1, 5, 'PUBLISHED'),
 -- Schedule 4: CP353003 Sec 1, Room LAB-501, Teacher T003, Thu 09:00-12:00 (Student S001 enrolled)
-(4, 5, 5, 3, 7, 'PUBLISHED');
+(4, 5, 5, 3, 7, 'PUBLISHED'),
+-- Schedule 5 & 6: EN012001 Sec 1 (Section 8), 2 sessions/week (Mon 09:00-11:00 & Wed 09:00-11:00), 2 hrs each = 4 hrs/week
+(5, 8, 2, 2, 26, 'PUBLISHED'),
+(6, 8, 2, 2, 28, 'PUBLISHED');
 
 -- -----------------------------------------------------------------------------
 -- 12. registrations

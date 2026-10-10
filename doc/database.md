@@ -1,4 +1,4 @@
-# AcadOS v4 — Database Tables
+# AcadOS — Database Tables
 
 MySQL 8.x · 16 ตาราง · ตารางไหนเก็บอะไร และเชื่อมกันอย่างไร
 

@@ -80,6 +80,7 @@ const api = (() => {
         get: (url, options) => request('GET', url, null, options),
         post: (url, body, options) => request('POST', url, body, options),
         put: (url, body, options) => request('PUT', url, body, options),
-        del: (url, options) => request('DELETE', url, null, options)
+        del: (url, options) => request('DELETE', url, null, options),
+        delete: (url, options) => request('DELETE', url, null, options)
     };
 })();

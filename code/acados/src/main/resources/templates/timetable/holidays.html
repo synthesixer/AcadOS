@@ -6,98 +6,165 @@
 </head>
 <body>
 <main>
-    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <div class="page-header">
         <div>
-            <h1>วันหยุดราชการ (Public Holidays)</h1>
-            <p class="muted">รายการวันหยุดราชการประจำปี ดึงจาก Nager.Date API</p>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--primary);">External Calendar Sync</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">วันหยุดราชการ (Public Holidays)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">รายการวันหยุดราชการประจำปี ซิงค์ข้อมูลอัตโนมัติจาก ThailandFormats API สำหรับการเว้นตารางสอนและสอบ</p>
         </div>
-        <div sec:authorize="hasRole('ADMIN')">
-            <button id="btn-sync" class="btn btn--primary" type="button">🔄 ซิงค์วันหยุด (Sync API)</button>
+        <div sec:authorize="hasRole('ADMIN')" style="display:flex; align-items:center; gap:10px;">
+            <select id="sync-year-select" style="padding:9px 12px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.9rem; background:var(--surface); font-weight:600; color:var(--ink-navy);">
+                <option value="2026" selected>ปีการศึกษา 2569 (2026)</option>
+                <option value="2025">ปีการศึกษา 2568 (2025)</option>
+                <option value="2024">ปีการศึกษา 2567 (2024)</option>
+                <option value="2027">ปีการศึกษา 2570 (2027)</option>
+            </select>
+            <button id="btn-sync" class="btn btn--primary" type="button" onclick="syncHolidays(this)">
+                🔄 ซิงค์วันหยุด (Sync API)
+            </button>
         </div>
     </div>
 
-    <div id="status-alert" class="hidden" style="padding:12px 16px; border-radius:8px; margin-bottom:16px;"></div>
+    <!-- Holidays Workbench Card -->
+    <div class="card" style="padding:22px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:18px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">วันหยุดราชการในระบบ</h3>
+                <span class="muted" style="font-size:0.88rem;">(<span class="num" id="holiday-count">0</span> วัน)</span>
+            </div>
+            <div>
+                <input type="text" id="holiday-filter" placeholder="ค้นหาชื่อวันหยุด หรือวันที่..." 
+                       style="padding:8px 14px; border:1px solid var(--border); border-radius:var(--radius-sm); font-size:0.88rem; width:260px;"
+                       oninput="renderFilteredHolidays()">
+            </div>
+        </div>
 
-    <div class="card">
-        <div id="holidays-list" style="display:grid; gap:10px;">
-            <p class="muted">กำลังโหลดข้อมูลวันหยุดราชการ...</p>
+        <div id="holidays-list" style="display:grid; gap:12px;">
+            <!-- Rendered by JS -->
         </div>
     </div>
 </main>
 
 <script>
-    const token = sessionStorage.getItem('acadosToken') || '';
-    const authHeaders = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        ...(token ? {'Authorization': 'Bearer ' + token} : {})
-    };
+    let allHolidays = [];
 
-    function showAlert(msg, isSuccess) {
-        const alert = document.getElementById('status-alert');
-        alert.textContent = msg;
-        alert.className = '';
-        alert.style.display = 'block';
-        alert.style.background = isSuccess ? 'var(--ok-bg)' : 'var(--danger-bg)';
-        alert.style.color = isSuccess ? 'var(--ok)' : 'var(--danger)';
-        setTimeout(() => { alert.style.display = 'none'; }, 4000);
+    const THAI_MONTHS = [
+        "", "ม.ค.", "ก.พ.", "มี.ค.", "เม.ย.", "พ.ค.", "มิ.ย.",
+        "ก.ค.", "ส.ค.", "ก.ย.", "ต.ค.", "พ.ย.", "ธ.ค."
+    ];
+
+    function parseDateParts(dateStr) {
+        if (!dateStr) return { day: '-', monthYear: '-', iso: '-' };
+        try {
+            const parts = dateStr.split('-');
+            if (parts.length === 3) {
+                const year = parseInt(parts[0], 10);
+                const month = parseInt(parts[1], 10);
+                const day = parseInt(parts[2], 10);
+                const thaiYear = year + 543;
+                return {
+                    day: String(day),
+                    monthYear: `${THAI_MONTHS[month]} ${thaiYear}`,
+                    iso: dateStr
+                };
+            }
+        } catch(e) {}
+        return { day: '-', monthYear: dateStr, iso: dateStr };
+    }
+
+    function renderFilteredHolidays() {
+        const list = document.getElementById('holidays-list');
+        const query = (document.getElementById('holiday-filter').value || '').trim().toLowerCase();
+
+        let filtered = allHolidays.filter(h => {
+            if (!query) return true;
+            const dateStr = String(h.date || h.holidayDate || '');
+            return (h.name || '').toLowerCase().includes(query) || 
+                   (h.description || '').toLowerCase().includes(query) ||
+                   dateStr.toLowerCase().includes(query);
+        });
+
+        if (filtered.length === 0) {
+            ui.renderEmpty(list, 'ไม่พบวันหยุดราชการที่ตรงกับการค้นหา หรือยังไม่มีข้อมูลในระบบ (กดปุ่มซิงค์ด้านบนเพื่อดึงข้อมูล)');
+            return;
+        }
+
+        list.innerHTML = '';
+        filtered.forEach(h => {
+            const item = document.createElement('div');
+            item.className = 'holiday-card';
+
+            const rawDate = h.date || h.holidayDate || '';
+            const dt = parseDateParts(rawDate);
+
+            let badgeHtml = '<span class="badge badge--neutral">วันหยุดราชการ</span>';
+            const nameLower = (h.name || '').toLowerCase();
+            if (nameLower.includes('ชดเชย') || nameLower.includes('substitut')) {
+                badgeHtml = '<span class="badge badge--warn">วันหยุดชดเชย</span>';
+            } else if (nameLower.includes('สงกรานต์') || nameLower.includes('ปีใหม่') || nameLower.includes('songkran') || nameLower.includes('new year')) {
+                badgeHtml = '<span class="badge badge--info">วันหยุดเทศกาล</span>';
+            }
+
+            item.innerHTML = `
+                <div class="holiday-card__date">
+                    <span class="holiday-card__day">${ui.escapeHtml(dt.day)}</span>
+                    <span class="holiday-card__month-year">${ui.escapeHtml(dt.monthYear)}</span>
+                    <span class="holiday-card__iso">${ui.escapeHtml(dt.iso)}</span>
+                </div>
+                <div class="holiday-card__content">
+                    <div class="holiday-card__title">${ui.escapeHtml(h.name)}</div>
+                    ${h.description ? `<div class="holiday-card__desc">${ui.escapeHtml(h.description)}</div>` : ''}
+                </div>
+                <div class="holiday-card__badge">
+                    ${badgeHtml}
+                </div>
+            `;
+            list.appendChild(item);
+        });
     }
 
     async function loadHolidays() {
         const list = document.getElementById('holidays-list');
-        try {
-            const res = await fetch('/api/v1/holidays', { headers: authHeaders });
-            if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลวันหยุดได้');
-            const holidays = await res.json();
-            if (!holidays.length) {
-                list.innerHTML = '<p class="muted">ไม่มีข้อมูลวันหยุดราชการในระบบ (กดปุ่มซิงค์ด้านบนเพื่อดึงข้อมูล)</p>';
-                return;
-            }
-            list.innerHTML = '';
-            holidays.forEach(h => {
-                const item = document.createElement('div');
-                item.style.padding = '12px 16px';
-                item.style.border = '1px solid var(--border)';
-                item.style.borderRadius = '8px';
-                item.style.display = 'flex';
-                item.style.justifyContent = 'space-between';
-                item.style.alignItems = 'center';
-                item.innerHTML = `
-                    <div>
-                        <strong>${h.name}</strong>
-                    </div>
-                    <div class="num" style="font-weight:600; color:var(--primary);">
-                        ${h.holidayDate}
-                    </div>
-                `;
-                list.appendChild(item);
-            });
-        } catch (e) {
-            list.innerHTML = `<p style="color:var(--danger);">${e.message}</p>`;
+        ui.renderLoading(list, 3);
+        const res = await api.get('/api/v1/holidays');
+        if (!res.ok) {
+            ui.renderError(list, res.error);
+            return;
         }
+
+        allHolidays = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        // Sort by date ascending
+        allHolidays.sort((a, b) => {
+            const da = a.date || a.holidayDate || '';
+            const db = b.date || b.holidayDate || '';
+            return da.localeCompare(db);
+        });
+        document.getElementById('holiday-count').textContent = allHolidays.length;
+        renderFilteredHolidays();
     }
 
-    const btnSync = document.getElementById('btn-sync');
-    if (btnSync) {
-        btnSync.addEventListener('click', async () => {
-            btnSync.disabled = true;
-            btnSync.textContent = 'กำลังซิงค์...';
-            try {
-                const res = await fetch('/api/v1/holidays/sync', { method: 'POST', headers: authHeaders });
-                if (!res.ok) throw new Error('การซิงค์ล้มเหลว');
-                showAlert('ซิงค์วันหยุดจาก External API สำเร็จแล้ว', true);
-                loadHolidays();
-            } catch (e) {
-                showAlert(e.message, false);
-            } finally {
-                btnSync.disabled = false;
-                btnSync.textContent = '🔄 ซิงค์วันหยุด (Sync API)';
+    async function syncHolidays(btn) {
+        ui.setBusy(btn, true);
+        const yearSelect = document.getElementById('sync-year-select');
+        const year = yearSelect ? yearSelect.value : '2026';
+        try {
+            const res = await api.post(`/api/v1/holidays/sync?year=${year}`);
+            if (res.ok) {
+                ui.toast('success', `ซิงค์วันหยุดราชการประจำปี ${year} (พ.ศ. ${parseInt(year) + 543}) สำเร็จเรียบร้อย`);
+                await loadHolidays();
+            } else {
+                ui.toast('error', res.error.message || 'การซิงค์ข้อมูลล้มเหลว');
             }
-        });
+        } catch (e) {
+            ui.toast('error', 'เกิดข้อผิดพลาดในการเชื่อมต่อเครือข่าย');
+        } finally {
+            ui.setBusy(btn, false);
+        }
     }
 
     loadHolidays();
 </script>
 </body>
 </html>
-

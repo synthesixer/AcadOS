@@ -1,4 +1,4 @@
-# AcadOS v4 — แผนการแบ่งงานรายบุคคลแบบละเอียด (Team Work Division & Step-by-Step Guide)
+# AcadOS — แผนการแบ่งงานรายบุคคลแบบละเอียด (Team Work Division & Step-by-Step Guide)
 
 > **เอกสารอ้างอิงหลัก:** [Implement_Plan-AcadOS.md](Implement_Plan-AcadOS.md) · [database.md](database.md) · [sequence-diagrams.md](sequence-diagrams.md) · [userflow_v2.md](userflow_v2.md) · [prof_ruleset.md](prof_ruleset.md) · ไดอะแกรมทุกตัวใน `doc/diagram/`  
 > **เป้าหมาย:** สมาชิกทั้ง 3 คนมีภาระงานเท่าเทียมกัน (Workload Equity), พัฒนาคู่ขนานได้ 100% โดยไม่ติดบล็อก, **ไม่มี Merge Conflict (Zero-Conflict Architecture)**, และปฏิบัติตามเกณฑ์ข้อกำหนดรายวิชา CP353002 ครบถ้วน

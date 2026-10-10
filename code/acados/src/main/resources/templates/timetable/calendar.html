@@ -1,70 +1,197 @@
 <!DOCTYPE html>
-<html lang="th" xmlns:th="http://www.thymeleaf.org"
+<html lang="th" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
       th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
 <head>
     <title>ปฏิทินการศึกษา | AcadOS</title>
 </head>
 <body>
 <main>
-    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
         <div>
-            <h1>ปฏิทินการศึกษา (Academic Calendar)</h1>
-            <p class="muted">ช่วงเวลาเปิดภาคการศึกษา ช่วงลงทะเบียนเรียน และช่วงสอบ</p>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Academic Schedule & Milestones</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">ปฏิทินการศึกษา (Academic Calendar)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">กำหนดการเปิด-ปิดภาคเรียน ช่วงเวลาลงทะเบียนเรียน และช่วงสอบประจำภาคการศึกษา</p>
+        </div>
+        <div style="display:flex; gap:10px;">
+            <a th:href="@{/holidays}" class="btn btn--secondary btn--sm">
+                ดูวันหยุดราชการ →
+            </a>
         </div>
     </div>
 
-    <div class="card">
+    <!-- Create Academic Event Card (Admin Only) -->
+    <div sec:authorize="hasRole('ADMIN')" class="card" style="padding:22px; margin-bottom:24px;">
+        <h3 style="margin:0 0 4px; font-size:1.15rem; color:var(--ink-navy);">เพิ่มกิจกรรมในปฏิทินการศึกษา</h3>
+        <p class="muted" style="margin:0 0 16px; font-size:0.88rem;">กำหนดช่วงเวลาสำหรับภาคการศึกษา ช่วงลงทะเบียนเรียน หรือช่วงสอบ</p>
+
+        <form id="create-event-form" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:14px; align-items:flex-end;">
+            <div>
+                <label for="event-name" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชื่อกิจกรรม (Event Name) *</label>
+                <input id="event-name" placeholder="เช่น ช่วงลงทะเบียนเรียน 1/2569" required
+                       style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+            </div>
+            <div>
+                <label for="event-type" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ประเภทกิจกรรม (Event Type) *</label>
+                <select id="event-type" required
+                        style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                    <option value="REGISTRATION_PERIOD">ช่วงลงทะเบียน (REGISTRATION_PERIOD)</option>
+                    <option value="EXAM_PERIOD">ช่วงสอบ (EXAM_PERIOD)</option>
+                    <option value="SEMESTER_PERIOD">ภาคการศึกษา (SEMESTER_PERIOD)</option>
+                </select>
+            </div>
+            <div>
+                <label for="event-start-date" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">วันที่เริ่มต้น (Start Date) *</label>
+                <input id="event-start-date" type="date" required
+                       style="width:100%; padding:8px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+            </div>
+            <div>
+                <label for="event-end-date" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">วันที่สิ้นสุด (End Date) *</label>
+                <input id="event-end-date" type="date" required
+                       style="width:100%; padding:8px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+            </div>
+            <div>
+                <button class="btn btn--primary" type="submit" id="btn-create-event" style="width:100%; height:40px;">
+                    + บันทึกกิจกรรม
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Calendar Events Workbench -->
+    <div class="card" style="padding:22px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h3 style="margin:0; font-size:1.1rem; color:var(--ink-navy);">กำหนดการในภาคการศึกษา</h3>
+            <span class="muted" style="font-size:0.85rem;" id="event-count-label">กำลังโหลด...</span>
+        </div>
+
         <div id="events-list" style="display:grid; gap:12px;">
-            <p class="muted">กำลังโหลดข้อมูลปฏิทินการศึกษา...</p>
+            <!-- Rendered by JS -->
         </div>
     </div>
 </main>
 
 <script>
-    const token = sessionStorage.getItem('acadosToken') || '';
-    const authHeaders = {
-        'Accept': 'application/json',
-        ...(token ? {'Authorization': 'Bearer ' + token} : {})
-    };
+    function getEventTypeBadge(type) {
+        if (type === 'REGISTRATION_PERIOD') {
+            return '<span class="badge badge--ok">ช่วงลงทะเบียน</span>';
+        }
+        if (type === 'EXAM_PERIOD') {
+            return '<span class="badge badge--danger">ช่วงสอบ</span>';
+        }
+        if (type === 'SEMESTER_PERIOD') {
+            return '<span class="badge badge--primary">ภาคการศึกษา</span>';
+        }
+        return `<span class="badge badge--neutral">${ui.escapeHtml(type || 'กิจกรรม')}</span>`;
+    }
+
+    function deleteEvent(id, name) {
+        ui.openDecisionSheet({
+            title: `ยืนยันลบกิจกรรม ${name}`,
+            desc: `คุณกำลังจะลบกิจกรรม #${id} ออกจากปฏิทินการศึกษา`,
+            impacts: ['กิจกรรมนี้จะถูกนำออกจากปฏิทินและไม่มีผลต่อการตรวจสอบช่วงเวลาในระบบอีกต่อไป'],
+            confirmText: 'ยืนยันลบกิจกรรม',
+            confirmClass: 'btn--danger',
+            onConfirm: async () => {
+                const res = await api.del(`/api/v1/academic-events/${id}`);
+                if (res.ok) {
+                    ui.toast('success', `ลบกิจกรรม ${name} เรียบร้อยแล้ว`);
+                    await loadEvents();
+                } else {
+                    ui.toast('error', res.error.message || 'ไม่สามารถลบกิจกรรมได้');
+                }
+            }
+        });
+    }
 
     async function loadEvents() {
         const list = document.getElementById('events-list');
-        try {
-            const res = await fetch('/api/v1/academic-events', { headers: authHeaders });
-            if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลปฏิทินได้');
-            const events = await res.json();
-            if (!events.length) {
-                list.innerHTML = '<p class="muted">ไม่มีกิจกรรมในปฏิทินการศึกษา</p>';
-                return;
-            }
-            list.innerHTML = '';
-            events.forEach(e => {
-                const item = document.createElement('div');
-                item.style.padding = '14px 18px';
-                item.style.border = '1px solid var(--border)';
-                item.style.borderRadius = '8px';
-                item.style.display = 'flex';
-                item.style.justifyContent = 'space-between';
-                item.style.alignItems = 'center';
-                item.innerHTML = `
-                    <div>
-                        <strong style="font-size:1.05em;">${e.eventName}</strong>
-                        <div class="muted" style="font-size:0.9em; margin-top:2px;">ประเภท: ${e.eventType}</div>
-                    </div>
-                    <div style="text-align:right;">
-                        <span style="display:inline-block; padding:4px 10px; border-radius:6px; font-size:0.85em; background:var(--primary-50); color:var(--primary); font-weight:500;">
-                            ${e.startDate} ถึง ${e.endDate}
-                        </span>
-                    </div>
-                `;
-                list.appendChild(item);
-            });
-        } catch (e) {
-            list.innerHTML = `<p style="color:var(--danger);">${e.message}</p>`;
+        ui.renderLoading(list, 3);
+        const res = await api.get('/api/v1/academic-events');
+        if (!res.ok) {
+            ui.renderError(list, res.error);
+            return;
         }
+
+        const events = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        document.getElementById('event-count-label').textContent = `ทั้งหมด ${events.length} กิจกรรม`;
+
+        if (events.length === 0) {
+            ui.renderEmpty(list, 'ไม่มีกิจกรรมในปฏิทินการศึกษาสำหรับช่วงเวลานี้');
+            return;
+        }
+
+        const isAdmin = sessionStorage.getItem('acadosRole') === 'ADMIN';
+
+        list.innerHTML = '';
+        events.forEach(e => {
+            const item = document.createElement('div');
+            item.style.padding = '16px 20px';
+            item.style.background = 'var(--surface)';
+            item.style.border = '1px solid var(--border-subtle)';
+            item.style.borderLeft = '4px solid var(--teal-primary)';
+            item.style.borderRadius = '8px';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.style.flexWrap = 'wrap';
+            item.style.gap = '14px';
+
+            item.innerHTML = `
+                <div style="flex:1; min-width:0; overflow-wrap:break-word;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
+                        <strong style="color:var(--ink-navy); font-size:1.05rem;">${ui.escapeHtml(e.eventName)}</strong>
+                        ${getEventTypeBadge(e.eventType)}
+                        <span class="muted mono" style="font-size:0.75rem;">ID: #${e.id}</span>
+                    </div>
+                    <div class="muted" style="font-size:0.85rem;">
+                        ประเภท: <span class="mono">${ui.escapeHtml(e.eventType || '-')}</span>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px; flex-shrink:0;">
+                    <span class="mono" style="display:inline-block; padding:5px 12px; border-radius:6px; font-size:0.88rem; font-weight:600; background:var(--primary-50); color:var(--primary); border:1px solid #CCECE7; white-space:nowrap;">
+                        ${e.startDate} ถึง ${e.endDate}
+                    </span>
+                    ${isAdmin ? `
+                        <button type="button" class="btn btn--danger btn--sm" onclick="deleteEvent(${e.id}, '${ui.escapeHtml(e.eventName)}')">
+                            ลบ
+                        </button>
+                    ` : ''}
+                </div>
+            `;
+            list.appendChild(item);
+        });
     }
+
+    const eventForm = document.getElementById('create-event-form');
+    if (eventForm) {
+        eventForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const btn = document.getElementById('btn-create-event');
+            ui.setBusy(btn, true);
+
+            const payload = {
+                eventName: document.getElementById('event-name').value.trim(),
+                eventType: document.getElementById('event-type').value,
+                startDate: document.getElementById('event-start-date').value,
+                endDate: document.getElementById('event-end-date').value
+            };
+
+            const res = await api.post('/api/v1/academic-events', payload);
+            ui.setBusy(btn, false);
+
+            if (res.ok) {
+                ui.toast('success', `เพิ่มกิจกรรม ${payload.eventName} เรียบร้อยแล้ว`);
+                eventForm.reset();
+                await loadEvents();
+            } else {
+                ui.toast('error', res.error.message || 'ไม่สามารถเพิ่มกิจกรรมได้');
+            }
+        });
+    }
+
     loadEvents();
 </script>
 </body>
 </html>
-

@@ -6,234 +6,700 @@
 </head>
 <body>
 <main>
-    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+    <div class="page-header">
         <div>
-            <h1>ตารางสอนและตารางเรียน (Timetable Grid)</h1>
-            <p class="muted">แสดงตารางการเรียนการสอนรายสัปดาห์ สถานะ DRAFT และ PUBLISHED</p>
+            <h1>ตารางสอนและตารางเรียน (Timetable Workbench)</h1>
+            <p class="muted">แสดงผลผังตารางเรียนและคาบสอนรายสัปดาห์ · กำหนดเวลาจริงและรองรับหลายคาบต่อสัปดาห์</p>
         </div>
-        <div sec:authorize="hasRole('ADMIN')" style="display:flex; gap:8px;">
-            <button id="btn-generate" class="btn btn--primary" type="button">⚡ จัดตารางอัตโนมัติ (Generate)</button>
-            <button id="btn-publish" class="btn" style="background:var(--ok); color:#fff;" type="button">✔ เผยแพร่ (Publish)</button>
-            <button id="btn-discard" class="btn" style="background:var(--danger); color:#fff;" type="button">✖ ลบร่าง (Discard)</button>
+        <div sec:authorize="hasRole('ADMIN')" style="display:flex; flex-wrap:wrap; gap:8px;">
+            <button id="btn-generate" class="btn btn--primary" type="button">
+                ⚡ จัดตารางอัตโนมัติ (Generate)
+            </button>
+            <button id="btn-publish" class="btn btn--success" type="button">
+                ✔ เผยแพร่ตาราง (Publish)
+            </button>
+            <button id="btn-discard" class="btn btn--danger btn--sm" type="button">
+                ✖ ลบร่าง (Discard)
+            </button>
         </div>
     </div>
 
-    <!-- Alert Banner for notifications -->
-    <div id="status-alert" class="hidden" style="padding:12px 16px; border-radius:8px; margin-bottom:16px;"></div>
-
-    <div class="card" style="margin-bottom:24px;">
-        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
-            <h2>ตารางประจำสัปดาห์</h2>
-            <div style="display:flex; gap:12px; align-items:center;">
-                <label for="status-filter" class="muted">สถานะ:</label>
-                <select id="status-filter" class="form-control" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border);">
-                    <option value="">ทั้งหมด (All)</option>
-                    <option value="PUBLISHED" selected>เผยแพร่แล้ว (PUBLISHED)</option>
-                    <option value="DRAFT">ฉบับร่าง (DRAFT)</option>
+    <!-- View Filter Toolbar (สำหรับผู้ดูแลระบบและผู้ใช้งานในการเปิดดูตารางของทุกคน) -->
+    <div class="view-filter-bar">
+        <div class="view-filter-bar__controls">
+            <div class="form-group-inline">
+                <label for="view-mode">🔍 มุมมองตาราง:</label>
+                <select id="view-mode" onchange="onViewModeChange()">
+                    <option value="ALL">🌐 ผังรวมทุกคนในระบบ (Master Timetable)</option>
+                    <option value="TEACHER">👨‍🏫 ดูตามอาจารย์ผู้สอน (By Teacher)</option>
+                    <option value="ROOM">🏢 ดูตามห้องเรียน (By Room)</option>
+                    <option value="SECTION">📚 ดูตามรายวิชาและกลุ่มเรียน (By Course & Section)</option>
                 </select>
+            </div>
+            <div class="form-group-inline" id="target-container" style="display:none;">
+                <label for="view-target" id="target-label">เลือกอาจารย์:</label>
+                <select id="view-target" onchange="onViewTargetChange()" style="min-width:220px;">
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+            <div class="form-group-inline">
+                <label for="view-search">ค้นหาด่วน:</label>
+                <input type="text" id="view-search" placeholder="รหัสวิชา, ชื่อวิชา, ห้อง, ผู้สอน..." oninput="onSearchInput()" style="width:210px;">
+            </div>
+        </div>
+        <div>
+            <button type="button" class="btn btn--outline btn--sm" onclick="resetFilters()">
+                🔄 ล้างตัวกรอง
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Ledger Filters -->
+    <div class="status-ledger" id="grid-status-ledger">
+        <button type="button" class="status-pill is-active" data-filter="" onclick="setStatusFilter('')">
+            <span>ทั้งหมด (All)</span>
+            <span class="status-pill__count" id="count-all">0</span>
+        </button>
+        <button type="button" class="status-pill" data-filter="PUBLISHED" onclick="setStatusFilter('PUBLISHED')">
+            <span class="status-pill__dot status-pill__dot--published"></span>
+            <span>เผยแพร่แล้ว (PUBLISHED)</span>
+            <span class="status-pill__count" id="count-pub">0</span>
+        </button>
+        <button type="button" class="status-pill" data-filter="DRAFT" onclick="setStatusFilter('DRAFT')">
+            <span class="status-pill__dot status-pill__dot--draft"></span>
+            <span>ฉบับร่าง (DRAFT)</span>
+            <span class="status-pill__count" id="count-draft">0</span>
+        </button>
+    </div>
+
+    <!-- Weekly Timetable Matrix Card -->
+    <div class="card" style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+                <h2 id="matrix-title">ผังตารางประจำสัปดาห์ — ผังรวมทุกคนในระบบ</h2>
+                <p class="muted" style="font-size:0.82rem; margin:2px 0 0 0;">
+                    ตารางเวลา 09:00 - 17:00 น. · รองรับคาบสอน 1 ชม., 2 ชม. (เช่น 09:00 - 11:00 น.), 3 ชม. และกลุ่มที่สอน 2 คาบ/สัปดาห์
+                </p>
+            </div>
+            <div id="active-perspective-badge" style="font-size:0.82rem; font-weight:600; color:var(--primary);">
+                🌐 ผังรวมทั้งหมด
             </div>
         </div>
 
-        <div style="overflow-x:auto;">
-            <table class="table" style="width:100%; border-collapse:collapse; text-align:center;">
+        <div class="table-container" style="overflow-x:auto;">
+            <table class="timetable-grid" style="min-width:960px;">
                 <thead>
-                    <tr style="background:var(--primary-50); border-bottom:2px solid var(--border);">
-                        <th style="padding:12px; width:120px;">วัน / เวลา</th>
-                        <th style="padding:12px;">08:00 - 10:00</th>
-                        <th style="padding:12px;">10:00 - 12:00</th>
-                        <th style="padding:12px;">13:00 - 15:00</th>
-                        <th style="padding:12px;">15:00 - 17:00</th>
-                        <th style="padding:12px;">17:00 - 19:00</th>
+                    <tr>
+                        <th class="day-header" style="width:110px;">วัน / เวลา</th>
+                        <th>09:00 - 10:00</th>
+                        <th>10:00 - 11:00</th>
+                        <th>11:00 - 12:00</th>
+                        <th class="lunch-header" style="width:76px;">12:00 - 13:00</th>
+                        <th>13:00 - 14:00</th>
+                        <th>14:00 - 15:00</th>
+                        <th>15:00 - 16:00</th>
+                        <th>16:00 - 17:00</th>
                     </tr>
                 </thead>
-                <tbody id="timetable-body">
-                    <tr><td colspan="6" style="padding:24px;" class="muted">กำลังโหลดข้อมูลตาราง...</td></tr>
+                <tbody id="timetable-matrix">
+                    <tr><td colspan="9" style="padding:28px; text-align:center;" class="muted">กำลังโหลดข้อมูลตารางสอน...</td></tr>
                 </tbody>
             </table>
         </div>
     </div>
 
+    <!-- Detailed Schedule List Card -->
     <div class="card">
-        <h3>รายการคาบสอนทั้งหมด (Schedule List)</h3>
-        <p class="muted" style="margin-bottom:12px;">รายละเอียดรายคาบ วิชา ผู้สอน และห้องเรียน</p>
-        <div id="schedule-list" style="display:grid; gap:8px;"></div>
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+                <h3>รายการคาบสอนและกลุ่มเรียนทั้งหมด (Detailed Registry)</h3>
+                <p class="muted" style="font-size:0.8rem; margin:2px 0 0 0;">
+                    แสดงข้อมูลรายกลุ่มเรียนและโครงสร้างคาบสอนรายสัปดาห์ พร้อมระบุกรณีสอน 2 รอบ/สัปดาห์
+                </p>
+            </div>
+            <span class="muted" id="registry-summary" style="font-size:0.82rem;"></span>
+        </div>
+        <div id="schedule-ribbon-list" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px;"></div>
     </div>
 </main>
 
 <script>
-    const token = sessionStorage.getItem('acadosToken') || '';
-    const authHeaders = {
-        'Accept': 'application/json',
-        'Content-Type': 'application/json',
-        ...(token ? {'Authorization': 'Bearer ' + token} : {})
-    };
+    let activeStatusFilter = '';
+    let activeViewMode = 'ALL';
+    let activeViewTarget = '';
+    let searchQuery = '';
+    let currentSchedules = [];
 
-    function showAlert(msg, isSuccess) {
-        const alert = document.getElementById('status-alert');
-        alert.textContent = msg;
-        alert.className = '';
-        alert.style.display = 'block';
-        alert.style.background = isSuccess ? 'var(--ok-bg)' : 'var(--danger-bg)';
-        alert.style.color = isSuccess ? 'var(--ok)' : 'var(--danger)';
-        setTimeout(() => { alert.style.display = 'none'; }, 4000);
+    // Master lists for dropdown populating
+    let teacherMap = new Map();
+    let roomMap = new Map();
+    let sectionMap = new Map();
+
+    const DAYS_MAP = [
+        { key: 'MONDAY', label: 'จันทร์ (Mon)' },
+        { key: 'TUESDAY', label: 'อังคาร (Tue)' },
+        { key: 'WEDNESDAY', label: 'พุธ (Wed)' },
+        { key: 'THURSDAY', label: 'พฤหัส (Thu)' },
+        { key: 'FRIDAY', label: 'ศุกร์ (Fri)' },
+        { key: 'SATURDAY', label: 'เสาร์ (Sat)' },
+        { key: 'SUNDAY', label: 'อาทิตย์ (Sun)' }
+    ];
+
+    function setStatusFilter(status) {
+        activeStatusFilter = status;
+        document.querySelectorAll('#grid-status-ledger .status-pill').forEach(pill => {
+            pill.classList.toggle('is-active', pill.dataset.filter === status);
+        });
+        renderView();
+    }
+
+    function onViewModeChange() {
+        const mode = document.getElementById('view-mode').value;
+        activeViewMode = mode;
+        const targetContainer = document.getElementById('target-container');
+        const targetLabel = document.getElementById('target-label');
+        const targetSelect = document.getElementById('view-target');
+
+        targetSelect.innerHTML = '';
+
+        if (mode === 'ALL') {
+            targetContainer.style.display = 'none';
+            activeViewTarget = '';
+        } else if (mode === 'TEACHER') {
+            targetContainer.style.display = 'flex';
+            targetLabel.textContent = 'เลือกอาจารย์:';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- เลือกอาจารย์ที่ต้องการดูตาราง --';
+            targetSelect.appendChild(defaultOpt);
+
+            Array.from(teacherMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                targetSelect.appendChild(opt);
+            });
+            activeViewTarget = '';
+        } else if (mode === 'ROOM') {
+            targetContainer.style.display = 'flex';
+            targetLabel.textContent = 'เลือกห้องเรียน:';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- เลือกห้องเรียนที่ต้องการดูตาราง --';
+            targetSelect.appendChild(defaultOpt);
+
+            Array.from(roomMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                targetSelect.appendChild(opt);
+            });
+            activeViewTarget = '';
+        } else if (mode === 'SECTION') {
+            targetContainer.style.display = 'flex';
+            targetLabel.textContent = 'เลือกรายวิชา/กลุ่ม:';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- เลือกรายวิชา/กลุ่มเรียน --';
+            targetSelect.appendChild(defaultOpt);
+
+            Array.from(sectionMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, label]) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = label;
+                targetSelect.appendChild(opt);
+            });
+            activeViewTarget = '';
+        }
+
+        renderView();
+    }
+
+    function onViewTargetChange() {
+        activeViewTarget = document.getElementById('view-target').value;
+        renderView();
+    }
+
+    function onSearchInput() {
+        searchQuery = (document.getElementById('view-search').value || '').trim().toLowerCase();
+        renderView();
+    }
+
+    function resetFilters() {
+        document.getElementById('view-mode').value = 'ALL';
+        document.getElementById('view-search').value = '';
+        activeViewMode = 'ALL';
+        activeViewTarget = '';
+        searchQuery = '';
+        document.getElementById('target-container').style.display = 'none';
+        setStatusFilter('');
+    }
+
+    // Helper functions for entity normalization
+    function getScheduleDay(s) {
+        if (s.dayOfWeek) return s.dayOfWeek;
+        if (s.timeSlot && s.timeSlot.dayOfWeek) return s.timeSlot.dayOfWeek;
+        return '';
+    }
+
+    function getScheduleStartTime(s) {
+        if (s.startTime) return typeof s.startTime === 'string' ? s.startTime : String(s.startTime);
+        if (s.timeSlot && s.timeSlot.startTime) return s.timeSlot.startTime;
+        return '09:00:00';
+    }
+
+    function getScheduleEndTime(s) {
+        if (s.endTime) return typeof s.endTime === 'string' ? s.endTime : String(s.endTime);
+        if (s.timeSlot && s.timeSlot.endTime) return s.timeSlot.endTime;
+        return '12:00:00';
+    }
+
+    function parseHour(timeStr) {
+        if (!timeStr) return 9;
+        const parts = timeStr.split(':');
+        return parseInt(parts[0], 10);
+    }
+
+    function getDurationHours(s) {
+        const start = parseHour(getScheduleStartTime(s));
+        const end = parseHour(getScheduleEndTime(s));
+        const diff = end - start;
+        return diff > 0 ? diff : 1;
+    }
+
+    function getScheduleRoom(s) {
+        if (s.roomName) return s.roomName;
+        if (s.room) return (s.room.building + ' ' + s.room.roomNumber).trim();
+        return 'ยังไม่ระบุห้อง';
+    }
+
+    function getScheduleTeacher(s) {
+        if (s.teacherName) return s.teacherName;
+        if (s.teacher && s.teacher.fullName) return s.teacher.fullName;
+        return 'ยังไม่ระบุอาจารย์';
     }
 
     async function loadSchedules() {
-        const filter = document.getElementById('status-filter').value;
-        const url = filter ? `/api/v1/schedules?status=${filter}` : '/api/v1/schedules';
-        const tbody = document.getElementById('timetable-body');
-        const list = document.getElementById('schedule-list');
-
-        try {
-            const res = await fetch(url, { headers: authHeaders });
-            if (!res.ok) throw new Error('ไม่สามารถโหลดตารางได้');
-            const data = await res.json();
-            const items = Array.isArray(data) ? data : (data.content || []);
-
-            renderGrid(items);
-            renderList(items);
-        } catch (e) {
-            tbody.innerHTML = `<tr><td colspan="6" style="padding:24px; color:var(--danger);">${e.message}</td></tr>`;
+        const res = await api.get('/api/v1/schedules');
+        if (!res.ok) {
+            ui.toast('error', res.error.message || 'ไม่สามารถโหลดตารางได้');
+            return;
         }
+        currentSchedules = Array.isArray(res.data) ? res.data : (res.data.content || []);
+
+        // Also fetch drafts if admin
+        const draftRes = await api.get('/api/v1/schedules?status=DRAFT', { redirectOn401: false });
+        if (draftRes.ok && Array.isArray(draftRes.data)) {
+            const existingIds = new Set(currentSchedules.map(s => s.id));
+            draftRes.data.forEach(d => {
+                if (!existingIds.has(d.id)) currentSchedules.push(d);
+            });
+        }
+
+        // Also load rooms from API to ensure complete list in dropdown
+        const roomRes = await api.get('/api/v1/rooms', { redirectOn401: false });
+        if (roomRes.ok && Array.isArray(roomRes.data)) {
+            roomRes.data.forEach(r => {
+                const label = `${r.building || ''} ${r.roomNumber || ''} (จุ ${r.capacity || 0} ที่นั่ง)`.trim();
+                roomMap.set(String(r.id), label);
+            });
+        }
+
+        // Extract teachers, rooms, and sections from schedules
+        currentSchedules.forEach(s => {
+            if (s.teacherId && s.teacherName) {
+                teacherMap.set(String(s.teacherId), s.teacherName);
+            }
+            if (s.roomId) {
+                const roomLabel = getScheduleRoom(s);
+                if (!roomMap.has(String(s.roomId))) {
+                    roomMap.set(String(s.roomId), roomLabel);
+                }
+            }
+            if (s.sectionId) {
+                const secLabel = `${s.courseCode || 'วิชา'} · กลุ่ม ${s.sectionNumber || 1} (${s.courseTitle || ''})`;
+                sectionMap.set(String(s.sectionId), secLabel);
+            }
+        });
+
+        updateCounts();
+        renderView();
     }
 
-    const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
-    const DAY_LABELS = {
-        MONDAY: 'จันทร์',
-        TUESDAY: 'อังคาร',
-        WEDNESDAY: 'พุธ',
-        THURSDAY: 'พฤหัสบดี',
-        FRIDAY: 'ศุกร์',
-        SATURDAY: 'เสาร์',
-        SUNDAY: 'อาทิตย์'
-    };
+    function updateCounts() {
+        const pub = currentSchedules.filter(s => s.status === 'PUBLISHED').length;
+        const draft = currentSchedules.filter(s => s.status === 'DRAFT').length;
+        document.getElementById('count-all').textContent = currentSchedules.length;
+        document.getElementById('count-pub').textContent = pub;
+        document.getElementById('count-draft').textContent = draft;
+    }
 
-    function renderGrid(schedules) {
-        const tbody = document.getElementById('timetable-body');
-        tbody.innerHTML = '';
-
-        DAYS.forEach(day => {
-            const row = document.createElement('tr');
-            row.style.borderBottom = '1px solid var(--border)';
-            
-            const dayCell = document.createElement('td');
-            dayCell.style.padding = '12px';
-            dayCell.style.fontWeight = '600';
-            dayCell.style.background = 'var(--bg)';
-            dayCell.textContent = DAY_LABELS[day];
-            row.appendChild(dayCell);
-
-            // 5 time slot columns placeholder
-            for (let i = 0; i < 5; i++) {
-                const cell = document.createElement('td');
-                cell.style.padding = '8px';
-                cell.style.verticalAlign = 'top';
-                cell.style.minHeight = '60px';
-
-                const daySchedules = schedules.filter(s => s.dayOfWeek === day);
-                if (daySchedules[i]) {
-                    const s = daySchedules[i];
-                    const badge = document.createElement('div');
-                    badge.style.padding = '8px';
-                    badge.style.borderRadius = '6px';
-                    badge.style.background = s.status === 'PUBLISHED' ? 'var(--ok-bg)' : 'var(--warn-bg)';
-                    badge.style.border = s.status === 'PUBLISHED' ? '1px solid var(--ok)' : '1px solid var(--warn)';
-                    badge.innerHTML = `
-                        <div style="font-weight:600;">${s.courseCode || 'Section ' + s.sectionNumber}</div>
-                        <div style="font-size:0.85em;" class="muted">${s.teacherName || ''}</div>
-                        <div style="font-size:0.8em; margin-top:4px;">ห้อง: ${s.roomNumber || 'TBA'}</div>
-                    `;
-                    cell.appendChild(badge);
-                } else {
-                    cell.innerHTML = '<span class="muted" style="font-size:0.8em;">-</span>';
-                }
-                row.appendChild(cell);
+    function getFilteredSchedules() {
+        return currentSchedules.filter(s => {
+            // 1. Status Filter
+            if (activeStatusFilter && s.status !== activeStatusFilter) {
+                return false;
             }
-            tbody.appendChild(row);
+
+            // 2. View Mode & Target Filter
+            if (activeViewMode === 'TEACHER' && activeViewTarget) {
+                if (String(s.teacherId) !== String(activeViewTarget)) return false;
+            } else if (activeViewMode === 'ROOM' && activeViewTarget) {
+                if (String(s.roomId) !== String(activeViewTarget)) return false;
+            } else if (activeViewMode === 'SECTION' && activeViewTarget) {
+                if (String(s.sectionId) !== String(activeViewTarget)) return false;
+            }
+
+            // 3. Search Query Filter
+            if (searchQuery) {
+                const text = `${s.courseCode || ''} ${s.courseTitle || ''} ${getScheduleTeacher(s)} ${getScheduleRoom(s)} กลุ่ม ${s.sectionNumber || ''}`.toLowerCase();
+                if (!text.includes(searchQuery)) return false;
+            }
+
+            return true;
         });
     }
 
-    function renderList(schedules) {
-        const list = document.getElementById('schedule-list');
-        list.innerHTML = '';
-        if (schedules.length === 0) {
-            list.innerHTML = '<p class="muted">ไม่มีรายการคาบสอน</p>';
+    function renderView() {
+        const filtered = getFilteredSchedules();
+        updateHeaderAndBadge();
+        renderMatrix(filtered);
+        renderRibbonList(filtered);
+    }
+
+    function updateHeaderAndBadge() {
+        const titleEl = document.getElementById('matrix-title');
+        const badgeEl = document.getElementById('active-perspective-badge');
+
+        if (activeViewMode === 'TEACHER' && activeViewTarget && teacherMap.has(activeViewTarget)) {
+            const name = teacherMap.get(activeViewTarget);
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — อาจารย์: ${name}`;
+            badgeEl.textContent = `👨‍🏫 ${name}`;
+        } else if (activeViewMode === 'ROOM' && activeViewTarget && roomMap.has(activeViewTarget)) {
+            const rName = roomMap.get(activeViewTarget);
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — ห้องเรียน: ${rName}`;
+            badgeEl.textContent = `🏢 ${rName}`;
+        } else if (activeViewMode === 'SECTION' && activeViewTarget && sectionMap.has(activeViewTarget)) {
+            const sName = sectionMap.get(activeViewTarget);
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — กลุ่มเรียน: ${sName}`;
+            badgeEl.textContent = `📚 ${sName}`;
+        } else {
+            titleEl.textContent = 'ผังตารางประจำสัปดาห์ — ผังรวมทุกคนในระบบ';
+            badgeEl.textContent = '🌐 ผังรวมทั้งหมด (Master)';
+        }
+    }
+
+    // Weekly Hourly Matrix (09:00 - 17:00, 8 time units)
+    function renderMatrix(items) {
+        const tbody = document.getElementById('timetable-matrix');
+        tbody.innerHTML = '';
+
+        DAYS_MAP.forEach(day => {
+            const dayItems = items.filter(s => getScheduleDay(s) === day.key);
+
+            if (dayItems.length === 0) {
+                // Single empty row for the day
+                const tr = document.createElement('tr');
+                const th = document.createElement('th');
+                th.className = 'day-header';
+                th.textContent = day.label;
+                tr.appendChild(th);
+
+                for (let h = 9; h <= 16; h++) {
+                    const td = document.createElement('td');
+                    if (h === 12) {
+                        td.className = 'timetable-lunch-cell';
+                        td.textContent = 'พักเที่ยง';
+                    } else {
+                        td.className = 'timetable-empty-cell';
+                    }
+                    tr.appendChild(td);
+                }
+                tbody.appendChild(tr);
+                return;
+            }
+
+            // Assign day items to tracks so that overlapping items render on separate sub-rows cleanly
+            dayItems.sort((a, b) => parseHour(getScheduleStartTime(a)) - parseHour(getScheduleStartTime(b)));
+            const tracks = [];
+            dayItems.forEach(item => {
+                const start = parseHour(getScheduleStartTime(item));
+                let placed = false;
+                for (let t = 0; t < tracks.length; t++) {
+                    const lastInTrack = tracks[t][tracks[t].length - 1];
+                    const lastEnd = parseHour(getScheduleEndTime(lastInTrack));
+                    if (start >= lastEnd) {
+                        tracks[t].push(item);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    tracks.push([item]);
+                }
+            });
+
+            // Render each track row
+            tracks.forEach((trackItems, trackIndex) => {
+                const tr = document.createElement('tr');
+
+                // Day column on first track only with rowspan
+                if (trackIndex === 0) {
+                    const th = document.createElement('th');
+                    th.className = 'day-header';
+                    th.rowSpan = tracks.length;
+                    th.textContent = day.label;
+                    tr.appendChild(th);
+                }
+
+                let h = 9;
+                while (h <= 16) {
+                    if (h === 12) {
+                        const tdLunch = document.createElement('td');
+                        tdLunch.className = 'timetable-lunch-cell';
+                        tdLunch.textContent = 'พักเที่ยง';
+                        tr.appendChild(tdLunch);
+                        h++;
+                        continue;
+                    }
+
+                    const currentItem = trackItems.find(s => parseHour(getScheduleStartTime(s)) === h);
+                    if (currentItem) {
+                        const duration = getDurationHours(currentItem);
+                        const tdCard = document.createElement('td');
+                        tdCard.colSpan = duration;
+
+                        const isDraft = currentItem.status === 'DRAFT';
+                        const card = document.createElement('div');
+                        card.className = 'timetable-card ' + (isDraft ? 'timetable-card--draft' : 'timetable-card--published');
+
+                        const startStr = getScheduleStartTime(currentItem).substring(0, 5);
+                        const endStr = getScheduleEndTime(currentItem).substring(0, 5);
+                        const durationLabel = `${duration} ชม.`;
+
+                        // Check if this section has multiple sessions
+                        const sectionSessions = currentSchedules.filter(cs => cs.sectionId === currentItem.sectionId);
+                        const isMultiSession = sectionSessions.length > 1;
+                        const sessionIndex = sectionSessions.findIndex(cs => cs.id === currentItem.id) + 1;
+                        const sessionTag = isMultiSession ? ` · คาบ ${sessionIndex}/${sectionSessions.length}` : '';
+
+                        card.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; gap:4px; margin-bottom:2px;">
+                                <strong style="color:var(--ink-navy); font-size:0.85rem;">${ui.escapeHtml(currentItem.courseCode || 'วิชา')}</strong>
+                                <span class="badge ${isDraft ? 'badge--warning' : 'badge--primary'}" style="font-size:0.7rem; padding:2px 6px;">
+                                    ${startStr} - ${endStr} (${durationLabel})
+                                </span>
+                            </div>
+                            <div style="font-size:0.8rem; font-weight:500; color:var(--ink-text); line-height:1.25; margin-bottom:4px;">
+                                ${ui.escapeHtml(currentItem.courseTitle || '')}
+                                <span class="muted" style="font-size:0.75rem;">(กลุ่ม ${currentItem.sectionNumber || 1}${sessionTag})</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--ink-muted); display:flex; flex-direction:column; gap:2px;">
+                                <span>📍 ${ui.escapeHtml(getScheduleRoom(currentItem))}</span>
+                                <span>👤 ${ui.escapeHtml(getScheduleTeacher(currentItem))}</span>
+                            </div>
+                        `;
+
+                        tr.appendChild(tdCard);
+                        h += duration;
+                    } else {
+                        const tdEmpty = document.createElement('td');
+                        tdEmpty.className = 'timetable-empty-cell';
+                        tr.appendChild(tdEmpty);
+                        h++;
+                    }
+                }
+
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    // Detailed Schedule Registry
+    function renderRibbonList(items) {
+        const container = document.getElementById('schedule-ribbon-list');
+        const summary = document.getElementById('registry-summary');
+        container.innerHTML = '';
+        summary.textContent = `แสดง ${items.length} คาบสอน`;
+
+        if (items.length === 0) {
+            ui.renderEmpty(container, 'ไม่มีคาบสอนที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรองที่เลือก');
             return;
         }
 
-        schedules.forEach(s => {
-            const item = document.createElement('div');
-            item.style.padding = '12px 16px';
-            item.style.border = '1px solid var(--border)';
-            item.style.borderRadius = '8px';
-            item.style.display = 'flex';
-            item.style.justifyContent = 'space-between';
-            item.style.alignItems = 'center';
-            item.innerHTML = `
+        // Group items by Section so multi-session sections are highlighted clearly
+        const sectionGroups = new Map();
+        items.forEach(s => {
+            const secKey = s.sectionId || ('sec-' + s.id);
+            if (!sectionGroups.has(secKey)) {
+                sectionGroups.set(secKey, []);
+            }
+            sectionGroups.get(secKey).push(s);
+        });
+
+        sectionGroups.forEach(secItems => {
+            const first = secItems[0];
+            const isMultiSession = secItems.length > 1;
+            const totalHours = secItems.reduce((acc, curr) => acc + getDurationHours(curr), 0);
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.padding = '14px 16px';
+            card.style.border = '1px solid var(--border)';
+            card.style.borderRadius = 'var(--radius-md)';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.justifyContent = 'space-between';
+
+            let sessionsHtml = '';
+            secItems.forEach((session, idx) => {
+                const dayLabel = DAYS_MAP.find(d => d.key === getScheduleDay(session))?.label || getScheduleDay(session);
+                const startStr = getScheduleStartTime(session).substring(0, 5);
+                const endStr = getScheduleEndTime(session).substring(0, 5);
+                const dur = getDurationHours(session);
+                const isDraft = session.status === 'DRAFT';
+
+                sessionsHtml += `
+                    <div style="background:var(--surface-alt); padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); margin-top:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:600; font-size:0.82rem; color:var(--ink-navy);">
+                                ${isMultiSession ? `คาบที่ ${idx + 1}: ` : ''}${dayLabel} ${startStr} - ${endStr}
+                            </span>
+                            <span class="badge ${isDraft ? 'badge--warning' : 'badge--primary'}" style="font-size:0.7rem;">
+                                ${dur} ชั่วโมง
+                            </span>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--ink-muted); margin-top:4px; display:flex; justify-content:space-between;">
+                            <span>📍 ${ui.escapeHtml(getScheduleRoom(session))}</span>
+                            <span>👤 ${ui.escapeHtml(getScheduleTeacher(session))}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            card.innerHTML = `
                 <div>
-                    <strong>${s.courseCode || ''} ${s.courseTitle || ''}</strong> (กลุ่ม ${s.sectionNumber})
-                    <div class="muted" style="font-size:0.9em;">ผู้สอน: ${s.teacherName || '-'} | ห้อง: ${s.roomNumber || 'TBA'}</div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                        <div>
+                            <span style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--ink-navy);">
+                                ${ui.escapeHtml(first.courseCode || '')} · กลุ่ม ${first.sectionNumber || 1}
+                            </span>
+                            <h4 style="margin:2px 0 0 0; font-size:0.9rem; color:var(--ink-text);">${ui.escapeHtml(first.courseTitle || '')}</h4>
+                        </div>
+                        <div>
+                            ${isMultiSession ? `
+                                <span class="badge badge--success" style="font-size:0.72rem; padding:3px 8px; font-weight:600;">
+                                    ⚡ สอน 2 คาบ/สัปดาห์ (รวม ${totalHours} ชม.)
+                                </span>
+                            ` : `
+                                <span class="badge badge--neutral" style="font-size:0.72rem; padding:3px 8px;">
+                                    สอน 1 คาบ/สัปดาห์ (${totalHours} ชม.)
+                                </span>
+                            `}
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;">
+                        ${sessionsHtml}
+                    </div>
                 </div>
-                <div style="text-align:right;">
-                    <span style="display:inline-block; padding:4px 8px; border-radius:4px; font-size:0.8em; background:${s.status === 'PUBLISHED' ? 'var(--ok-bg)' : 'var(--warn-bg)'}; color:${s.status === 'PUBLISHED' ? 'var(--ok)' : 'var(--warn)'};">
-                        ${s.status}
-                    </span>
-                    <div class="muted" style="font-size:0.85em; margin-top:4px;">${s.dayOfWeek || ''} ${s.startTime || ''}-${s.endTime || ''}</div>
+                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px dashed var(--border-subtle);">
+                    ${ui.badge(first.status)}
+                    <span class="mono muted" style="font-size:0.72rem;">กลุ่มเรียน #${first.sectionId || first.id}</span>
                 </div>
             `;
-            list.appendChild(item);
+
+            container.appendChild(card);
         });
     }
 
-    // Admin Action Listeners
+    // ===== Decision Sheet Integrations for Impactful Actions =====
+
+    // 1. Generate Schedule
     const btnGen = document.getElementById('btn-generate');
     if (btnGen) {
-        btnGen.addEventListener('click', async () => {
-            if (!confirm('ยืนยันสร้างตารางอัตโนมัติ (Candidate Schedule)?')) return;
-            try {
-                const res = await fetch('/api/v1/schedules/generate', { method: 'POST', headers: authHeaders });
-                if (!res.ok) throw new Error('ไม่สามารถจัดตารางได้');
-                showAlert('จัดตารางอัตโนมัติสำเร็จ (สร้าง DRAFT เรียบร้อย)', true);
-                loadSchedules();
-            } catch (e) {
-                showAlert(e.message, false);
-            }
+        btnGen.addEventListener('click', () => {
+            ui.openDecisionSheet({
+                title: 'คำนวณและจัดตารางสอนอัตโนมัติ (Generate Schedule)',
+                desc: 'ระบบจะนำกลุ่มเรียนที่เปิดสอนทั้งหมดมาคำนวณด้วย Constraint & Scoring Engine ตามระยะเวลาจริงของรายวิชา',
+                impacts: [
+                    'ตารางสอนร่าง (DRAFT) เดิมทั้งหมดจะถูกลบทิ้งและแทนที่ด้วยผลการคำนวณใหม่',
+                    'รองรับการจัดผังกำหนดเวลาเฉพาะ (เช่น 2 ชั่วโมง 09:00 - 11:00 น.) และรายวิชาที่สอน 2 คาบ/สัปดาห์',
+                    'ตารางผลลัพธ์จะถูกจัดเก็บเป็น DRAFT เพื่อให้ผู้ดูแลระบบตรวจสอบความถูกต้องก่อน',
+                    'ตารางที่เผยแพร่แล้ว (PUBLISHED) จะไม่ได้รับผลกระทบจนกว่าจะสั่ง Publish'
+                ],
+                confirmText: 'เริ่มคำนวณตารางอัตโนมัติ',
+                confirmClass: 'btn--primary',
+                onConfirm: async () => {
+                    const res = await api.post('/api/v1/schedules/generate');
+                    if (res.ok) {
+                        ui.toast('success', 'คำนวณและสร้างตารางสอนร่าง (DRAFT) สำเร็จแล้ว!');
+                        await loadSchedules();
+                        setStatusFilter('DRAFT');
+                    } else {
+                        ui.toast('error', res.error.message || 'ไม่สามารถจัดตารางได้');
+                    }
+                }
+            });
         });
     }
 
+    // 2. Publish Schedule
     const btnPub = document.getElementById('btn-publish');
     if (btnPub) {
-        btnPub.addEventListener('click', async () => {
-            if (!confirm('ยืนยันเผยแพร่ตารางสอน (Publish)?')) return;
-            try {
-                const res = await fetch('/api/v1/schedules/publish', { method: 'PUT', headers: authHeaders });
-                if (!res.ok) throw new Error('ไม่สามารถเผยแพร่ตารางได้');
-                showAlert('เผยแพร่ตารางสอนเรียบร้อยแล้ว', true);
-                loadSchedules();
-            } catch (e) {
-                showAlert(e.message, false);
-            }
+        btnPub.addEventListener('click', () => {
+            ui.openDecisionSheet({
+                title: 'เผยแพร่ตารางสอนใช้งานจริง (Publish Schedules)',
+                desc: 'เปลี่ยนสถานะตารางสอน DRAFT ทั้งหมดให้เป็น PUBLISHED เพื่อเปิดใช้งานในระบบ',
+                impacts: [
+                    'ตารางสอนสถานะ DRAFT ทั้งหมดจะเปลี่ยนเป็น PUBLISHED ถาวร',
+                    'ระบบจะส่ง In-app Notification แจ้งเตือนไปยังอาจารย์และนักศึกษาที่เกี่ยวข้อง',
+                    'นักศึกษาจะสามารถค้นหาและลงทะเบียนเรียนในกลุ่มเรียนนี้ได้ทันที',
+                    'อาจารย์จะสามารถตรวจสอบตารางสอนและยื่นคำขอสลับสอน (Teacher Swap) ได้'
+                ],
+                confirmText: 'เผยแพร่ตารางทันที',
+                confirmClass: 'btn--success',
+                onConfirm: async () => {
+                    const res = await api.put('/api/v1/schedules/publish');
+                    if (res.ok) {
+                        ui.toast('success', 'เผยแพร่ตารางสอนเรียบร้อยแล้ว แจ้งเตือนส่งถึงผู้ใช้ทุกคน');
+                        await loadSchedules();
+                        setStatusFilter('PUBLISHED');
+                    } else {
+                        ui.toast('error', res.error.message || 'เกิดข้อผิดพลาดในการเผยแพร่');
+                    }
+                }
+            });
         });
     }
 
-    const btnDisc = document.getElementById('btn-discard');
-    if (btnDisc) {
-        btnDisc.addEventListener('click', async () => {
-            if (!confirm('ยืนยันลบฉบับร่าง (Discard DRAFT)?')) return;
-            try {
-                const res = await fetch('/api/v1/schedules/draft', { method: 'DELETE', headers: authHeaders });
-                if (!res.ok) throw new Error('ไม่สามารถลบฉบับร่างได้');
-                showAlert('ลบฉบับร่างเรียบร้อยแล้ว', true);
-                loadSchedules();
-            } catch (e) {
-                showAlert(e.message, false);
-            }
+    // 3. Discard Draft
+    const btnDiscard = document.getElementById('btn-discard');
+    if (btnDiscard) {
+        btnDiscard.addEventListener('click', () => {
+            ui.openDecisionSheet({
+                title: 'ลบทิ้งตารางร่างทั้งหมด (Discard Draft Schedules)',
+                desc: 'ยกเลิกผลการจัดตารางร่างทั้งหมดและลบออกจากระบบอย่างถาวร',
+                impacts: [
+                    'ตารางสอนสถานะ DRAFT ทั้งหมดจะถูกลบออกจากฐานข้อมูล',
+                    'ตารางสอนเดิมที่เผยแพร่แล้ว (PUBLISHED) จะยังคงอยู่ตามปกติ',
+                    'การกระทำนี้ไม่สามารถยกเลิกย้อนหลังได้ (Irreversible)'
+                ],
+                confirmText: 'ลบทิ้งตารางร่าง',
+                confirmClass: 'btn--danger',
+                onConfirm: async () => {
+                    const res = await api.delete('/api/v1/schedules/draft');
+                    if (res.ok) {
+                        ui.toast('info', 'ลบตารางร่างทั้งหมดเรียบร้อยแล้ว');
+                        await loadSchedules();
+                    } else {
+                        ui.toast('error', res.error.message || 'เกิดข้อผิดพลาด');
+                    }
+                }
+            });
         });
     }
 
-    document.getElementById('status-filter').addEventListener('change', loadSchedules);
     loadSchedules();
 </script>
 </body>
 </html>
-

@@ -6,7 +6,7 @@
 
 > “ทำระบบที่มี Core Feature จริง + โครงสร้าง Software Design ครบตาม Rubric + Test + Git + Deploy”
 
-เอกสารฉบับนี้เป็นการจัดเรียงและปรับปรุงข้อกำหนดทางเทคนิคและสถาปัตยกรรมระบบสำหรับ **AcadOS Version 4 (v4)** โดยผสานรวมเนื้อหาเดิมทั้งหมด รักษาข้อมูลที่ถูกต้องครบถ้วน 100% (No Information Loss) แก้ไขจุดขัดแย้งตามมติที่ได้รับการยืนยันอย่างเป็นทางการ ปรับให้สอดคล้องกับเกณฑ์ข้อกำหนดของรายวิชา CP353002 (Spring Boot) และระบุส่วนที่ยังรอการกำหนดรายละเอียดในอนาคตเป็น **TBA** อย่างเคร่งครัด (ห้ามแต่งข้อมูลขึ้นเอง)
+เอกสารฉบับนี้เป็นการจัดเรียงและปรับปรุงข้อกำหนดทางเทคนิคและสถาปัตยกรรมระบบสำหรับ **AcadOS** โดยผสานรวมเนื้อหาเดิมทั้งหมด รักษาข้อมูลที่ถูกต้องครบถ้วน 100% (No Information Loss) แก้ไขจุดขัดแย้งตามมติที่ได้รับการยืนยันอย่างเป็นทางการ ปรับให้สอดคล้องกับเกณฑ์ข้อกำหนดของรายวิชา CP353002 (Spring Boot) และระบุส่วนที่ยังรอการกำหนดรายละเอียดในอนาคตเป็น **TBA** อย่างเคร่งครัด (ห้ามแต่งข้อมูลขึ้นเอง)
 
 ---
 
@@ -32,7 +32,7 @@
   - [2. Development Principles](#2-development-principles)
     - [2.1 Feature Complete, Complexity Limited](#21-feature-complete-complexity-limited)
     - [2.2 Core First](#22-core-first)
-  - [3. Frozen Implementation Scope (v4)](#3-frozen-implementation-scope-v4)
+  - [3. Frozen Implementation Scope](#3-frozen-implementation-scope)
   - [4. Technology Stack](#4-technology-stack)
   - [5. System Architecture \& Layering Rules](#5-system-architecture--layering-rules)
     - [5.1 Layering Rules (กฎเหล็กห้ามละเมิด)](#51-layering-rules-กฎเหล็กห้ามละเมิด)
@@ -63,7 +63,7 @@
   - [15. Authentication, Authorization \& Security](#15-authentication-authorization--security)
     - [15.1 Architecture Decisions (Security)](#151-architecture-decisions-security)
     - [15.2 Role Matrix](#152-role-matrix)
-    - [15.3 สิ่งที่ไม่ทำใน v4 (Out of Scope for Rapid Delivery)](#153-สิ่งที่ไม่ทำใน-v4-out-of-scope-for-rapid-delivery)
+    - [15.3 สิ่งที่ไม่ทำใน Scope ปัจจุบัน (Out of Scope for Rapid Delivery)](#153-สิ่งที่ไม่ทำใน-scope-ปัจจุบัน-out-of-scope-for-rapid-delivery)
   - [16. RESTful API Specification](#16-restful-api-specification)
     - [16.1 Standard Error Response Contract (ErrorResponse)](#161-standard-error-response-contract-errorresponse)
   - [17. Software Design Patterns](#17-software-design-patterns)
@@ -102,13 +102,13 @@
 | :--- | :--- |
 | **ชื่อระบบ** | AcadOS |
 | **ชื่อเต็ม** | Automated Proctor Scheduling and Academic Operations System |
-| **Version** | v4 |
+| **Version** | 1.0.0 (Production) |
 | **Project Status** | Implementation / Rapid Development |
 | **Development Time** | 4 Days |
 | **Team Size** | 3 คน |
 
-### 1.2 Version 4 Objective
-AcadOS v4 เป็นเวอร์ชันสำหรับการพัฒนาและส่งมอบระบบที่สามารถใช้งานได้จริงภายในระยะเวลาจำกัด โดยเน้นให้ Core System ทำงานครบวงจรตั้งแต่ Authentication จนถึง Deployment:
+### 1.2 Project Objectives
+AcadOS เป็นระบบสำหรับการพัฒนาและส่งมอบระบบที่สามารถใช้งานได้จริงภายในระยะเวลาจำกัด โดยเน้นให้ Core System ทำงานครบวงจรตั้งแต่ Authentication จนถึง Deployment:
 
 $$\text{Login} \longrightarrow \text{Database} \longrightarrow \text{REST API} \longrightarrow \text{Business Logic} \longrightarrow \text{Scheduling} \longrightarrow \text{Frontend} \longrightarrow \text{Testing} \longrightarrow \text{Deployment}$$
 
@@ -135,9 +135,9 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 
 ---
 
-## 3. Frozen Implementation Scope (v4)
+## 3. Frozen Implementation Scope
 
-| Feature | v4 Scope | ระดับความสำคัญ |
+| Feature | Implementation Scope | ระดับความสำคัญ |
 | :--- | :--- | :---: |
 | **Student Registration** | ลงทะเบียน / ถอน + ตรวจสอบ Registration Period + Schedule Conflict + Room/Section Capacity | **MUST** |
 | **Notification** | In-app Notification แจ้งเตือนสถานะต่างๆ ภายในระบบ | **MUST** |
@@ -611,7 +611,7 @@ $$\text{External Holiday API (ThailandFormats)} \longrightarrow \text{ExternalHo
 | **`TEACHER`** | `SCHEDULE_VIEW`, `SWAP_REQUEST`, `SWAP_RESPOND`, `AVAILABILITY_MANAGE` , `SWAP_CANCEL`|
 | **`STUDENT`** | `COURSE_VIEW`, `REGISTRATION_MANAGE`, `SCHEDULE_VIEW` |
 
-### 15.3 สิ่งที่ไม่ทำใน v4 (Out of Scope for Rapid Delivery)
+### 15.3 สิ่งที่ไม่ทำใน Scope ปัจจุบัน (Out of Scope for Rapid Delivery)
 - Refresh Token Rotation
 - OAuth2 / Social Login (Google, Microsoft)
 - Two-Factor Authentication (2FA)
@@ -852,7 +852,7 @@ AcadOS/
 │       └── data.sql              # Initial Mock Data
 ├── test/                         # เอกสารและรายงานการทดสอบ
 ├── doc/                          # เอกสารข้อกำหนดและสถาปัตยกรรมระบบ
-│   ├── AcadOS-v4.md              # เอกสารสเปกหลักฉบับนี้
+│   ├── Implement_Plan-AcadOS.md  # เอกสารสเปกหลักฉบับนี้
 │   ├── business-rules.md
 │   ├── scheduling-model.md
 │   ├── api-specification.md
@@ -1104,7 +1104,7 @@ docker compose down
 
 ตารางตรวจสอบความสอดคล้องกับข้อกำหนดรายวิชา CP353002 (PDF B):
 
-| ข้อกำหนดรายวิชา (PDF B) | รายละเอียดเกณฑ์ | สถานะในเอกสาร v4 | บันทึกการตรวจสอบ |
+| ข้อกำหนดรายวิชา (PDF B) | รายละเอียดเกณฑ์ | สถานะในเอกสาร | บันทึกการตรวจสอบ |
 | :--- | :--- | :---: | :--- |
 | **Backend Framework** | Spring Boot 3.x+ (Java 17+) | **Complete** | ระบุใช้ Java 21 LTS และ Spring Boot 3.3.4 |
 | **Build Tool** | Maven หรือ Gradle | **Complete** | ระบุใช้ Apache Maven พร้อมแจกแจง `pom.xml` |

@@ -1,48 +1,109 @@
 <!DOCTYPE html>
 <!--
-  AcadOS master layout. Owner: Track C.
-
-  How to use it in a page (no extra dependency, plain Thymeleaf fragment parameters):
-
-    <!DOCTYPE html>
-    <html lang="th" xmlns:th="http://www.thymeleaf.org"
-          th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
-    <head><title>รายวิชา</title></head>
-    <body>
-    <main> ... page content ... </main>
-    <script th:src="@{/js/pages/courses.js}"></script>
-    </body>
-    </html>
-
-  - title   : the page <title> element
-  - content : the page <main> element (rendered inside the content area)
-  - scripts : the page <script> elements, loaded after api.js and ui.js; pass ~{} when the page has none
+  AcadOS Master Layout — Academic Operations Platform
+  Layout Paradigm: Rail + Workbench + Context Strip
+  Owner: Track C
 -->
 <html lang="th" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content, scripts)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:replace="${title}">AcadOS</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
+<!-- 1. Left Navigation Rail -->
 <aside th:replace="~{layout/fragments/sidebar :: sidebar}"></aside>
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
+<!-- 2. Main Workbench Shell -->
 <div class="app">
+    <!-- Topbar & Operational Task Ribbon -->
     <header th:replace="~{layout/fragments/topbar :: topbar}"></header>
 
-    <div class="content">
-        <main th:replace="${content}"></main>
+    <div class="workbench-layout" id="workbench-layout">
+        <!-- Main Content Workspace -->
+        <div class="content">
+            <main th:replace="${content}"></main>
+        </div>
+
+        <!-- Right Context Strip (Signals, Upcoming Events, Quick Alerts) -->
+        <aside class="context-strip" id="context-strip" aria-label="ข้อมูลประกอบการตัดสินใจ">
+            <!-- Registration Period Signal -->
+            <div class="context-card">
+                <div class="context-card__title">
+                    <span>ช่วงเวลาลงทะเบียน</span>
+                    <span class="badge badge--ok" style="font-size:0.7rem;">ACTIVE</span>
+                </div>
+                <p style="font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:4px;">
+                    ภาคเรียน 1/2569
+                </p>
+                <p class="muted" style="font-size:0.78rem;">
+                    เปิดระบบลงทะเบียนตามกำหนดการปฏิทินการศึกษา สามารถเลือกหรือเปลี่ยนกลุ่มเรียนได้
+                </p>
+            </div>
+
+            <!-- Calendar Event Milestone -->
+            <div class="context-card">
+                <div class="context-card__title">
+                    <span>กำหนดการสำคัญ</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.82rem;">
+                    <div style="border-left:2px solid var(--primary); padding-left:8px;">
+                        <div class="mono" style="font-size:0.75rem; color:var(--ink-muted);">20-31 ต.ค. 2569</div>
+                        <div style="font-weight:600; color:var(--ink-navy);">สอบปลายภาค (Final Exam)</div>
+                    </div>
+                    <div style="border-left:2px solid var(--draft-amber); padding-left:8px;">
+                        <div class="mono" style="font-size:0.75rem; color:var(--ink-muted);">05 พ.ย. 2569</div>
+                        <div style="font-weight:600; color:var(--ink-navy);">สิ้นสุดภาคการศึกษา</div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
     </div>
 
-    <footer class="footer">AcadOS v4 · CP353002 Principles of Software Design and Development</footer>
+    <footer class="footer">
+        AcadOS · ศูนย์กลางการบริหารจัดการตารางวิชาการและภาระงานสอน
+    </footer>
 </div>
 
+<!-- 3. Signature Decision Sheet (Slide-in Right Panel for Impact Assessment) -->
+<div class="decision-backdrop" id="decision-backdrop"></div>
+<aside class="decision-sheet" id="decision-sheet" aria-modal="true" role="dialog" aria-hidden="true">
+    <div class="decision-sheet__header">
+        <div>
+            <h3 id="decision-sheet-title" style="color:var(--ink-navy);">ยืนยันการตัดสินใจ</h3>
+            <p class="muted" id="decision-sheet-desc" style="font-size:0.82rem; margin-top:2px;">
+                กรุณาตรวจสอบผลกระทบก่อนดำเนินการ
+            </p>
+        </div>
+        <button type="button" class="btn btn--secondary btn--sm" id="decision-sheet-close" aria-label="ปิด">
+            ✕
+        </button>
+    </div>
+    <div class="decision-sheet__body">
+        <div class="decision-sheet__impact-box">
+            <div class="decision-sheet__impact-title">ผลกระทบที่จะเกิดขึ้นกับระบบ:</div>
+            <ul class="decision-sheet__impact-list" id="decision-sheet-impacts">
+                <li>ข้อมูลจะได้รับการบันทึกและประมวลผลทันที</li>
+            </ul>
+        </div>
+        <div id="decision-sheet-custom-content"></div>
+    </div>
+    <div class="decision-sheet__footer">
+        <button type="button" class="btn btn--secondary" id="decision-sheet-cancel">ยกเลิก</button>
+        <button type="button" class="btn btn--primary" id="decision-sheet-confirm">ยืนยันดำเนินการ</button>
+    </div>
+</aside>
+
+<!-- Core Client Scripts -->
 <script th:src="@{/js/api.js}"></script>
 <script th:src="@{/js/ui.js}"></script>
 <th:block th:replace="${scripts}"></th:block>

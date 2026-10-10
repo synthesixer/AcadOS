@@ -6,18 +6,120 @@
 </head>
 <body>
 <main>
-    <div class="page-header" style="margin-bottom:24px;">
-        <h1>การลงทะเบียนทั้งหมด (Registrations)</h1>
-        <p class="muted">ตรวจสอบข้อมูลการลงทะเบียนเรียนของนักศึกษาทั้งหมดในระบบ</p>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Enrollment Audit & Records</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">การลงทะเบียนทั้งหมด (Registrations Ledger)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">ตรวจสอบข้อมูลการลงทะเบียนเรียนของนักศึกษาทั้งหมดในระบบ ตรวจสอบจำนวนที่นั่ง และกลุ่มเรียน</p>
+        </div>
+        <div>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="loadAllRegistrations()">
+                🔄 รีเฟรชข้อมูล
+            </button>
+        </div>
     </div>
 
-    <div class="card">
-        <h3>รายการลงทะเบียนล่าสุด</h3>
-        <div id="all-registrations" style="margin-top:12px; display:grid; gap:8px;">
-            <p class="muted">เปิดดูผ่าน API หรือเลือกตรวจสอบตามกลุ่มเรียน</p>
+    <!-- Registrations Workbench -->
+    <div class="card" style="padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:1.1rem; color:var(--ink-navy);">รายการลงทะเบียนเรียนทั้งหมด</h3>
+                <span class="muted" style="font-size:0.85rem;">(<span class="num" id="total-reg-count">0</span> รายการ)</span>
+            </div>
+            <div>
+                <input type="text" id="reg-search" placeholder="ค้นหารหัสวิชา หรือชื่อนักศึกษา..." 
+                       style="padding:7px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; width:260px;"
+                       oninput="renderFilteredRegistrations()">
+            </div>
+        </div>
+
+        <div id="all-registrations-list" style="display:grid; gap:10px;">
+            <!-- Rendered by JS -->
         </div>
     </div>
 </main>
+
+<script>
+    let allRegistrations = [];
+
+    function renderFilteredRegistrations() {
+        const list = document.getElementById('all-registrations-list');
+        const query = (document.getElementById('reg-search').value || '').trim().toLowerCase();
+
+        let filtered = allRegistrations.filter(r => {
+            if (!query) return true;
+            const code = (r.courseCode || '').toLowerCase();
+            const title = (r.courseTitle || '').toLowerCase();
+            const sName = (r.studentName || '').toLowerCase();
+            const sec = String(r.sectionNumber || '');
+            return code.includes(query) || title.includes(query) || sName.includes(query) || sec.includes(query);
+        });
+
+        if (filtered.length === 0) {
+            ui.renderEmpty(list, 'ไม่พบรายการลงทะเบียนที่ตรงกับเงื่อนไขการค้นหา');
+            return;
+        }
+
+        list.innerHTML = '';
+        filtered.forEach(r => {
+            const item = document.createElement('div');
+            item.style.padding = '14px 18px';
+            item.style.background = 'var(--surface)';
+            item.style.border = '1px solid var(--border-subtle)';
+            item.style.borderLeft = '4px solid var(--ok-green)';
+            item.style.borderRadius = '8px';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.style.flexWrap = 'wrap';
+            item.style.gap = '12px';
+
+            item.innerHTML = `
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                        <span class="mono" style="font-weight:700; font-size:1.05rem; color:var(--ink-navy);">${ui.escapeHtml(r.courseCode || 'วิชา')}</span>
+                        <span style="font-size:0.85rem; font-weight:600; color:var(--slate-neutral); background:var(--bg-canvas); padding:2px 8px; border-radius:4px; border:1px solid var(--border-subtle);">
+                            กลุ่ม ${r.sectionNumber}
+                        </span>
+                        <span class="badge badge--ok">REGISTERED</span>
+                    </div>
+                    <div style="font-size:0.9rem; color:var(--ink-navy); margin-bottom:2px;">
+                        ${ui.escapeHtml(r.courseTitle || '')}
+                    </div>
+                    <div class="muted" style="font-size:0.82rem;">
+                        นักศึกษา: <strong style="color:var(--ink-navy);">${ui.escapeHtml(r.studentName || 'รหัสนักศึกษา ' + r.studentId)}</strong>
+                    </div>
+                </div>
+                <div style="text-align:right;">
+                    <div class="muted" style="font-size:0.82rem;">
+                        ลงทะเบียนเมื่อ: <span class="mono">${r.registeredAt ? r.registeredAt.replace('T', ' ').substring(0, 16) : '-'}</span>
+                    </div>
+                    <div class="muted" style="font-size:0.78rem; margin-top:2px;">
+                        Reg ID: #${r.id}
+                    </div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    async function loadAllRegistrations() {
+        const list = document.getElementById('all-registrations-list');
+        ui.renderLoading(list, 3);
+        const res = await api.get('/api/v1/registrations');
+        if (!res.ok) {
+            ui.renderError(list, res.error);
+            return;
+        }
+
+        allRegistrations = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        document.getElementById('total-reg-count').textContent = allRegistrations.length;
+        renderFilteredRegistrations();
+    }
+
+    loadAllRegistrations();
+</script>
 </body>
 </html>
-
