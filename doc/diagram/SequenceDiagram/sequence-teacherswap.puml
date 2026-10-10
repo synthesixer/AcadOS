@@ -1,0 +1,125 @@
+```plantuml
+@startuml 06-sequence-teacher-swap
+title AcadOS - Sequence Diagram: Teacher Swap (exchange periods A <-> B)
+autonumber
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+
+actor "Teacher A" as A
+actor "Teacher B" as B
+actor Admin
+participant "Security Filter\n(JWT)" as Sec
+participant "TeacherSwapApiController" as Ctrl
+participant "TeacherSwapService" as Svc
+participant "TeacherSwapRequest\n(entity)" as Req
+participant "TeacherSwapRequestRepository" as SwapRepo
+participant "ScheduleRepository" as SchRepo
+participant "TeacherQualificationRepository\nTeacherAvailabilityRepository" as TRepo
+participant "ScheduleChangePublisher" as Pub
+participant "NotificationService" as Notif
+participant "NotificationStrategy\n(InApp / Email)" as Channel
+participant "GlobalExceptionHandler" as Err
+
+== 1. Teacher A creates request ==
+A -> Sec : POST /api/v1/teacher-swaps + JWT\n{requestingScheduleId, targetTeacherId, targetScheduleId}
+Sec -> Ctrl : forward (TEACHER)
+Ctrl -> Svc : createSwapRequest(...)
+activate Svc
+Svc -> SchRepo : load both schedules (must be PUBLISHED)
+Svc -> TRepo : qualifications / availabilities of A and B
+Svc -> SchRepo : teaching periods of A and B (conflict check)
+Svc -> SwapRepo : open request (PENDING / ACCEPTED) on either schedule?
+alt B = A, BR-06, BR-07, BR-01 failed (incl. DRAFT conflict),\nsame time slot or open request exists on either schedule
+  Svc --> Err : throw BusinessRuleException
+  Err --> A : ErrorResponse (409 Conflict with DRAFT / Rule)
+else all checks pass
+  Svc -> SwapRepo : save request (status = PENDING)
+  Svc -> Notif : sendNotification(B, SWAP_REQUESTED)
+  Notif -> Channel : send() [InApp]
+  Svc --> Ctrl : request
+  Ctrl --> A : 201 Created
+end
+deactivate Svc
+
+== 2. Teacher A cancels (only while PENDING) ==
+opt A cancels before B responds
+  A -> Sec : PUT /api/v1/teacher-swaps/{id}/cancel + JWT
+  Sec -> Ctrl : forward (TEACHER)
+  Ctrl -> Svc : cancel request (Teacher A)
+  Svc -> SwapRepo : find request
+  alt not A's request or status != PENDING
+    Svc --> Err : throw BusinessRuleException
+    Err --> A : ErrorResponse
+  else
+    Svc -> Req : cancel()  [PENDING -> CANCELLED]
+    Svc -> SwapRepo : save
+    Svc -> Notif : sendNotification(B, SWAP_CANCELLED)
+    Notif -> Channel : send() [InApp]
+    Ctrl --> A : 200 OK
+  end
+end
+
+== 3. Teacher B responds ==
+B -> Sec : PUT /api/v1/teacher-swaps/{id}/respond + JWT
+Sec -> Ctrl : forward (TEACHER)
+Ctrl -> Svc : respondSwap(id, accept / reject)
+note right of Ctrl : Request body of /respond = TBA (§28 item 5)
+activate Svc
+Svc -> SwapRepo : find request
+alt caller is not B or status != PENDING
+  Svc --> Err : throw BusinessRuleException
+  Err --> B : ErrorResponse
+else reject
+  Svc -> Req : reject()  [PENDING -> REJECTED]
+  Svc -> SwapRepo : save (respondedAt)
+  Svc -> Notif : sendNotification(A, SWAP_RESPONDED)
+  Notif -> Channel : send() [InApp]
+  Ctrl --> B : 200 OK
+else accept
+  Svc -> TRepo : re-check Qualification / Availability
+  Svc -> SchRepo : re-check conflicts
+  Svc -> Req : accept()  [PENDING -> ACCEPTED]
+  Svc -> SwapRepo : save (respondedAt)
+  Svc -> Notif : sendNotification(A + Admin, SWAP_RESPONDED)
+  Notif -> Channel : send() [InApp]
+  Ctrl --> B : 200 OK
+end
+deactivate Svc
+
+== 4. Admin reviews (only ACCEPTED) ==
+Admin -> Sec : PUT /api/v1/teacher-swaps/{id}/approve\nor /reject + JWT
+Sec -> Ctrl : forward (ADMIN)
+Ctrl -> Svc : approveSwap(id) / rejectSwap(id)
+activate Svc
+Svc -> SwapRepo : find request
+alt status != ACCEPTED
+  Svc --> Err : throw BusinessRuleException
+  Err --> Admin : ErrorResponse
+else rejectSwap
+  Svc -> Req : reject()  [ACCEPTED -> REJECTED]
+  Svc -> SwapRepo : save (reviewedAt)
+  Svc -> Notif : sendNotification(A + B, SWAP_REJECTED)
+  Notif -> Channel : send() [InApp]
+  Ctrl --> Admin : 200 OK
+else approveSwap
+  Svc -> SchRepo : schedules still belong to A and B?
+  Svc -> TRepo : re-run BR-06, BR-07
+  Svc -> SchRepo : re-run BR-01 (counts DRAFT + PUBLISHED)
+  alt validation failed
+    Svc --> Err : throw BusinessRuleException
+    Err --> Admin : ErrorResponse
+  else valid
+    Svc -> Req : approve()  [ACCEPTED -> APPROVED]
+    Svc -> SchRepo : swap teacher of the 2 schedules (permanent)
+    Svc -> SwapRepo : save (reviewedAt)
+    Svc -> Notif : sendNotification(A + B, SWAP_APPROVED)\n[InApp + Email]
+    Notif -> Channel : send() [InApp + Email]
+    Svc -> Pub : schedule changed (2 sections)
+    Pub -> Notif : sendNotification(students, SCHEDULE_CHANGED)
+    Notif -> Channel : send() [InApp]
+    Ctrl --> Admin : 200 OK
+  end
+end
+deactivate Svc
+@enduml
+```
