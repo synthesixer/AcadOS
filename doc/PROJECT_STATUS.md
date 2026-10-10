@@ -62,6 +62,10 @@
       - ปรับปรุง [`Dockerfile`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/Dockerfile) เพิ่ม JVM Container Memory Constraints (`-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`) ป้องกัน OOM บน Cloud Free Tier
       - ติดตั้ง GitHub Actions Automated Workflow ([`.github/workflows/ci-cd.yml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/.github/workflows/ci-cd.yml)) รัน `mvn clean test` และอัปโหลด JaCoCo Report อัตโนมัติ (รับคะแนนพิเศษตามเกณฑ์ §11)
       - จัดทำแผนปฏิบัติการ [Cloud Deployment Implementation Plan](file:///C:/Users/WINDOWS%2011/.gemini/antigravity/brain/3170965d-6e40-43ee-a4a2-3141241a48cc/cloud_deployment_plan.md)
+14. **[Repository Rubric & Comprehensive README.md - Prof Ruleset §9, §10, §14] การจัดทำ README.md ฉบับสมบูรณ์และแก้ปัญหา Folder Tracking:**
+    - **การดำเนินการ:**
+      - ยกระดับ [`README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/README.md) สู่ระดับ Production-Ready ละเอียดครบถ้วน 13 หัวข้อ: ใครทำ (ตารางสมาชิกครบทุกคนพร้อม Section/Branch/บทบาท), ที่มาและความสำคัญ, วัตถุประสงค์, ขอบเขต 3 บทบาท (Admin, Teacher, Student) และกฎ BR-01..11, ประโยชน์, Tech Stack, สถาปัตยกรรม 3-Tier และ SOLID 100%, 8 Design Patterns, วิธีดำเนินงาน Vertical Slicing, ผลการดำเนินงาน 326 Tests Green (100%), ขั้นตอนติดตั้งและทำซ้ำในเครื่อง, คู่มือ Deploy บน Railway Cloud, และโครงสร้างโปรเจกต์
+      - สร้าง [`img/.gitkeep`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/.gitkeep), [`test/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/test/README.md), และ [`doc/slide/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/slide/README.md) เพื่อแก้ไขปัญหา Git ไม่ติดตามโฟลเดอร์ว่างเปล่า ให้มีโฟลเดอร์ครบถ้วนบน GitHub Remote 100% ตามเกณฑ์ข้อกำหนดอาจารย์
 
 ---
 
