@@ -73,6 +73,10 @@ rectangle "AcadOS (Admin Scope)" {
         usecase "View Notification" as UC_AdminViewNotif
         usecase "Read Notification" as UC_AdminReadNotif
     }
+    package "Profile Modal" {
+        usecase "View Profile Info" as UC_AdminViewProfile
+        usecase "Change Password" as UC_AdminChangePassword
+    }
 }
 
 Admin --> UC_AdminLogin
@@ -112,6 +116,8 @@ Admin --> UC_ViewHoliday
 Admin --> UC_FetchHoliday
 Admin --> UC_AdminViewNotif
 Admin --> UC_AdminReadNotif
+Admin --> UC_AdminViewProfile
+Admin --> UC_AdminChangePassword
 
 UC_ViewSchedule <.. UC_PublishSchedule : <<extend>>
 UC_ViewSchedule <.. UC_DiscardSchedule : <<extend>>

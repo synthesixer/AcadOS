@@ -778,14 +778,19 @@ $$\text{External Holiday API (ThailandFormats)} \longrightarrow \text{ExternalHo
 
 ### 17.2 Gang of Four (GoF) Patterns ที่ใช้งานจริง
 1. **Strategy Pattern:**
-   - **Scheduling Scoring:** คำนวณคะแนนตาราง (`PreferenceScoreStrategy`, `WorkloadScoreStrategy`)
+   - **Scheduling Scoring:** คำนวณคะแนนตาราง (`PreferenceScoreStrategy`, `WorkloadScoreStrategy`, `RoomSuitabilityScoreStrategy`)
    - **Notification Channels:** แยกช่องทางแจ้งเตือน (`InAppNotificationStrategy`, `EmailNotificationStrategy`)
 2. **Observer Pattern:**
-   - เมื่อตาราง Schedule มีการเปลี่ยนแปลง `ScheduleChangePublisher` จะแจ้งเตือนไปยัง `NotificationService`
+   - เมื่อตาราง Schedule มีการเปลี่ยนแปลง `ScheduleChangePublisher` จะแจ้งเตือนไปยัง Observer (`NotificationService`)
 3. **State Pattern:**
    - ควบคุมพฤติกรรมและการยกเลิกของ Section ผ่าน `ActiveSectionState` และ `CancelledSectionState`
 4. **Adapter Pattern:**
    - เชื่อมต่อและแปลงสเปกของ External Public Holiday API ผ่าน `ExternalHolidayAdapter` เพื่อให้อยู่ในโครงสร้าง `HolidayProvider`
+5. **Creational Patterns (Builder, Singleton, Factory Method):**
+   - Lombok `@Builder` บน Entity, Spring IoC Beans Singleton, และ Static Factory / MapStruct DTO Mappers
+
+> [!NOTE]
+> รายละเอียดเชิงลึก ตารางแค็ตตาล็อก ปัญหาที่แก้ ซอร์สโค้ด Class Diagrams และชุด Unit Tests ตรวจสอบของ GoF Patterns ทั้ง 8 รูปแบบ ถูกจัดทำไว้ในเอกสาร [`doc/design-patterns.md`](design-patterns.md) ตามข้อกำหนดใน [`doc/prof_ruleset.md`](prof_ruleset.md) §5.2 เรียบร้อยแล้ว
 
 ---
 
