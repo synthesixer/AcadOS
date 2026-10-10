@@ -61,8 +61,11 @@ public class ScheduleResponse {
         }
 
         if (schedule.getRoom() != null) {
+            String bldg = schedule.getRoom().getBuilding() != null ? schedule.getRoom().getBuilding() : "";
+            String rNum = schedule.getRoom().getRoomNumber() != null ? schedule.getRoom().getRoomNumber() : "";
+            String roomName = (bldg + " " + rNum).trim();
             builder.roomId(schedule.getRoom().getId())
-                    .roomName(String.format("%s %s", schedule.getRoom().getBuilding(), schedule.getRoom().getRoomNumber()));
+                    .roomName(roomName.isEmpty() ? "TBA" : roomName);
         }
 
         if (schedule.getTimeSlot() != null) {

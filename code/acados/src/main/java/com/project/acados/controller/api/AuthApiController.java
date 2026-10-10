@@ -3,12 +3,16 @@ package com.project.acados.controller.api;
 import com.project.acados.dto.request.LoginRequest;
 import com.project.acados.dto.response.AuthResponse;
 import com.project.acados.security.TokenProvider;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
 import org.springframework.security.authentication.AuthenticationManager;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -27,7 +31,7 @@ public class AuthApiController {
     }
 
     @PostMapping("/login")
-    public AuthResponse login(@Valid @RequestBody LoginRequest request) {
+    public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
         try {
             Authentication authentication = authenticationManager.authenticate(
                     new UsernamePasswordAuthenticationToken(request.universityId(), request.password())
@@ -38,11 +42,29 @@ public class AuthApiController {
                     .map(authority -> authority.substring("ROLE_".length()))
                     .findFirst()
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid credentials"));
-            return new AuthResponse(tokenProvider.generateToken(
-                    (org.springframework.security.core.userdetails.UserDetails) authentication.getPrincipal()
-            ), role);
+            String token = tokenProvider.generateToken(
+                    (UserDetails) authentication.getPrincipal()
+            );
+
+            // Set browser cookie for seamless page navigation
+            Cookie cookie = new Cookie("acados_token", token);
+            cookie.setPath("/");
+            cookie.setHttpOnly(false);
+            cookie.setMaxAge(86400);
+            response.addCookie(cookie);
+
+            return new AuthResponse(token, role);
         } catch (org.springframework.security.core.AuthenticationException exception) {
             throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, "Invalid University ID or password");
         }
+    }
+
+    @PostMapping("/logout")
+    public ResponseEntity<Void> logout(HttpServletResponse response) {
+        Cookie cookie = new Cookie("acados_token", "");
+        cookie.setPath("/");
+        cookie.setMaxAge(0);
+        response.addCookie(cookie);
+        return ResponseEntity.ok().build();
     }
 }

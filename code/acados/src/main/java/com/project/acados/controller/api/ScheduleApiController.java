@@ -7,6 +7,7 @@ import com.project.acados.service.SchedulingService;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
@@ -25,6 +26,7 @@ public class ScheduleApiController {
 
     @PostMapping("/generate")
     @PreAuthorize("hasRole('ADMIN')")
+    @Transactional
     public ResponseEntity<List<ScheduleResponse>> generateSchedule() {
         schedulingService.generateSchedule();
         List<ScheduleResponse> drafts = schedulingService.getDraftSchedules().stream()
@@ -34,6 +36,7 @@ public class ScheduleApiController {
     }
 
     @GetMapping
+    @Transactional(readOnly = true)
     public ResponseEntity<List<ScheduleResponse>> getSchedules(
             @RequestParam(required = false) ScheduleStatus status
     ) {

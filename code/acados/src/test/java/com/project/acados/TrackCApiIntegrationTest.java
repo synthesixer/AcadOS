@@ -20,6 +20,7 @@ import org.springframework.boot.test.mock.mockito.MockBean;
 import org.springframework.http.MediaType;
 import org.springframework.mail.SimpleMailMessage;
 import org.springframework.mail.javamail.JavaMailSender;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.security.test.context.support.WithMockUser;
 import org.springframework.test.context.ActiveProfiles;
 import org.springframework.test.web.servlet.MockMvc;
@@ -56,6 +57,9 @@ class TrackCApiIntegrationTest {
 
     @MockBean
     private JavaMailSender mailSender;
+
+    @Autowired
+    private PasswordEncoder passwordEncoder;
 
     @Autowired
     private UserRepository userRepository;
@@ -294,5 +298,32 @@ class TrackCApiIntegrationTest {
         mockMvc.perform(get("/api/v1/sections"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.length()").value(3));
+    }
+
+    @Test
+    @WithMockUser(username = "admin", roles = "ADMIN")
+    void getSchedulesReturnsPublishedSchedulesWithoutLazyInitializationException() throws Exception {
+        mockMvc.perform(get("/api/v1/schedules"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.length()").value(2))
+                .andExpect(jsonPath("$[0].courseCode").isNotEmpty())
+                .andExpect(jsonPath("$[0].teacherName").value("Teacher One"));
+    }
+
+    @Test
+    void loginWithValidCredentialsReturnsJwtToken() throws Exception {
+        userRepository.save(User.builder()
+                .universityId("login_admin")
+                .email("login_admin@acados.local")
+                .passwordHash(passwordEncoder.encode("secret123"))
+                .role(UserRole.ADMIN)
+                .build());
+
+        mockMvc.perform(post("/api/v1/auth/login")
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"universityId\": \"login_admin\", \"password\": \"secret123\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.token").isNotEmpty())
+                .andExpect(jsonPath("$.role").value("ADMIN"));
     }
 }
