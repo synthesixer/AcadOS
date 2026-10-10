@@ -165,7 +165,7 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 | **Backend Framework**| Spring Boot 3.3.4 (หรือ 3.3.x) | Web, Data JPA, Security, Validation, Actuator, DevTools |
 | **Build Tool** | Apache Maven 3.9+ | จัดการ Dependency, Plugins และ Lifecycle การ Build |
 | **Database** | MySQL 8.x | ฐานข้อมูลเชิงสัมพันธ์หลักสำหรับระบบ |
-| **Database Migration**| JPA `ddl-auto=update` + SQL Scripts | ควบคู่กับ `schema.sql` และ `data.sql` ในไดเรกทอรี `code/` (รายละเอียด script = TBA) |
+| **Database Migration**| JPA `ddl-auto=update` + SQL Scripts | ควบคู่กับ `data.sql` (Initial Mock/Demo Data) จัดเรียงตาม Topological Order และ Hash รหัสผ่านด้วย BCrypt ครบทั้ง 4 Demo Scenarios |
 | **ORM / Persistence** | Spring Data JPA / Hibernate | เชื่อมต่อฐานข้อมูลผ่าน Repository Pattern |
 | **Security** | Spring Security + JWT | จัดการ Stateless Authentication และ Role-based Access Control |
 | **Validation** | Jakarta Bean Validation | Hibernate Validator (`@NotNull`, `@Size`, `@Email` ฯลฯ) |
@@ -1066,7 +1066,7 @@ docker compose down
 - **D07:** Frontend ใช้ Thymeleaf เรียกใช้งานร่วมกับ REST API
 - **D08:** UI เรียก Controller $\to$ Service ไม่เรียก Repository โดยตรง
 - **D09:** ใช้ DTO 100% สำหรับทุก REST API Endpoint (ยกเลิก Mixed DTO)
-- **D10:** ใช้ Hibernate `ddl-auto=update` สำหรับ Dev ควบคู่กับการมีไฟล์ `schema.sql` และ `data.sql`
+- **D10:** ใช้ Hibernate `ddl-auto=update` ควบคู่กับ `data.sql` ที่จัดเรียง Topological FK Order และ Hash รหัสผ่านด้วย BCrypt เพื่อรองรับ Demo 4 Scenarios และรัน `docker compose up -d --build` ได้ทันที (Implemented & Verified 100%)
 - **D11:** Deploy ด้วย Docker และกำหนด Persistent Volume สำหรับ MySQL
 - **D12:** จัดการข้อผิดพลาดส่วนกลางผ่าน `GlobalExceptionHandler` (`@RestControllerAdvice`) ร่วมกับ `ErrorResponse` DTO (Implemented & Verified 100%)
 - **D13:** ควบคุม Permission ภายในซอร์สโค้ด ไม่สร้างตารางในฐานข้อมูล
@@ -1117,7 +1117,7 @@ docker compose down
 | **SOLID Principles** | แสดงให้เห็นในโค้ดครบทุกข้อ S, O, L, I, D | **Complete** | มีการแจกแจงหลักการทั้ง 5 ข้อพร้อมตัวอย่างในระบบ |
 | **Design Patterns** | Enterprise ครบ + GoF อย่างน้อย 3 แบบ | **Complete** | Enterprise ครบ 6 แบบ, GoF 4 แบบ (Strategy, Observer, State, Adapter) |
 | **Database Constraints**| อย่างน้อย 6 ตาราง, One-to-One, One-to-Many | **Complete** | มี 16 Entities, ความสัมพันธ์ One-to-One และ One-to-Many ครบถ้วน |
-| **Migration Scripts** | Flyway/Liquibase หรือ schema.sql + data.sql | **TBA** | กำหนดให้มี `schema.sql` และ `data.sql` ใน `code/` (รายละเอียด Script = TBA) |
+| **Migration Scripts** | Flyway/Liquibase หรือ schema.sql + data.sql | **Complete** | จัดทำ `data.sql` สมบูรณ์ใน `code/acados/data.sql` และ `src/main/resources/data.sql` จัดเรียง Foreign Key Topology และรหัสผ่าน BCrypt ครอบคลุมทั้ง 4 Demo Scenarios พร้อมคอนฟิก `spring.sql.init.mode=always` |
 | **REST API Standards** | ครบ CRUD 2 Resources, Status Codes, Validation | **Complete** | Courses และ Rooms ทำ CRUD ครบ, มี DTO, Bean Validation |
 | **Git Workflow** | Branch `ชื่อ_รหัสนักศึกษา_section`, $\ge$ 15 commits/คน | **Complete** | กำหนดชื่อ Branch ของทั้ง 3 คนถูกต้องตามฟอร์แมต |
 | **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **Complete** | สถาปัตยกรรมยืนยันและรองรับด้วยโค้ดจริง 100%: Linux Cloud Host (VPS / Cloud VM + Docker Compose) รัน Multi-container (`acados-app` Port 8080, `acados-db` MySQL 8.4 Port 3306 พร้อม Healthcheck ping, `acados-phpmyadmin` Port 8081, Persistent Volume `mysql_data`, และ Spring Actuator `/actuator/health`) |
@@ -1127,7 +1127,7 @@ docker compose down
 ## 28. Notes / TBA Summary
 
 ส่วนสรุปรายการที่ยังต้องระบุหรือตัดสินใจเพิ่มเติมในขั้นตอนการพัฒนา (Implementation Phase):
-1. **Database Migration Scripts (TBA):** เนื้อหารายละเอียดของไฟล์ DDL `schema.sql` และ Initial Data `data.sql` ในโฟลเดอร์ `code/` จะถูกจัดทำขึ้นตาม Entity จริง
+1. **Database Seed Scripts (Complete):** จัดทำ Initial Mock Data ใน `data.sql` เรียบร้อยแล้ว จัดเรียงตามลำดับ Foreign Key Topology 16 ตาราง พร้อมรหัสผ่าน BCrypt (`password123`) รองรับการทดสอบและการซักซ้อม Demo ทั้ง 4 Scenarios แบบ Idempotent (`INSERT IGNORE`) และคอนฟิก `spring.jpa.defer-datasource-initialization=true` ใน Spring Boot 3
 2. **Cloud Provider & Public URL (Confirmed):** ยืนยันสถาปัตยกรรมตามโค้ดจริงใน `code/acados/docker-compose.yml` และ `Dockerfile`: รันด้วย Docker Compose บน Linux VPS Host โดยมี 3 คอนเทนเนอร์ (`acados-app` พอร์ต 8080, `acados-db` MySQL 8.4 พอร์ต 3306, `acados-phpmyadmin` พอร์ต 8081) เข้าถึงแอปพลิเคชันโดยตรงผ่าน Public URL `http://<SERVER_PUBLIC_IP>:8080` (Direct Port Access / No Nginx) พร้อมตรวจสุขภาพระบบผ่าน Spring Actuator `/actuator/health` และจัดการความคงอยู่ของฐานข้อมูลด้วย Persistent Volume `mysql_data`
 3. **Data Dictionary & ER Diagram (TBA):** รายละเอียดพจนานุกรมข้อมูล (ชนิดข้อมูล, ความยาว, Constraints) และไฟล์รูปภาพ ER Diagram ฉบับสมบูรณ์จะจัดทำในโฟลเดอร์ `doc/`
 4. **Use Case Descriptions (TBA):** เอกสารอธิบาย Use Case แต่ละตัวแบบละเอียด (Main Flow, Alternative Flow, Pre/Post-condition) จะถูกจัดทำเพิ่มเติมใน `doc/`
