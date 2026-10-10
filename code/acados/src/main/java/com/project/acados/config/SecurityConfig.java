@@ -51,13 +51,9 @@ public class SecurityConfig {
                         .authenticationEntryPoint((request, response, exception) ->
                                 response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unauthorized: Authentication required")
                         )
-                        .accessDeniedHandler((request, response, exception) -> {
-                            if (request.getRequestURI().startsWith("/api/")) {
-                                response.sendError(HttpStatus.FORBIDDEN.value(), "Forbidden: Access denied");
-                            } else {
-                                response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unauthorized: Access denied");
-                            }
-                        })
+                        .accessDeniedHandler((request, response, exception) ->
+                                response.sendError(HttpStatus.FORBIDDEN.value(), "Forbidden: Access denied")
+                        )
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 

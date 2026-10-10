@@ -3,7 +3,7 @@
 **บันทึกสถานะโครงการและผลการดำเนินงานทางวิศวกรรมซอฟต์แวร์**  
 **อัปเดตล่าสุด:** 10 ตุลาคม 2569  
 **Branch:** `puttimed_6733804171_03`  
-**สถานะการทดสอบล่าสุด:** **314/314 Tests Passed (100% Green, 0 Failures, 0 Errors)**  
+**สถานะการทดสอบล่าสุด:** **318/318 Tests Passed (100% Green, 0 Failures, 0 Errors)**  
 
 ---
 
@@ -27,8 +27,22 @@
 3. **[Timetable Consecutive Schedule Merging] ผังตารางประจำสัปดาห์ — รวมคาบสอนต่อเนื่องเป็นช่องเดียว:**
    - ปรับปรุง `timetable/grid.html` เพิ่มฟังก์ชัน `mergeConsecutiveSchedules` รวมคาบสอนที่สอนต่อเนื่องกัน (เช่น คาบ 2 และ 3: 10:00 - 11:00 และ 11:00 - 12:00 รวมเป็น 10:00 - 12:00, 2 ชม.) ให้แสดงผลเป็น **"ช่องเดียว (Single Unified Block)"** ด้วย `colSpan = 2`
    - ปรับปรุงการคำนวณ session ใน Detailed Registry (`renderRibbonList`) และระบบตารางสอนในอาจารย์ (`teacher/dashboard.html`) ให้แสดงผลช่วงเวลาที่รวมกันอย่างถูกต้อง ไม่แตกเป็นคาบย่อย
-4. **[Testing & Verification] รันการทดสอบครอบคลุมทั้งระบบ:**
-   - รันชุดทดสอบทั้งระบบ `mvn test` ผ่านครบถ้วน **314/314 Tests Passed (100% Green, 0 Failures, 0 Errors)**
+4. **[Error Page Logout Redirect Loop Fix] แก้ไขการวนลูปเมื่อกดเข้าสู่ระบบใหม่จากหน้า Error:**
+   - ปรับปรุง `templates/error.html` ปุ่ม "เข้าสู่ระบบใหม่ (Sign In)" ให้เรียก `clearAuthSession()` ล้าง `sessionStorage` (`acadosToken`, `acadosRole`) และลบคุกกี้ `acados_token` พร้อมนำทางไปยัง `/login?logout=true`
+   - ปรับปรุง `templates/auth/login.html` ตรวจสอบพารามิเตอร์ `?logout=true` เพื่อระงับ Client-side Auto-redirect ล้าง Session ซ้ำ และแสดงแบบฟอร์มล็อกอินเสมอ ป้องกันปัญหาการ redirect loop ไปมา
+5. **[Granular Teacher Unavailable Slots Table (BR-07, D22)] ตารางกำหนดเวลาที่ไม่สะดวกสอนแบบละเอียดและโต้ตอบได้จริง:**
+   - ปรับปรุงระบบช่วงเวลาใน `data.sql` เพิ่มสล็อตคาบเรียนมาตรฐาน 1.5 ชม. (09:00-10:30, 10:30-12:00, 13:00-14:30, 14:30-16:00, 16:00-17:00, IDs 32–56) และสล็อต 1 ชม. (IDs 57–71)
+   - ปรับปรุง `ConstraintEvaluator.java` ในเมธอด `validateTeacherAvailability` ให้ตรวจจับการทับซ้อนเวลา (Overlap Check) ระหว่างสล็อตที่ไม่สะดวกสอนของอาจารย์กับ Schedule Candidate ทุกคาบเรียน ทำให้การมาร์กสล็อตย่อย (เช่น 09:00 - 10:30 น.) บังคับใช้ Hard Constraint (BR-07) ได้อย่างแม่นยำ 100%
+   - ปรับปรุง `main-layout.html` และ `ui.js`:
+     - เพิ่ม **Quick Custom Time Window Setter Form** เหนือตาราง ให้เลือกวัน (จันทร์-ศุกร์ หรือ ทุกวัน) และระบุช่วงเวลาเริ่มต้น-สิ้นสุดได้อิสระ
+     - ปรับปรุงตาราง `teacher-availability-grid` ให้แสดง 5 แถวช่วงเวลามาตรฐานแบบ interactable คลิกสลับ `[✓ สะดวกสอน]` (เขียว) และ `[✕ ไม่สะดวกสอน]` (แดง) ได้ทันที
+     - เพิ่มฟังก์ชัน `applyCustomUnavailableRange(isAvailable)` และ expose ผ่าน `window.ui`
+6. **[Explicit HTTP 403 Forbidden vs 401 Unauthorized Separation] แยกสถานะ 403 (มีบัญชีแต่ไม่มีสิทธิ์) และ 401 (ยังไม่ได้ล็อกอิน):**
+   - เมื่อล็อกอินแล้วแต่ไม่มีสิทธิ์เข้าถึง (เช่น อาจารย์เข้าหน้าแอดมิน หรือ นักศึกษาเข้าหน้าอาจารย์): ระบบส่งคืน **HTTP 403 Forbidden** ผ่าน `accessDeniedHandler` ใน `SecurityConfig.java` และ Client Guard ใน `ui.js` (`/error?status=403`)
+   - เมื่อยังไม่ได้ล็อกอิน (Unauthenticated) แล้วเข้าหน้า Role: ระบบส่งคืน **HTTP 401 Unauthorized** ผ่าน `authenticationEntryPoint` ใน `SecurityConfig.java` และ Client Guard ใน `ui.js` (`/error?status=401`)
+   - ปรับปรุง `templates/error.html` ให้รองรับการอ่าน `param.status` ควบคู่ Model Attribute เพื่อให้หน้า Error แสดงผลหัวข้อ ไอคอน และปุ่มการดำเนินการของ 403 และ 401 ได้อย่างแม่นยำ
+7. **[Testing & Verification] รันการทดสอบครอบคลุมทั้งระบบ:**
+   - รันชุดทดสอบทั้งระบบ `mvn test` ผ่านครบถ้วน **318/318 Tests Passed (100% Green, 0 Failures, 0 Errors)**
 
 ---
 
@@ -59,11 +73,15 @@
 - [`UserApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/UserApiControllerTest.java): 6 tests
 - [`HolidayApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/HolidayApiControllerTest.java): 3 tests
 
-### 2.3 HTML Templates & UI Action Enhancements
-- [`error.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/error.html): Neutral HTML Error Page เต็มรูปแบบ รองรับ 401, 403, 404, 409 Conflict, 400, 500 พร้อม SVG Icons, ข้อความเฉพาะสถานะ, ปุ่มย้อนกลับไปแก้ไข, และ Role Dashboard
+### 2.3 HTML Templates, Script & Data Enhancements
+- [`error.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/error.html): Neutral HTML Error Page เต็มรูปแบบ รองรับ 401, 403, 404, 409 Conflict, 400, 500 พร้อม SVG Icons, ข้อความเฉพาะสถานะ, ปุ่มย้อนกลับไปแก้ไข, และปุ่ม Sign In ที่มีฟังก์ชัน `clearAuthSession()` ล้าง Session/Cookie ก่อนไปหน้า Login
+- [`login.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/auth/login.html): รองรับพารามิเตอร์ `?logout=true` เพื่อระงับ Auto-redirect และล้าง Session ทิ้งทันที ป้องกัน Redirect Loop จากหน้า Error
+- [`main-layout.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/layout/main-layout.html): เพิ่ม Quick Custom Time Window Setter Form และตารางกำหนดเวลาที่ไม่สะดวกสอน (Unavailable Slots Table) ใน Teacher Profile Modal
+- [`ui.js`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/static/js/ui.js): เพิ่ม Client-side Route Guard, เรนเดอร์ตาราง 5 ช่วงเวลาละเอียด (09:00-10:30, 10:30-12:00, 13:00-14:30, 14:30-16:00, 16:00-17:00) และฟังก์ชัน `applyCustomUnavailableRange()`
+- [`data.sql`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/data.sql) & [`resources/data.sql`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/data.sql): เพิ่ม Time Slots ละเอียด IDs 32–56 (1.5 ชม.) และ 57–71 (1 ชม.)
+- [`ConstraintEvaluator.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/ConstraintEvaluator.java): เพิ่ม Overlap Check ใน BR-07 ตรวจจับความไม่สะดวกสอนของอาจารย์ครอบคลุมทุกช่วงเวลาที่ทับซ้อน
 - [`grid.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/timetable/grid.html): เพิ่ม `mergeConsecutiveSchedules` รวมคาบสอนต่อเนื่อง (เช่น คาบ 2 และ 3, 2 ชม.) ให้แสดงผลเป็นช่องเดียว (`colSpan = 2`) ในตารางสัปดาห์
 - [`teacher/dashboard.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/teacher/dashboard.html): ปรับปรุงให้รวมคาบสอนต่อเนื่องสำหรับ upcoming class และรายการคาบสอนของอาจารย์
-- [`ui.js`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/static/js/ui.js): เพิ่ม Client-side Route Guard ป้องกันและ Redirect เมื่อผู้ใช้เข้าถึงเส้นทางไม่ตรงกับสิทธิ์
 - [`admin/sections.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/sections.html): เพิ่มปุ่มและ Modal "มอบหมายผู้สอน" (Sub-feature A13)
 - [`admin/courses.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/courses.html): เพิ่มปุ่มและ Modal "แก้ไขรายวิชา"
 - [`admin/rooms.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/rooms.html): เพิ่มปุ่มและ Modal "แก้ไขห้องเรียน"
@@ -78,7 +96,7 @@
 
 ## 3. ผลการทดสอบ (Verification Results)
 - คำสั่ง: `mvn test`
-- ผลลัพธ์: **314/314 Tests Run, 0 Failures, 0 Errors, 0 Skipped (BUILD SUCCESS)**
+- ผลลัพธ์: **318/318 Tests Run, 0 Failures, 0 Errors, 0 Skipped (BUILD SUCCESS)**
 - สรุปความครอบคลุม:
   - **Unit Tests:** Service Layer ครบทุก Use Case, Exception paths, Null-safety
   - **Pattern & Strategy Tests:** Observer, State, Scoring Strategy, External Holiday Adapter

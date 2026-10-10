@@ -52,18 +52,25 @@ class TimetableWebControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    @DisplayName("GET /admin/timetable when role=TEACHER returns 401 Unauthorized")
-    void adminTimetable_whenTeacher_returns401() throws Exception {
+    @DisplayName("GET /admin/timetable when role=TEACHER returns 403 Forbidden")
+    void adminTimetable_whenTeacher_returns403() throws Exception {
+        mockMvc.perform(get("/admin/timetable"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /admin/timetable when unauthenticated returns 401 Unauthorized")
+    void adminTimetable_whenUnauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/admin/timetable"))
                 .andExpect(status().isUnauthorized());
     }
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    @DisplayName("GET /admin/schedules when role=TEACHER returns 401 Unauthorized")
-    void adminSchedules_whenTeacher_returns401() throws Exception {
+    @DisplayName("GET /admin/schedules when role=TEACHER returns 403 Forbidden")
+    void adminSchedules_whenTeacher_returns403() throws Exception {
         mockMvc.perform(get("/admin/schedules"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -111,8 +118,15 @@ class TimetableWebControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    @DisplayName("GET /admin/holidays when role=TEACHER returns 401 Unauthorized")
-    void holidays_whenTeacher_returns401() throws Exception {
+    @DisplayName("GET /admin/holidays when role=TEACHER returns 403 Forbidden")
+    void holidays_whenTeacher_returns403() throws Exception {
+        mockMvc.perform(get("/admin/holidays"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /admin/holidays when unauthenticated returns 401 Unauthorized")
+    void holidays_whenUnauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/admin/holidays"))
                 .andExpect(status().isUnauthorized());
     }

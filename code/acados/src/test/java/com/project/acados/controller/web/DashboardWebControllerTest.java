@@ -105,18 +105,18 @@ class DashboardWebControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    @DisplayName("GET /admin/dashboard: TEACHER -> 401 Unauthorized")
-    void adminDashboard_whenTeacher_returns401() throws Exception {
+    @DisplayName("GET /admin/dashboard: TEACHER -> 403 Forbidden")
+    void adminDashboard_whenTeacher_returns403() throws Exception {
         mockMvc.perform(get("/admin/dashboard"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    @DisplayName("GET /admin/swaps: TEACHER -> 401 Unauthorized")
-    void adminSwaps_whenTeacher_returns401() throws Exception {
+    @DisplayName("GET /admin/swaps: TEACHER -> 403 Forbidden")
+    void adminSwaps_whenTeacher_returns403() throws Exception {
         mockMvc.perform(get("/admin/swaps"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     @Test
@@ -128,10 +128,10 @@ class DashboardWebControllerTest {
 
     @Test
     @WithMockUser(roles = "STUDENT")
-    @DisplayName("GET /admin/courses: STUDENT -> 401 Unauthorized")
-    void adminCourses_whenStudent_returns401() throws Exception {
+    @DisplayName("GET /admin/courses: STUDENT -> 403 Forbidden")
+    void adminCourses_whenStudent_returns403() throws Exception {
         mockMvc.perform(get("/admin/courses"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     // ==========================================
@@ -158,8 +158,15 @@ class DashboardWebControllerTest {
 
     @Test
     @WithMockUser(roles = "STUDENT")
-    @DisplayName("GET /teacher/dashboard: STUDENT -> 401 Unauthorized")
-    void teacherDashboard_whenStudent_returns401() throws Exception {
+    @DisplayName("GET /teacher/dashboard: STUDENT -> 403 Forbidden")
+    void teacherDashboard_whenStudent_returns403() throws Exception {
+        mockMvc.perform(get("/teacher/dashboard"))
+                .andExpect(status().isForbidden());
+    }
+
+    @Test
+    @DisplayName("GET /teacher/dashboard: unauthenticated -> 401 Unauthorized")
+    void teacherDashboard_whenUnauthenticated_returns401() throws Exception {
         mockMvc.perform(get("/teacher/dashboard"))
                 .andExpect(status().isUnauthorized());
     }
@@ -175,6 +182,13 @@ class DashboardWebControllerTest {
         mockMvc.perform(get("/student/dashboard"))
                 .andExpect(status().isOk())
                 .andExpect(view().name("student/dashboard"));
+    }
+
+    @Test
+    @DisplayName("GET /student/dashboard: unauthenticated -> 401 Unauthorized")
+    void studentDashboard_whenUnauthenticated_returns401() throws Exception {
+        mockMvc.perform(get("/student/dashboard"))
+                .andExpect(status().isUnauthorized());
     }
 
     @Test
@@ -197,10 +211,10 @@ class DashboardWebControllerTest {
 
     @Test
     @WithMockUser(roles = "TEACHER")
-    @DisplayName("GET /student/courses: TEACHER -> 401 Unauthorized")
-    void studentCourses_whenTeacher_returns401() throws Exception {
+    @DisplayName("GET /student/courses: TEACHER -> 403 Forbidden")
+    void studentCourses_whenTeacher_returns403() throws Exception {
         mockMvc.perform(get("/student/courses"))
-                .andExpect(status().isUnauthorized());
+                .andExpect(status().isForbidden());
     }
 
     // ==========================================

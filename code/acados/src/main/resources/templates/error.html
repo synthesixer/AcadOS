@@ -3,7 +3,8 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title th:text="${status != null ? 'ข้อผิดพลาด ' + status + ' | AcadOS' : 'เกิดข้อผิดพลาด | AcadOS'}">เกิดข้อผิดพลาด | AcadOS</title>
+    <title th:with="currStatus=${status != null ? status : (param.status != null ? param.status[0] : null)}"
+           th:text="${currStatus != null ? 'ข้อผิดพลาด ' + currStatus + ' | AcadOS' : 'เกิดข้อผิดพลาด | AcadOS'}">เกิดข้อผิดพลาด | AcadOS</title>
     <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
@@ -131,7 +132,8 @@
     </style>
 </head>
 <body>
-<main class="error-card" role="main">
+<main class="error-card" role="main"
+      th:with="status=${status != null ? status : (param.status != null ? T(java.lang.Integer).valueOf(param.status[0]) : 404)}">
     <!-- Dynamic SVG Icon Box based on HTTP Status -->
     <div class="error-badge-wrapper">
         <!-- 401 Unauthorized Icon (Lock / Auth Key) -->

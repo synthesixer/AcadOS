@@ -314,18 +314,27 @@ const ui = (() => {
             const currentPath = window.location.pathname;
             const token = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('acadosToken') : null;
             if (currentPath.startsWith('/admin/')) {
-                if (!token || (clientRole && clientRole !== 'ADMIN')) {
-                    window.location.replace('/error');
+                if (!token) {
+                    window.location.replace('/error?status=401');
+                    return;
+                } else if (clientRole && clientRole !== 'ADMIN') {
+                    window.location.replace('/error?status=403');
                     return;
                 }
             } else if (currentPath.startsWith('/teacher/')) {
-                if (!token || (clientRole && clientRole !== 'TEACHER')) {
-                    window.location.replace('/error');
+                if (!token) {
+                    window.location.replace('/error?status=401');
+                    return;
+                } else if (clientRole && clientRole !== 'TEACHER') {
+                    window.location.replace('/error?status=403');
                     return;
                 }
             } else if (currentPath.startsWith('/student/')) {
-                if (!token || (clientRole && clientRole !== 'STUDENT')) {
-                    window.location.replace('/error');
+                if (!token) {
+                    window.location.replace('/error?status=401');
+                    return;
+                } else if (clientRole && clientRole !== 'STUDENT') {
+                    window.location.replace('/error?status=403');
                     return;
                 }
             }
