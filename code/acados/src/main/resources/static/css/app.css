@@ -1104,3 +1104,121 @@ a:hover {
         padding: var(--space-4);
     }
 }
+
+/* ========== Modal Dialog System ========== */
+.modal-backdrop {
+    position: fixed;
+    inset: 0;
+    background: rgba(16, 42, 67, 0.5);
+    backdrop-filter: blur(2px);
+    z-index: 70;
+    opacity: 0;
+    pointer-events: none;
+    transition: opacity var(--transition-normal);
+}
+.modal-backdrop.is-open {
+    opacity: 1;
+    pointer-events: auto;
+}
+.modal-dialog {
+    position: fixed;
+    top: 50%;
+    left: 50%;
+    transform: translate(-50%, -50%) scale(0.96);
+    width: min(92vw, 680px);
+    max-height: 90vh;
+    background: var(--surface);
+    border: 1px solid var(--border);
+    border-radius: var(--radius-lg);
+    box-shadow: var(--shadow-lg);
+    z-index: 75;
+    opacity: 0;
+    pointer-events: none;
+    transition: all var(--transition-normal);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+}
+.modal-dialog.is-open {
+    opacity: 1;
+    pointer-events: auto;
+    transform: translate(-50%, -50%) scale(1);
+}
+.modal-dialog__header {
+    padding: var(--space-4) var(--space-5);
+    border-bottom: 1px solid var(--border);
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    background: var(--surface);
+}
+.modal-dialog__body {
+    padding: var(--space-5);
+    overflow-y: auto;
+    flex: 1;
+}
+.modal-dialog__footer {
+    padding: var(--space-3) var(--space-5);
+    border-top: 1px solid var(--border);
+    background: var(--surface-alt);
+    display: flex;
+    justify-content: flex-end;
+    gap: var(--space-2);
+}
+
+/* Tabs inside Modal */
+.modal-tabs {
+    display: flex;
+    gap: 8px;
+    border-bottom: 1px solid var(--border);
+    margin-bottom: var(--space-4);
+}
+.modal-tab-btn {
+    padding: 8px 14px;
+    border: none;
+    background: none;
+    font-size: 0.88rem;
+    font-weight: 600;
+    color: var(--ink-muted);
+    cursor: pointer;
+    border-bottom: 2px solid transparent;
+    transition: all var(--transition-fast);
+}
+.modal-tab-btn:hover {
+    color: var(--primary);
+}
+.modal-tab-btn.is-active {
+    color: var(--primary);
+    border-bottom-color: var(--primary);
+}
+
+/* Timetable Holiday Styling */
+.timetable-card--holiday {
+    background: #FFF1F2 !important;
+    border: 1px solid #FCA5A5 !important;
+    color: #991B1B !important;
+}
+.timetable-card--holiday::before {
+    background: #DC2626 !important;
+}
+.day-header--holiday {
+    background: #FEF2F2 !important;
+    color: #991B1B !important;
+    border-color: #FCA5A5 !important;
+}
+.timetable-holiday-cell {
+    background: #FFF5F5 !important;
+    color: #DC2626 !important;
+    font-size: 0.8rem !important;
+    font-weight: 600;
+    text-align: center;
+    border: 1px dashed #FCA5A5 !important;
+}
+
+/* Enrolled Course Highlight */
+.section-card--enrolled {
+    background: #F0FDF4 !important;
+    border-color: #86EFAC !important;
+    border-left: 4px solid #16A34A !important;
+}
+

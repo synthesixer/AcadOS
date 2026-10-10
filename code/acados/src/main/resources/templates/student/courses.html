@@ -52,6 +52,8 @@
 
 <script>
     let allSections = [];
+    let myRegistrationsMap = new Map();
+    let myCourseRegistrations = new Map();
 
     async function registerSection(btn, sectionId, courseCode, sectionNumber) {
         ui.setBusy(btn, true);
@@ -80,6 +82,29 @@
         }
     }
 
+    async function dropSection(btn, regId, courseCode, sectionNumber) {
+        ui.openDecisionSheet({
+            title: `ถอนรายวิชา ${courseCode} (กลุ่ม ${sectionNumber})`,
+            desc: 'คุณกำลังจะถอนการลงทะเบียนในกลุ่มเรียนนี้ ที่นั่งจะถูกคืนให้ผู้อื่นทันที',
+            impacts: [
+                'รายวิชานี้จะถูกนำออกจากตารางเรียนของคุณทันที',
+                'ที่นั่งจะว่างลงและนักศึกษาท่านอื่นสามารถลงทะเบียนแทนได้'
+            ],
+            confirmText: 'ยืนยันถอนรายวิชา',
+            confirmClass: 'btn--danger',
+            onConfirm: async () => {
+                const res = await api.del(`/api/v1/registrations/${regId}`);
+                if (res.ok) {
+                    ui.toast('success', `ถอนรายวิชา ${courseCode} เรียบร้อยแล้ว`);
+                    await loadSections();
+                    ui.refreshUnreadCount();
+                } else {
+                    ui.toast('error', res.error.message || 'ถอนรายวิชาไม่สำเร็จ');
+                }
+            }
+        });
+    }
+
     function renderSections() {
         const grid = document.getElementById('section-grid');
         const query = (document.getElementById('course-search').value || '').trim().toLowerCase();
@@ -92,7 +117,8 @@
             return code.includes(query) || title.includes(query) || sec.includes(query);
         });
 
-        document.getElementById('results-count').textContent = `พบ ${filtered.length} รายการ`;
+        const enrolledCount = myRegistrationsMap.size;
+        document.getElementById('results-count').textContent = `พบ ${filtered.length} รายการ (คุณลงทะเบียนแล้ว ${enrolledCount} วิชา)`;
 
         if (filtered.length === 0) {
             ui.renderEmpty(grid, 'ไม่พบกลุ่มเรียนที่ตรงกับคำค้นหา หรือยังไม่มีรายวิชาเปิดรับลงทะเบียนในขณะนี้');
@@ -101,30 +127,52 @@
 
         grid.innerHTML = '';
         filtered.forEach(s => {
+            const isEnrolled = myRegistrationsMap.has(s.id);
+            const enrolledReg = myRegistrationsMap.get(s.id);
+            const enrolledOtherSection = !isEnrolled && s.courseCode && myCourseRegistrations.has(s.courseCode.toUpperCase());
+            const isActive = s.status === 'ACTIVE';
+
             const card = document.createElement('div');
-            card.style.padding = '16px 20px';
-            card.style.background = 'var(--surface)';
-            card.style.border = '1px solid var(--border-subtle)';
-            card.style.borderLeft = s.status === 'ACTIVE' ? '4px solid var(--teal-primary)' : '4px solid var(--slate-neutral)';
+            card.style.padding = '18px 20px';
             card.style.borderRadius = '8px';
             card.style.display = 'flex';
             card.style.justifyContent = 'space-between';
             card.style.alignItems = 'center';
             card.style.flexWrap = 'wrap';
             card.style.gap = '14px';
+            card.style.transition = 'all 0.2s ease';
 
-            const isActive = s.status === 'ACTIVE';
+            if (isEnrolled) {
+                card.style.background = '#F0FDF4';
+                card.style.border = '2px solid #86EFAC';
+                card.style.borderLeft = '6px solid #16A34A';
+                card.style.boxShadow = '0 2px 8px rgba(22, 163, 74, 0.12)';
+            } else {
+                card.style.background = 'var(--surface)';
+                card.style.border = '1px solid var(--border-subtle)';
+                card.style.borderLeft = isActive ? '4px solid var(--teal-primary)' : '4px solid var(--slate-neutral)';
+            }
 
             card.innerHTML = `
                 <div style="flex:1; min-width:240px;">
-                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
-                        <span class="mono" style="font-weight:700; font-size:1.1rem; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || 'วิชา')}</span>
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:6px; flex-wrap:wrap;">
+                        <span class="mono" style="font-weight:700; font-size:1.15rem; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || 'วิชา')}</span>
                         <span style="font-size:0.85rem; font-weight:600; color:var(--slate-neutral); background:var(--bg-canvas); padding:2px 8px; border-radius:4px; border:1px solid var(--border-subtle);">
                             กลุ่ม ${s.sectionNumber}
                         </span>
                         ${ui.badge(s.status)}
+                        ${isEnrolled ? `
+                            <span class="badge badge--ok" style="background:#DCFCE7; color:#166534; border:1px solid #86EFAC; font-weight:700; font-size:0.85rem; padding:3px 10px;">
+                                ✔ ลงทะเบียนแล้ว (Enrolled)
+                            </span>
+                        ` : ''}
+                        ${enrolledOtherSection ? `
+                            <span class="badge badge--warn" style="font-size:0.8rem;">
+                                ⚠ ลงทะเบียนกลุ่ม ${myCourseRegistrations.get(s.courseCode.toUpperCase()).sectionNumber} แล้ว
+                            </span>
+                        ` : ''}
                     </div>
-                    <div style="font-size:0.95rem; font-weight:500; color:var(--ink-navy); margin-bottom:6px;">
+                    <div style="font-size:1rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">
                         ${ui.escapeHtml(s.courseTitle || 'ไม่มีชื่อวิชา')}
                     </div>
                     <div class="muted" style="font-size:0.85rem; display:flex; align-items:center; gap:16px;">
@@ -132,7 +180,15 @@
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
-                    ${isActive ? `
+                    ${isEnrolled ? `
+                        <button type="button" class="btn btn--secondary" disabled style="background:#E2E8F0; color:#334155; font-weight:700; cursor:default; opacity:1;">
+                            ✔ ลงทะเบียนแล้ว
+                        </button>
+                        <button type="button" class="btn btn--danger btn--sm" 
+                                onclick="dropSection(this, ${enrolledReg.id}, '${ui.escapeHtml(s.courseCode || '')}', '${s.sectionNumber}')">
+                            ถอนรายวิชา
+                        </button>
+                    ` : (isActive ? `
                         <button type="button" class="btn btn--primary" 
                                 onclick="registerSection(this, ${s.id}, '${ui.escapeHtml(s.courseCode || '')}', '${s.sectionNumber}')">
                             ลงทะเบียนเรียน
@@ -141,7 +197,7 @@
                         <button type="button" class="btn btn--secondary" disabled style="opacity:0.6;">
                             ปิดรับลงทะเบียน
                         </button>
-                    `}
+                    `)}
                 </div>
             `;
             grid.appendChild(card);
@@ -151,13 +207,30 @@
     async function loadSections() {
         const grid = document.getElementById('section-grid');
         ui.renderLoading(grid, 3);
-        const res = await api.get('/api/v1/sections');
-        if (!res.ok) {
-            ui.renderError(grid, res.error);
+
+        const [secRes, regRes] = await Promise.all([
+            api.get('/api/v1/sections'),
+            api.get('/api/v1/registrations/my', { redirectOn401: false })
+        ]);
+
+        if (!secRes.ok) {
+            ui.renderError(grid, secRes.error);
             return;
         }
 
-        allSections = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        allSections = Array.isArray(secRes.data) ? secRes.data : (secRes.data.content || []);
+
+        myRegistrationsMap.clear();
+        myCourseRegistrations.clear();
+        if (regRes && regRes.ok && Array.isArray(regRes.data)) {
+            regRes.data.forEach(r => {
+                myRegistrationsMap.set(r.sectionId, r);
+                if (r.courseCode) {
+                    myCourseRegistrations.set(r.courseCode.toUpperCase(), r);
+                }
+            });
+        }
+
         renderSections();
     }
 

@@ -33,22 +33,24 @@
                 <span class="bell__count hidden" id="unread-count">0</span>
             </a>
 
-            <div class="topbar__user" id="topbar-user-badge">
+            <button type="button" class="topbar__user" id="topbar-user-badge" onclick="ui.openProfileModal()" title="คลิกเพื่อดูข้อมูลผู้ใช้ เปลี่ยนรหัสผ่าน หรือเลือก Preference" style="background:none; border:none; cursor:pointer; text-align:left;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <!-- Shows login id from Spring Security (e.g. S001 / T001 / admin) -->
                 <span class="topbar__name" id="current-user-name" sec:authentication="name">ผู้ใช้</span>
                 <span class="badge badge--info" sec:authorize="hasRole('ADMIN')">ADMIN</span>
                 <span class="badge badge--info" sec:authorize="hasRole('TEACHER')">TEACHER</span>
                 <span class="badge badge--info" sec:authorize="hasRole('STUDENT')">STUDENT</span>
-            </div>
+            </button>
 
             <button type="button" class="btn btn--secondary btn--sm" id="logout-button">ออกจากระบบ</button>
         </th:block>
 
         <th:block sec:authorize="isAnonymous()">
-            <div class="topbar__user hidden" id="client-user-badge">
+            <button type="button" class="topbar__user hidden" id="client-user-badge" onclick="ui.openProfileModal()" title="คลิกเพื่อดูข้อมูลผู้ใช้ เปลี่ยนรหัสผ่าน หรือเลือก Preference" style="background:none; border:none; cursor:pointer; text-align:left;">
+                <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
                 <span class="topbar__name" id="client-user-name">ผู้ใช้</span>
                 <span class="badge badge--info" id="client-user-role"></span>
-            </div>
+            </button>
             <button type="button" class="btn btn--secondary btn--sm hidden" id="client-logout-button">ออกจากระบบ</button>
             <a class="btn btn--primary btn--sm" id="guest-login-btn" th:href="@{/login}">เข้าสู่ระบบ</a>
         </th:block>

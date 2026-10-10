@@ -99,14 +99,14 @@
     </div>
 
     <p class="muted" style="margin: 10px 0 24px; font-size:0.9rem; line-height:1.5;">
-        ศูนย์กลางการตัดสินใจและบริหารจัดการตารางวิชาการ เข้าสู่ระบบด้วย University ID ของสถาบัน
+        ศูนย์กลางการตัดสินใจและบริหารจัดการตารางวิชาการ เข้าสู่ระบบด้วย University ID หรือ อีเมลของสถาบัน (@acados.kku.ac.th)
     </p>
 
     <form id="login-form">
         <div class="form-group">
-            <label for="university-id">University ID (รหัสผู้ใช้)</label>
+            <label for="university-id">University ID หรือ อีเมล (Email)</label>
             <input class="form-control" id="university-id" name="universityId" autocomplete="username"
-                   placeholder="เช่น admin, T001, S001" required>
+                   placeholder="เช่น admin, admin@acados.kku.ac.th, T001, S001" required>
         </div>
 
         <div class="form-group">
@@ -133,7 +133,8 @@
     <!-- Quick Demo Accounts Assist -->
     <div class="demo-credentials">
         <div style="font-weight:600; color:var(--ink-navy); margin-bottom:8px;">คลิกเพื่อใส่ข้อมูลบัญชีทดสอบ (Demo Quick Access):</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+        <div style="font-size:0.75rem; color:var(--ink-muted); margin-bottom:4px;">ล็อกอินด้วยรหัสผู้ใช้ (University ID):</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
             <button type="button" class="demo-chip" onclick="fillAccount('admin', 'password123')">
                 <strong>Admin:</strong> admin
             </button>
@@ -145,6 +146,18 @@
             </button>
             <button type="button" class="demo-chip" onclick="fillAccount('S001', 'password123')">
                 <strong>Student:</strong> S001
+            </button>
+        </div>
+        <div style="font-size:0.75rem; color:var(--ink-muted); margin-bottom:4px;">หรือล็อกอินด้วยอีเมล (Email):</div>
+        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+            <button type="button" class="demo-chip" onclick="fillAccount('admin@acados.kku.ac.th', 'password123')">
+                ✉ admin@acados.kku.ac.th
+            </button>
+            <button type="button" class="demo-chip" onclick="fillAccount('t001@acados.kku.ac.th', 'password123')">
+                ✉ t001@acados.kku.ac.th
+            </button>
+            <button type="button" class="demo-chip" onclick="fillAccount('s001@acados.kku.ac.th', 'password123')">
+                ✉ s001@acados.kku.ac.th
             </button>
         </div>
         <div class="muted" style="margin-top:8px; font-size:0.75rem;">รหัสผ่านทุกบัญชีคือ <span class="mono">password123</span></div>
