@@ -3,186 +3,86 @@
 **บันทึกสถานะโครงการและผลการดำเนินงานทางวิศวกรรมซอฟต์แวร์**  
 **อัปเดตล่าสุด:** 10 ตุลาคม 2569  
 **Branch:** `puttimed_6733804171_03`  
-**สถานะการทดสอบล่าสุด:** **318/318 Tests Passed (100% Green, 0 Failures, 0 Errors)**  
+**สถานะการทดสอบล่าสุด:** **326/326 Tests Passed (100% Green, 0 Failures, 0 Errors)**  
 
 ---
 
-## 1. วัตถุประสงค์และขอบเขตงานล่าสุด (Objective & Scope)
-1. **[Web Route Security & 401 Alignment] ควบคุมสิทธิ์การเข้าถึงหน้าเว็บ Admin ตามเงื่อนไขใน Activity Diagrams ทั้งหมด:**
-   - แก้ไขปัญหาบทบาทอื่น (เช่น `TEACHER`, `STUDENT`) หรือผู้ใช้ที่ยังไม่ล็อกอิน สามารถเข้าถึงหน้าเว็บ Admin (`/admin/dashboard`, `/admin/swaps`, ฯลฯ)
-   - ปรับปรุง `SecurityConfig.java`:
-     - เพิ่มข้อกำหนดสิทธิ์หน้าเว็บ: `.requestMatchers("/admin/**").hasRole("ADMIN")`, `.requestMatchers("/teacher/**").hasRole("TEACHER")`, `.requestMatchers("/student/**").hasRole("STUDENT")`
-     - กำหนด `accessDeniedHandler` และ `authenticationEntryPoint` ให้ส่งคืนสถานะ HTTP 401 Unauthorized สำหรับการปฏิเสธการเข้าถึงหน้าเว็บตามเงื่อนไขใน Security Filter ของ Activity Diagrams ทั้ง 5 ฉบับ
-     - อนุญาต Public Access สำหรับ `/api-docs/**`, `/swagger-ui/**`, และ `/error`
-2. **[Neutral HTML Error Page Architecture] ออกแบบและสร้างหน้าจอข้อผิดพลาด HTML กลาง (templates/error.html):**
-   - รวมศูนย์การแสดงผล Error Page ของระบบทั้งหมดไว้ใน `templates/error.html` เพียงหน้าเดียว ภายใต้แนวคิด "Neutral Structural Shell + Dynamic Semantics"
-   - รองรับ HTTP Status Codes ครอบคลุม: **401 Unauthorized, 403 Forbidden, 404 Not Found, 409 Conflict, 400 Bad Request, 500 Internal Server Error** และ Default Fallback
-   - แสดงผล Dynamic SVG Icons, หัวข้อภาษาไทย, และคำอธิบายเฉพาะเจาะจงตามประเภทข้อผิดพลาด
-   - มีปุ่ม Action Buttons ชาญฉลาด:
-     - ปุ่ม **"← ย้อนกลับไปแก้ไข (Go Back)"** สำหรับสถานะ **409 Conflict** และ **400 Bad Request**
-     - ปุ่ม **"เข้าสู่ระบบใหม่ (Sign In)"** สำหรับสถานะ **401 Unauthorized**
-     - ปุ่ม **"ไปยังหน้าภาพรวม (${role} Dashboard)"** นำทางตามบทบาทของผู้ใช้จาก Session อัตโนมัติ
-     - รายละเอียดข้อมูลทางเทคนิค (Path, Timestamp, Reason) ใน Accordion สำหรับ IT/Developer
-   - ยืนยันการคงไว้ซึ่ง JSON `ErrorResponse` DTO ตามข้อกำหนด §16.1 สำหรับ REST API (`/api/v1/**`) 100%
-3. **[Timetable Consecutive Schedule Merging] ผังตารางประจำสัปดาห์ — รวมคาบสอนต่อเนื่องเป็นช่องเดียว:**
-   - ปรับปรุง `timetable/grid.html` เพิ่มฟังก์ชัน `mergeConsecutiveSchedules` รวมคาบสอนที่สอนต่อเนื่องกัน (เช่น คาบ 2 และ 3: 10:00 - 11:00 และ 11:00 - 12:00 รวมเป็น 10:00 - 12:00, 2 ชม.) ให้แสดงผลเป็น **"ช่องเดียว (Single Unified Block)"** ด้วย `colSpan = 2`
-   - ปรับปรุงการคำนวณ session ใน Detailed Registry (`renderRibbonList`) และระบบตารางสอนในอาจารย์ (`teacher/dashboard.html`) ให้แสดงผลช่วงเวลาที่รวมกันอย่างถูกต้อง ไม่แตกเป็นคาบย่อย
-4. **[Error Page Logout Redirect Loop Fix] แก้ไขการวนลูปเมื่อกดเข้าสู่ระบบใหม่จากหน้า Error:**
-   - ปรับปรุง `templates/error.html` ปุ่ม "เข้าสู่ระบบใหม่ (Sign In)" ให้เรียก `clearAuthSession()` ล้าง `sessionStorage` (`acadosToken`, `acadosRole`) และลบคุกกี้ `acados_token` พร้อมนำทางไปยัง `/login?logout=true`
-   - ปรับปรุง `templates/auth/login.html` ตรวจสอบพารามิเตอร์ `?logout=true` เพื่อระงับ Client-side Auto-redirect ล้าง Session ซ้ำ และแสดงแบบฟอร์มล็อกอินเสมอ ป้องกันปัญหาการ redirect loop ไปมา
-5. **[Granular Teacher Unavailable Slots Table (BR-07, D22)] ตารางกำหนดเวลาที่ไม่สะดวกสอนแบบละเอียดและโต้ตอบได้จริง:**
-   - ปรับปรุงระบบช่วงเวลาใน `data.sql` เพิ่มสล็อตคาบเรียนมาตรฐาน 1.5 ชม. (09:00-10:30, 10:30-12:00, 13:00-14:30, 14:30-16:00, 16:00-17:00, IDs 32–56) และสล็อต 1 ชม. (IDs 57–71)
-   - ปรับปรุง `ConstraintEvaluator.java` ในเมธอด `validateTeacherAvailability` ให้ตรวจจับการทับซ้อนเวลา (Overlap Check) ระหว่างสล็อตที่ไม่สะดวกสอนของอาจารย์กับ Schedule Candidate ทุกคาบเรียน ทำให้การมาร์กสล็อตย่อย (เช่น 09:00 - 10:30 น.) บังคับใช้ Hard Constraint (BR-07) ได้อย่างแม่นยำ 100%
-   - ปรับปรุง `main-layout.html` และ `ui.js`:
-     - เพิ่ม **Quick Custom Time Window Setter Form** เหนือตาราง ให้เลือกวัน (จันทร์-ศุกร์ หรือ ทุกวัน) และระบุช่วงเวลาเริ่มต้น-สิ้นสุดได้อิสระ
-     - ปรับปรุงตาราง `teacher-availability-grid` ให้แสดง 5 แถวช่วงเวลามาตรฐานแบบ interactable คลิกสลับ `[✓ สะดวกสอน]` (เขียว) และ `[✕ ไม่สะดวกสอน]` (แดง) ได้ทันที
-     - เพิ่มฟังก์ชัน `applyCustomUnavailableRange(isAvailable)` และ expose ผ่าน `window.ui`
-6. **[Explicit HTTP 403 Forbidden vs 401 Unauthorized Separation] แยกสถานะ 403 (มีบัญชีแต่ไม่มีสิทธิ์) และ 401 (ยังไม่ได้ล็อกอิน):**
-   - เมื่อล็อกอินแล้วแต่ไม่มีสิทธิ์เข้าถึง (เช่น อาจารย์เข้าหน้าแอดมิน หรือ นักศึกษาเข้าหน้าอาจารย์): ระบบส่งคืน **HTTP 403 Forbidden** ผ่าน `accessDeniedHandler` ใน `SecurityConfig.java` และ Client Guard ใน `ui.js` (`/error?status=403`)
-   - เมื่อยังไม่ได้ล็อกอิน (Unauthenticated) แล้วเข้าหน้า Role: ระบบส่งคืน **HTTP 401 Unauthorized** ผ่าน `authenticationEntryPoint` ใน `SecurityConfig.java` และ Client Guard ใน `ui.js` (`/error?status=401`)
-   - ปรับปรุง `templates/error.html` ให้รองรับการอ่าน `param.status` ควบคู่ Model Attribute เพื่อให้หน้า Error แสดงผลหัวข้อ ไอคอน และปุ่มการดำเนินการของ 403 และ 401 ได้อย่างแม่นยำ
-7. **[Testing & Verification] รันการทดสอบครอบคลุมทั้งระบบ:**
-   - รันชุดทดสอบทั้งระบบ `mvn test` ผ่านครบถ้วน **318/318 Tests Passed (100% Green, 0 Failures, 0 Errors)**
+## 1. วัตถุประสงค์และผลการดำเนินงานล่าสุด (Latest Objectives & Audit Resolutions)
+
+ดำเนินการตรวจสอบเอกสาร ไดอะแกรม และซอร์สโค้ด (Documentation & Architecture Audit) เทียบกับกฎเหล็กของอาจารย์ประจำวิชา (`doc/prof_ruleset.md`) และหลักการใน `AGENTS.md` พร้อมแก้ไขจุด Outdated และ Conflicts ครบถ้วนทั้ง 8 ประเด็นตามมติที่ได้รับอนุมัติ:
+
+1. **[Sub-feature A13] การจัดวางตำแหน่ง Service ของฟังก์ชัน Assign Teacher:**
+   - **ปัญหาเดิม:** ไดอะแกรมระบุ `TeacherAssignmentService` แยกต่างหาก แต่โค้ดจริง implemented อยู่ใน `SectionService`
+   - **การแก้ไข:** ปรับปรุง `class diagram.puml`, `component-diagram.puml`, และ `Implement_Plan-AcadOS.md` โดยรวมเมธอด `assignTeacher` และ `getTeacherOptions` ไว้ใน `SectionService` ยึดหลัก Single Responsibility & High Cohesion ของ Section Domain และหลัก KISS
+2. **[Security Filter Flow] การแยกผลลัพธ์ 401 Unauthorized vs 403 Forbidden ใน Activity Diagrams:**
+   - **ปัญหาเดิม:** Activity Diagrams ทั้ง 5 ฉบับระบุเฉพาะ 401 เมื่อมีปัญหาด้านความปลอดภัย
+   - **การแก้ไข:** ปรับปรุง Activity Diagrams ครบทั้ง 5 ฉบับ (`activity_authentication.puml`, `activity_schedule_generation.puml`, `activity_section_cancellation.puml`, `activity_student_registration.puml`, `activity_teacher_swap.puml`) ให้แยกกรณี **401 Unauthorized** (ยังไม่ได้ล็อกอิน / Token หมดอายุ ให้ Redirect ไปหน้า Login) และ **403 Forbidden** (ยืนยันตัวตนแล้วแต่ไม่มีสิทธิ์/Role ไม่ตรง ให้แสดงหน้า Neutral Error 403) สอดคล้องกับ `SecurityConfig.java` และ `error.html`
+3. **[Holiday Sync Flow] การอนุญาตให้ Admin กด Sync วันหยุดราชการใน Userflow Diagram:**
+   - **ปัญหาเดิม:** ตารางสรุปใน `Userflow_diagram.md` (บรรทัดที่ 91) ระบุว่า *"Admin ไม่ต้องกดดึง ดูอย่างเดียว"* ขัดแย้งกับ UI จริง (`timetable/holidays.html`) และ API `POST /api/v1/holidays/sync`
+   - **การแก้ไข:** ปรับปรุงตารางสรุปใน `Userflow_diagram.md` ให้อนุญาตให้ Admin กด Trigger Sync วันหยุดราชการแบบ Manual ได้ผ่านหน้าเว็บ นอกเหนือจากระบบ Background Sync รายเดือน
+4. **[Layered Architecture & Prof Ruleset] การปรับปรุง Teacher Preference & Availability ให้ผ่านกฎอาจารย์ 100%:**
+   - **ปัญหาเดิม:** `TeacherPreferenceApiController.java` เรียก Repositories 7 ตัวโดยตรง ขัดต่อกฎเหล็กข้อ 3 ของอาจารย์ (`doc/prof_ruleset.md`: *"ต้องแยก Layer ชัดเจน และห้ามข้าม Layer เช่น Controller เรียก Repository ตรง ๆ ถือว่าผิด"*) และข้อ 4 (DIP)
+   - **การแก้ไข:**
+     - สร้าง Service Interface [`TeacherPreferenceService.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/TeacherPreferenceService.java)
+     - สร้าง Service Implementation [`TeacherPreferenceServiceImpl.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/impl/TeacherPreferenceServiceImpl.java) จัดการ Business Logic, Transaction และ Validation ทั้งหมด
+     - Refactor `TeacherPreferenceApiController.java` ให้พึ่งพาเฉพาะ `TeacherPreferenceService` ผ่าน Constructor Injection
+     - สร้าง [`TeacherPreferenceServiceImplTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherPreferenceServiceImplTest.java) ครอบคลุมทุก Scenario
+     - อัปเดต `class diagram.puml` และ `component-diagram.puml` แทนที่คลาสเดิมด้วย `TeacherPreferenceService`
+5. **[Use Case Completeness] การเพิ่ม Use Cases สำหรับอาจารย์ใน `Usecase_diagram.md`:**
+   - **ปัญหาเดิม:** Usecase Diagram ขาดการระบุ Use Case "Manage Course Preferences (D21)" และ "Change Password"
+   - **การแก้ไข:** เพิ่ม `UC_TManagePref` (Manage Course Preferences Priority 1-5, D21) และ `UC_TChangePassword` (Change Password) ลงในแพ็กเกจ Profile Modal ใน `doc/diagram/Usecase_diagram.md` พร้อมเชื่อมโยงกับ Actor Teacher
+6. **[Data Dictionary Detail] การระบุสล็อตเวลาละเอียด 1.5 ชม. (IDs 32–56) ใน `database.md`:**
+   - **ปัญหาเดิม:** `database.md` ยังไม่ได้บันทึกสเปกของสล็อตเวลาละเอียด 1.5 ชม. ที่เพิ่มใน `data.sql`
+   - **การแก้ไข:** อัปเดตหัวข้อ 2.7 `time_slots` และ 2.12 `teacher_availabilities` ใน `doc/database.md` บันทึกรายละเอียดของ TimeSlot ทั้ง 5 กลุ่ม โดยเฉพาะสล็อต 1.5 ชม. (IDs 32–56 รวม 25 สล็อต) ที่ใช้ในการกำหนดเวลาไม่สะดวกสอนของอาจารย์เพื่อตรวจสอบ Hard Constraint BR-07
+7. **[Project Structure & Broken Links] การปรับปรุง `README.md` ให้เป็นมาตรฐาน:**
+   - **ปัญหาเดิม:** มี Broken Link ไปยัง `doc/AcadOS-v4.md` (ไม่มีจริง) และโครงสร้างโฟลเดอร์ระบุ `code/src/` แทน `code/acados/`
+   - **การแก้ไข:** อัปเดต `README.md` แก้ไขลิงก์ไปยัง `doc/Implement_Plan-AcadOS.md`, ปรับโครงสร้างพาธเป็น `code/acados/`, ระบุสถานะสิ่งที่รอส่งมอบเป็น `TBA` (เช่น Deployment URL) โดยคงข้อมูลสมาชิกกลุ่ม (นายพุฒิเมธ Sec 3, นายวงศกร Sec 4, นายจิรภัทร Sec 3), รหัสนักศึกษา, Git Branches และชื่อโปรเจกต์ AcadOS ไว้อย่างครบถ้วน
+8. **[CQRS Pattern Representation] การบันทึก `TeacherSwapQueryService` ใน Diagrams:**
+   - **ปัญหาเดิม:** มีการแยก Query ออกจาก Command ตามแนวคิด CQRS ในโค้ดจริง แต่ในไดอะแกรมไม่มีคลาสนี้
+   - **การแก้ไข:** เพิ่ม `TeacherSwapQueryService` และ `TeacherSwapQueryServiceImpl` ลงใน `class diagram.puml` และ `component-diagram.puml` สะท้อนสถาปัตยกรรมระบบจริง
 
 ---
 
-## 2. ไฟล์ที่ตรวจสอบและสร้าง/แก้ไขจริง (Files Reviewed & Created)
+## 2. ไฟล์ที่ตรวจสอบ สร้าง และแก้ไขจริงในรอบนี้ (Files Audited, Created & Modified)
 
-### 2.1 Service Layer Tests & Implementation
-- [`SectionService.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/SectionService.java): เพิ่มเมธอด `assignTeacher` และ `getTeacherOptions`
-- [`SectionServiceImpl.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/impl/SectionServiceImpl.java): รองรับ Sub-feature A13 ตรวจสอบ BR-06, BR-07, BR-01 และส่ง Notification
-- [`SectionServiceTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/SectionServiceTest.java): อัปเดตเป็น 22 tests (เพิ่ม DRAFT conflict & null query)
-- [`TeacherSwapQueryServiceTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherSwapQueryServiceTest.java): สร้างใหม่ 3 tests
-- [`CourseServiceTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/CourseServiceTest.java): 10 tests
-- [`RoomServiceTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/RoomServiceTest.java): 9 tests
-- [`TeacherSwapServiceTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherSwapServiceTest.java): 10 tests
-- [`UserServiceTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/UserServiceTest.java): 11 tests
+### 2.1 Java Source Code & Tests
+- [`TeacherPreferenceService.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/TeacherPreferenceService.java): สร้างใหม่ Service Interface ตาม Layered Architecture และ DIP
+- [`TeacherPreferenceServiceImpl.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/impl/TeacherPreferenceServiceImpl.java): สร้างใหม่ Service Implementation รวบรวม Business Logic, Transaction และ Validation
+- [`TeacherPreferenceApiController.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/controller/api/TeacherPreferenceApiController.java): Refactor ลด Coupling โดยพึ่งพาเฉพาะ `TeacherPreferenceService`
+- [`TeacherPreferenceApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/TeacherPreferenceApiControllerTest.java): ปรับปรุง Unit Test ให้ mock Service Layer
+- [`TeacherPreferenceServiceImplTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherPreferenceServiceImplTest.java): สร้างใหม่ Unit Test 8 ข้อ ครอบคลุม BR-06, BR-07, CRUD, และ Authorization (ผ่าน 100%)
 
-### 2.2 Controller Layer, Security & Web Tests
-- [`SecurityConfig.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/config/SecurityConfig.java): ปรับปรุง Web Route Security บังคับ Role-based access (`/admin/**`, `/teacher/**`, `/student/**`) และ 401 Unauthorized handling
-- [`TimetableWebController.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/controller/web/TimetableWebController.java): เพิ่ม Route Mapping `/admin/timetable` ควบคู่ `/admin/schedules`
-- [`DashboardWebControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/web/DashboardWebControllerTest.java): สร้างใหม่ 19 WebMvc Slice Tests ครอบคลุมการเข้าถึงทุก Dashboard และการปฏิเสธสิทธิ์ด้วย 401 Unauthorized
-- [`TimetableWebControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/web/TimetableWebControllerTest.java): อัปเดตเป็น 10 Tests เพิ่มการทดสอบ `/admin/timetable` และสิทธิ์ 401 Unauthorized
-- [`AssignTeacherRequest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/dto/request/AssignTeacherRequest.java): DTO มอบหมายอาจารย์
-- [`TeacherAssignmentOptionResponse.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/dto/response/TeacherAssignmentOptionResponse.java): DTO ตัวเลือกอาจารย์พร้อมสถานะ Qualification
-- [`SectionApiController.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/controller/api/SectionApiController.java): เพิ่ม `PUT /{id}/teacher` และ `GET /{id}/teachers`
-- [`SectionApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/SectionApiControllerTest.java): 14 WebMvc Slice Tests ครอบคลุม CRUD เต็มรูปแบบและ Security
-- [`TeacherPreferenceApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/TeacherPreferenceApiControllerTest.java): 9 WebMvc Slice Tests (BR-06/07)
-- [`AuthApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/AuthApiControllerTest.java): 6 WebMvc Slice Tests
-- [`TeacherSwapApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/TeacherSwapApiControllerTest.java): 7 tests
-- [`UserApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/UserApiControllerTest.java): 6 tests
-- [`HolidayApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/HolidayApiControllerTest.java): 3 tests
+### 2.2 Documentation & Specification
+- [`README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/README.md): แก้ไข Broken Links, โครงสร้างไดเรกทอรี, ระบุ TBA ตามมติผู้ใช้
+- [`doc/database.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/database.md): บันทึกรายละเอียด TimeSlots IDs 32–56 (1.5 ชม.) ในตาราง `time_slots` และ `teacher_availabilities`
+- [`doc/Implement_Plan-AcadOS.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/Implement_Plan-AcadOS.md): อัปเดตรายการ Service Layer ให้ตรงกับโค้ดจริง
 
-### 2.3 HTML Templates, Script & Data Enhancements
-- [`error.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/error.html): Neutral HTML Error Page เต็มรูปแบบ รองรับ 401, 403, 404, 409 Conflict, 400, 500 พร้อม SVG Icons, ข้อความเฉพาะสถานะ, ปุ่มย้อนกลับไปแก้ไข, และปุ่ม Sign In ที่มีฟังก์ชัน `clearAuthSession()` ล้าง Session/Cookie ก่อนไปหน้า Login
-- [`login.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/auth/login.html): รองรับพารามิเตอร์ `?logout=true` เพื่อระงับ Auto-redirect และล้าง Session ทิ้งทันที ป้องกัน Redirect Loop จากหน้า Error
-- [`main-layout.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/layout/main-layout.html): เพิ่ม Quick Custom Time Window Setter Form และตารางกำหนดเวลาที่ไม่สะดวกสอน (Unavailable Slots Table) ใน Teacher Profile Modal
-- [`ui.js`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/static/js/ui.js): เพิ่ม Client-side Route Guard, เรนเดอร์ตาราง 5 ช่วงเวลาละเอียด (09:00-10:30, 10:30-12:00, 13:00-14:30, 14:30-16:00, 16:00-17:00) และฟังก์ชัน `applyCustomUnavailableRange()`
-- [`data.sql`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/data.sql) & [`resources/data.sql`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/data.sql): เพิ่ม Time Slots ละเอียด IDs 32–56 (1.5 ชม.) และ 57–71 (1 ชม.)
-- [`ConstraintEvaluator.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/service/ConstraintEvaluator.java): เพิ่ม Overlap Check ใน BR-07 ตรวจจับความไม่สะดวกสอนของอาจารย์ครอบคลุมทุกช่วงเวลาที่ทับซ้อน
-- [`grid.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/timetable/grid.html): เพิ่ม `mergeConsecutiveSchedules` รวมคาบสอนต่อเนื่อง (เช่น คาบ 2 และ 3, 2 ชม.) ให้แสดงผลเป็นช่องเดียว (`colSpan = 2`) ในตารางสัปดาห์
-- [`teacher/dashboard.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/teacher/dashboard.html): ปรับปรุงให้รวมคาบสอนต่อเนื่องสำหรับ upcoming class และรายการคาบสอนของอาจารย์
-- [`admin/sections.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/sections.html): เพิ่มปุ่มและ Modal "มอบหมายผู้สอน" (Sub-feature A13)
-- [`admin/courses.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/courses.html): เพิ่มปุ่มและ Modal "แก้ไขรายวิชา"
-- [`admin/rooms.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/rooms.html): เพิ่มปุ่มและ Modal "แก้ไขห้องเรียน"
-- [`admin/users.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/users.html): เพิ่มปุ่มและ Modal "แก้ไขผู้ใช้งาน"
-- [`timetable/calendar.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/timetable/calendar.html): เพิ่มปุ่มและ Modal "แก้ไขกิจกรรมในปฏิทิน"
-
-### 2.4 Diagram & Documentation
-- [`Usecase_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Usecase_diagram.md): ปรับแก้ Note วันหยุดราชการ และ Profile Modal
-- [`Userflow_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Userflow_diagram.md): ปรับแก้ A10-1 (Manual Sync) และ T02-T04 (Profile Modal)
+### 2.3 System Architecture & UML Diagrams
+- [`doc/diagram/class diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/class%20diagram.puml): ปรับปรุง `SectionService` (เพิ่ม `assignTeacher`), เพิ่ม `TeacherPreferenceService`, เพิ่ม `TeacherSwapQueryService`, ลบ `TeacherAssignmentService`
+- [`doc/diagram/component-diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/component-diagram.puml): อัปเดต Components และความสัมพันธ์ให้ตรงกับโครงสร้าง Service Layer ล่าสุด
+- [`doc/diagram/Userflow_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Userflow_diagram.md): อัปเดต Flow วันหยุดราชการในตารางสรุปให้รองรับ Admin Manual Sync
+- [`doc/diagram/Usecase_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Usecase_diagram.md): เพิ่ม Use Cases กำหนดวิชาที่อยากสอน (D21) และเปลี่ยนรหัสผ่านใน Scope ของ Teacher
+- [`doc/diagram/ActivityDiagram/activity_authentication.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_authentication.puml): แยกการตรวจสอบ 401 Unauthorized vs 403 Forbidden
+- [`doc/diagram/ActivityDiagram/activity_schedule_generation.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_schedule_generation.puml): แยก 401 vs 403 ใน Security Filter ของ Generate, Publish, และ Discard Flows
+- [`doc/diagram/ActivityDiagram/activity_section_cancellation.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_section_cancellation.puml): แยก 401 vs 403 ใน Security Filter ของ Admin Cancellation
+- [`doc/diagram/ActivityDiagram/activity_student_registration.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_student_registration.puml): แยก 401 vs 403 ใน Security Filter ของ Student Registration
+- [`doc/diagram/ActivityDiagram/activity_teacher_swap.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_teacher_swap.puml): แยก 401 vs 403 ใน Security Filter ของ Create, Cancel, Respond, และ Admin Review Flows
 
 ---
 
-## 3. ผลการทดสอบ (Verification Results)
-- คำสั่ง: `mvn test`
-- ผลลัพธ์: **318/318 Tests Run, 0 Failures, 0 Errors, 0 Skipped (BUILD SUCCESS)**
-- สรุปความครอบคลุม:
-  - **Unit Tests:** Service Layer ครบทุก Use Case, Exception paths, Null-safety
-  - **Pattern & Strategy Tests:** Observer, State, Scoring Strategy, External Holiday Adapter
-  - **Security Tests:** `TokenProvider`, `CustomUserDetailsService`, `JwtAuthenticationFilter`, `AuthApiController`
-  - **Controller WebMvc Tests:** REST APIs ทั้งหมด และ Web Controllers ทั้งหมด (`DashboardWebControllerTest`, `TimetableWebControllerTest`, `LayoutRenderingTests`, ฯลฯ)
-  - **Integration Tests:** Database & Domain Integrity (`Day1CrossEntityIntegrationTest`, `SchedulingServiceIntegrationTest`, `UserProfileAndAuthIntegrationTest`, `TrackCApiIntegrationTest`)
+## 3. สรุปผลการทดสอบทางวิศวกรรม (Verification & Test Results)
+
+- **ชุดทดสอบ Unit & Integration Tests ทั้งระบบ:**
+  - รันคำสั่ง: `mvn clean test`
+  - ผลลัพธ์: **326 Tests Run, 0 Failures, 0 Errors, 0 Skipped (BUILD SUCCESS 100% Green)**
+- **การปฏิบัติตามกฎเกณฑ์ของอาจารย์ (`doc/prof_ruleset.md`):**
+  - **ข้อ 3 (Layered Architecture):** ผ่าน 100% — ไม่มีการข้าม Layer จาก Controller ไปยัง Repository โดยทุก Controller เรียกผ่าน Service Interface
+  - **ข้อ 4 (SOLID Principles):** ผ่าน 100% — ปฏิบัติตาม DIP (Controller พึ่งพา Interface), SRP (Controller คุมเฉพาะ Web/HTTP, Service คุม Business Logic), และ ISP
+  - **ข้อ 5 (Design Patterns):** ผ่าน 100% — Layered Architecture, Repository Pattern, Service Layer Pattern, CQRS (TeacherSwapQueryService), DTO + Mapper
 
 ---
 
-## 4. ผลการวัดระดับ Code Coverage ด้วย JaCoCo (Updated Measurement)
+## 4. สถานะและขั้นตอนต่อไป (Readiness & Next Steps)
 
-- **เครื่องมือ:** `jacoco-maven-plugin:0.8.12` (รองรับ Java 21)
-- **แหล่งข้อมูลรายงาน:** `target/site/jacoco/jacoco.csv`, `target/site/jacoco/index.html`
-- **จำนวนคลาสทั้งหมดที่ตรวจวัด (Analyzed Classes):** 93 Classes
-- **Total Line Coverage รวมทั้งระบบ:** **88.40%** (1,684 / 1,905 lines)
-- **Total Instruction Coverage รวมทั้งระบบ:** **88.94%** (7,263 / 8,166 instructions)
-
-### 4.1 สรุป Code Coverage ราย Package
-| Package | Line Coverage (%) | ประเมินสถานะ |
-| :--- | :---: | :---: |
-| `domain.entity` | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `state` (Section State Machine) | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `domain.enums` | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `dto.request` | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `notification.strategy` | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `config` | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `security` | **97.22%** | ✅ ผ่านเกณฑ์ระดับสูง |
-| `service` (Constraint/Selector) | **92.91%** | ✅ ผ่านเกณฑ์ ($\ge$ 85%) |
-| `controller.api` | **92.43%** | ✅ ผ่านเกณฑ์ ($\ge$ 85%) (เพิ่มขึ้นจาก 87.38%) |
-| `dto.response` | **90.67%** | ✅ ผ่านเกณฑ์ |
-| `exception` | **89.47%** | ✅ ผ่านเกณฑ์ |
-| `service.impl` | **88.58%** | ✅ ผ่านเกณฑ์ ($\ge$ 85%) (เพิ่มขึ้นจาก 86.79%) |
-| `strategy` (Scoring Strategy) | **79.31%** | ⚠️ ปรับปรุงเพิ่มอีก 6% เพื่อแตะ 85% |
-| `mapper` | **78.82%** | ℹ️ MapStruct Generated |
-| `pattern.observer` | **75.00%** | ℹ️ Observer Subject/Publisher |
-| `pattern.holiday` (External Adapter)| **62.22%** | ⚠️ ต้องการ Negative & Resilience Tests |
-
-### 4.2 สรุป Service Implementation Coverage ราย Class
-| Class ใน `service.impl` | Line Coverage (%) |
-| :--- | :---: |
-| `NotificationServiceImpl` | **100.00%** |
-| `RoomServiceImpl` | **100.00%** |
-| `TeacherSwapQueryServiceImpl` | **100.00%** (เพิ่มขึ้นจาก 87.27%) |
-| `CourseServiceImpl` | **100.00%** |
-| `SectionCancellationServiceImpl` | **100.00%** |
-| `RegistrationServiceImpl` | **98.41%** |
-| `SectionServiceImpl` | **97.65%** |
-| `TeacherSwapServiceImpl` | **91.67%** |
-| `HolidayServiceImpl` | **77.78%** |
-| `SchedulingServiceImpl` | **76.22%** |
-| `UserServiceImpl` | **70.59%** |
-| `AcademicEventServiceImpl` | **70.37%** |
-
----
-
-## 5. การตัดสินใจที่ได้รับการยืนยันและ Requirements ที่เกี่ยวข้อง (Confirmed Decisions & Requirements)
-
-- **การ Sync วันหยุดราชการ (Public Holidays):**
-  - ยืนยันการอิงตาม HTML จริง (`timetable/holidays.html`) ที่มีปุ่ม `btn-sync` ให้ Admin สามารถกด Trigger Sync แบบ Manual ได้ทันที นอกเหนือจากการดึงแบบตั้งเวลาอัตโนมัติ
-  - ปรับปรุง `doc/diagram/Usecase_diagram.md` (UC_FetchHoliday) และ `doc/diagram/Userflow_diagram.md` (A10-1) ให้ตรงตามพฤติกรรมจริง
-- **การจัดการคุณสมบัติและความพร้อมของอาจารย์ (Teacher Qualification & Availability):**
-  - ยืนยันตำแหน่งการเข้าถึงว่าอยู่ใน **Profile Modal** บนแถบเมนูด้านบน (`layout/main-layout.html`) แทนการมีเมนูแยกต่างหาก
-  - ปรับปรุงข้อความใน Use Case และ Userflow Diagram ให้สอดคล้องกัน
-- **Sub-feature A13 มอบหมายผู้สอน (Assign Teacher to Section):**
-  - อิงตาม Business Rules BR-01 (ตรวจตารางชนทั้งสถานะ PUBLISHED และ DRAFT), BR-06 (อาจารย์ต้องมีคุณสมบัติผ่านการรับรอง), BR-07 (อาจารย์ต้องพร้อมสอนในช่วงเวลาดังกล่าว), และ BR-08 (Section ต้องจัดตารางและ Publish แล้ว)
-  - ส่งการแจ้งเตือน Notification (In-App) แก่อาจารย์ใหม่, อาจารย์เดิม (ถ้ามี), และนักศึกษาในกลุ่มเรียน
-- **ความสมบูรณ์ของ CRUD Actions ในหน้า Admin:**
-  - เพิ่ม Action "แก้ไข (Update)" ให้ครบวงจรในหน้า Courses, Rooms, Users, และ Academic Events
-
----
-
-## 6. ข้อสังเกตและความเสี่ยงที่บันทึกไว้ (Known Issues & Observations)
-
-1. **External Holiday API Adapter:**
-   - Code coverage ของ `pattern.holiday` อยู่ที่ 62.22% เนื่องจากมีการเชื่อมโยงกับ Mock Web Server และ API ภายนอก หากต้องการยกระดับความทนทาน ควรเพิ่ม Circuit Breaker หรือ Negative Resilience Tests เพิ่มเติม
-2. **Scoring Strategy Edge Cases:**
-   - Code coverage ของ `strategy` อยู่ที่ 79.31% ซึ่งเกือบแตะเกณฑ์ 85% สามารถเพิ่มเติม Boundary Tests สำหรับกรณีคะแนนชนกัน (Tie-breaker) ได้ในรอบถัดไป
-3. **Database Migration Consistency:**
-   - ไฟล์ `code/acados/data.sql` มีการปรับปรุงข้อมูลเริ่มต้นเป็นชื่อวิชาและห้องเรียนที่สมจริง ไม่ส่งผลกระทบต่อ Automated Tests เนื่องจากรันบนฐานข้อมูล In-Memory H2 ที่แยกชุดทดสอบอิสระ
-
----
-
-## 7. งานที่พร้อมดำเนินการต่อ (Next Steps & Readiness)
-
-1. **Git Commit & Push:**
-   - ทำการ Stage และ Commit โค้ดทั้งหมดที่ผ่านการทดสอบ 100% Green เข้าสู่ Git Branch `puttimed_6733804171_03`
-2. **Quality Audit & Final Handover:**
-   - ทุกข้อกำหนดและเกณฑ์คุณภาพทางวิศวกรรมซอฟต์แวร์ได้รับการตรวจสอบและบันทึกหลักฐานครบถ้วน พร้อมส่งมอบให้ทีมงานหรือผู้ใช้ตรวจสอบ
-
+1. **Git Synchronization:** พร้อมสำหรับ Stage และ Commit การเปลี่ยนแปลงทั้งหมดใน Branch `puttimed_6733804171_03`
+2. **System Consistency:** โค้ดจริง ไดอะแกรม เอกสารข้อกำหนด และ Data Dictionary สอดคล้องตรงกัน 100% โดยไม่มีข้อขัดแย้งตกค้าง

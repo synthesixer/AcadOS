@@ -88,7 +88,7 @@
 | Availability | ระบุได้ทั้ง ว่าง / ไม่พร้อมสอน · ลบค่าที่ระบุได้ (กลับเป็นไม่ระบุ) · ไม่ระบุ = ว่าง · ทับกันและมีไม่พร้อม = ไม่ว่าง |
 | Cancel Section | Release Schedule = ลบคาบสอน · แจ้งทั้งสองฝ่ายของคำขอแลกคาบที่เกี่ยวข้อง |
 | University Event | ตัดออกทุก Role (มี Academic Event + Public Holiday แล้ว) |
-| Public Holiday | ระบบดึงจาก External API เองเดือนละครั้ง · Admin ไม่ต้องกดดึง ดูอย่างเดียว (A10-2) |
+| Public Holiday | ระบบดึงจาก External API อัตโนมัติ หรือ Admin สามารถกดปุ่ม Manual Sync วันหยุดราชการได้ผ่านหน้าเว็บ (A10-1, POST /api/v1/holidays/sync) |
 | Logout | กลับหน้า Login · ระบบ Stateless ไม่มี Token Blacklist (§15.3) |
 | Admin System | ทำเฉพาะ "ดู" ตารางสอนรวมและการลงทะเบียน (A04) |
 | Account Management | Admin สร้าง / แก้ไข / ลบบัญชี Teacher และ Student · Admin กำหนดรหัสผ่านเอง · แก้ได้เฉพาะชื่อ, email, รหัสผ่าน (University ID และ role แก้ไม่ได้) |
