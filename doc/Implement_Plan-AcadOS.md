@@ -79,9 +79,10 @@
   - [22. Commit Plan \& Four-Day Execution Plan](#22-commit-plan--four-day-execution-plan)
     - [22.1 Commit Breakdown สำหรับสมาชิกทั้ง 3 คน](#221-commit-breakdown-สำหรับสมาชิกทั้ง-3-คน)
     - [22.2 แผนการดำเนินงาน 4 วัน (Four-Day Execution Plan)](#222-แผนการดำเนินงาน-4-วัน-four-day-execution-plan)
-  - [23. Deployment Checklist \& Demo Scenarios](#23-deployment-checklist--demo-scenarios)
-    - [23.1 Deployment Checklist](#231-deployment-checklist)
-    - [23.2 Final Demo Scenarios](#232-final-demo-scenarios)
+  - [23. Deployment Architecture, Checklist \& Demo Scenarios](#23-deployment-architecture-checklist--demo-scenarios)
+    - [23.1 Cloud Production Deployment Environment \& Container Architecture](#231-cloud-production-deployment-environment--container-architecture-ตรงตาม-implementation-จริง)
+    - [23.2 Deployment Checklist](#232-deployment-checklist)
+    - [23.3 Final Demo Scenarios](#233-final-demo-scenarios)
   - [24. Final Project Definition \& Definition of Done](#24-final-project-definition--definition-of-done)
     - [24.1 Definition of Done (DoD)](#241-definition-of-done-dod)
   - [25. Scope Preservation \& Priority Strategy](#25-scope-preservation--priority-strategy)
@@ -170,8 +171,8 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 | **API Documentation** | Springdoc OpenAPI (Swagger UI) | สเปก OpenAPI v3 เข้าถึงผ่าน `/swagger-ui.html` |
 | **Frontend** | Thymeleaf + HTML5 / CSS3 / JS | เรนเดอร์ฝั่ง Server เรียกใช้งานผ่าน Web Controller และ REST API |
 | **Testing** | JUnit 5 + Mockito + Spring Boot Test | ทดสอบ Unit Test, Service Mocking, Integration Testing และ Testcontainers |
-| **Containerization** | Docker & Docker Compose | ทำ Container สำหรับแอปพลิเคชันและฐานข้อมูล MySQL พร้อม Persistent Volume |
-| **Deployment** | Cloud / Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose (acados-app Port 8080, acados-db Port 3306), เข้าถึงตรง Port 8080 (No Nginx), กำหนด Persistent Volume สำหรับ MySQL |
+| **Containerization** | Docker & Docker Compose (Multi-Container) | รองรับ 3 คอนเทนเนอร์: `acados-app` (Spring Boot 3.3.4 บน Eclipse Temurin 21 JRE), `acados-db` (MySQL 8.4 LTS), และ `acados-phpmyadmin` พร้อม Docker Persistent Volume `mysql_data` |
+| **Deployment** | Cloud Host Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose บน Linux VPS เข้าถึงโดยตรง Port 8080 (No Nginx), phpMyAdmin Port 8081, ฐานข้อมูลภายใน Port 3306 พร้อม Healthcheck `mysqladmin ping` และ Auto-restart policy |
 | **Email Service** | Mailtrap (mailtrap.io) Sandbox SMTP | บริการ Sandbox SMTP ทดสอบส่งอีเมลผ่าน `spring-boot-starter-mail` (Host: `sandbox.smtp.mailtrap.io`, Port 587) ตรวจสอบผลบน Web Inbox ตอน Demo ได้ทันที |
 | **External Holiday API** | Nager.Date Public Holiday API | บริการดึงข้อมูลวันหยุดราชการไทยฟรีแบบไม่ต้องมี API Key ผ่าน `https://date.nager.at/api/v3/publicholidays/{year}/TH` |
 
@@ -802,12 +803,13 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 ```
 AcadOS/
 ├── code/                         # ซอร์สโค้ด Spring Boot + Maven POM
-│   ├── src/
-│   ├── pom.xml
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── schema.sql                # DDL Database Schema (TBA รายละเอียด)
-│   └── data.sql                  # Initial Mock Data (TBA รายละเอียด)
+│   └── acados/
+│       ├── src/
+│       ├── pom.xml
+│       ├── Dockerfile            # Multi-stage build (Temurin 21 SDK -> JRE)
+│       ├── docker-compose.yml    # Multi-container orchestration (App, DB, phpMyAdmin)
+│       ├── schema.sql            # DDL Database Schema
+│       └── data.sql              # Initial Mock Data
 ├── test/                         # เอกสารและรายงานการทดสอบ
 ├── doc/                          # เอกสารข้อกำหนดและสถาปัตยกรรมระบบ
 │   ├── AcadOS-v4.md              # เอกสารสเปกหลักฉบับนี้
@@ -906,9 +908,71 @@ AcadOS/
 
 ---
 
-## 23. Deployment Checklist & Demo Scenarios
+## 23. Deployment Architecture, Checklist & Demo Scenarios
 
-### 23.1 Deployment Checklist
+### 23.1 Cloud Production Deployment Environment & Container Architecture (ตรงตาม Implementation จริง)
+
+สถาปัตยกรรมและสภาพแวดล้อมสำหรับการ Deploy ระบบบน Cloud Production Server อ้างอิงตามโค้ดจริงใน `code/acados/Dockerfile`, `code/acados/docker-compose.yml`, และ `application.properties`:
+
+#### 1. ข้อกำหนดสภาพแวดล้อม Cloud Server (Host Specifications)
+- **Host Machine:** Cloud Host Server (VPS / Cloud VM เช่น DigitalOcean Droplet, AWS EC2, Linode หรือ Cloud VPS ที่มี Public IPv4)
+- **Operating System:** Linux OS (Ubuntu 22.04 LTS / Ubuntu 24.04 LTS หรือ Debian 12)
+- **Hardware Sizing (Recommended):** $\ge$ 2 vCPU, $\ge$ 2-4 GB RAM, $\ge$ 20 GB SSD Storage
+- **Host Runtime:** Docker Engine 24.x+ และ Docker Compose v2.x+ (`docker compose`)
+- **Network & Firewall (Security Group Rules):**
+  - **Inbound TCP 8080:** อนุญาตเข้าถึง Application Web UI (Thymeleaf), REST APIs, Swagger UI (`/swagger-ui.html`), และ Spring Actuator (`/actuator/health`) โดยตรงแบบ Direct Port Access (No Nginx Reverse Proxy ตาม Decision FL-05 / 2A)
+  - **Inbound TCP 8081:** อนุญาตเข้าถึง phpMyAdmin Web Console สำหรับผู้ดูแลระบบจัดการฐานข้อมูล
+  - **Inbound TCP 22:** สำหรับการเชื่อมต่อรีโมตเซิร์ฟเวอร์ผ่าน SSH
+  - **Outbound TCP 443 (HTTPS):** สำหรับเชื่อมต่อไปยัง External Nager.Date Public Holiday API (`https://date.nager.at/api/v3/publicholidays/{year}/TH`)
+  - **Outbound TCP 587 (SMTP / STARTTLS):** สำหรับเชื่อมต่อไปยัง Mailtrap Sandbox SMTP (`sandbox.smtp.mailtrap.io:587`) เพื่อทดสอบการส่งอีเมล
+
+#### 2. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)
+ระบบรันด้วย Multi-Container Architecture ควบคุมผ่าน `code/acados/docker-compose.yml`:
+
+| Service Name | Container Name | Image / Base | Internal Port | Host Port | รายละเอียดการทำงานและคอนฟิกูเรชัน |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **`app`** | `acados-app` | Multi-stage Build (`eclipse-temurin:21-jre`) | 8080 | **8080** | **Spring Boot 3.3.4 Application**<br>• ติดต่อ DB ผ่าน `jdbc:mysql://db:3306/acados_db`<br>• กำหนด `depends_on: db: condition: service_healthy`<br>• รองรับตัวแปร `ACADOS_JWT_SECRET` ผ่าน Environment Variable |
+| **`db`** | `acados-db` | `mysql:8.4` (LTS) | 3306 | **3306** | **MySQL Database System**<br>• สร้างฐานข้อมูล `acados_db`<br>• รหัสผ่าน Root ควบคุมผ่าน `${MYSQL_ROOT_PASSWORD:-root}`<br>• Healthcheck ผ่าน `mysqladmin ping` ทุก 5 วินาที<br>• แมปพื้นที่จัดเก็บถาวรผ่าน Persistent Volume `mysql_data` |
+| **`phpmyadmin`** | `acados-phpmyadmin` | `phpmyadmin/phpmyadmin:latest` | 80 | **8081** | **Database Management GUI**<br>• เชื่อมต่อไปยังโฮสต์ `db` พอร์ต 3306 อัตโนมัติ (`PMA_HOST: db`)<br>• เข้าใช้งานผ่าน Web Browser ที่พอร์ต 8081 สำหรับ Audit และตรวจสอบข้อมูล |
+
+#### 3. รายละเอียด Multi-Stage Dockerfile (`code/acados/Dockerfile`)
+- **Stage 1 (Build Stage):** Base Image `maven:3.9.9-eclipse-temurin-21` ทำการคอมไพล์ซอร์สโค้ดและแพ็กเกจเป็น JAR ไฟล์ด้วยคำสั่ง `mvn -B -DskipTests package` ใน Working Directory `/workspace`
+- **Stage 2 (Runtime Stage):** Lightweight JRE Image `eclipse-temurin:21-jre` คัดลอกเฉพาะ `/workspace/target/acados-1.0-SNAPSHOT.jar` ไปไว้ที่ `/app/app.jar` เพื่อความปลอดภัยและลดขนาด Image (Zero Maven/Build SDK footprint in production)
+- **Execution:** รันด้วย `ENTRYPOINT ["java", "-jar", "/app/app.jar"]` พร้อมเปิด `EXPOSE 8080`
+
+#### 4. กลไกความทนทานและการคงอยู่ของข้อมูล (Data Persistence & Healthcheck)
+- **Data Persistence (D11):** กำหนด Docker Named Volume `mysql_data` แมปเข้ากับ `/var/lib/mysql` ของคอนเทนเนอร์ `acados-db` ป้องกันข้อมูลสูญหายเมื่อคอนเทนเนอร์หยุดทำงานหรือ Re-deploy
+- **Startup Dependency & Healthcheck:** คอนเทนเนอร์ `app` มีเงื่อนไข `condition: service_healthy` รอจนกว่า MySQL จะพร้อมรับการเชื่อมต่อจริงจากผลตรวจ `mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent` (Retries: 20 ครั้ง, Interval: 5 วินาที) แก้ไขปัญหา Application Crash จาก DB Connection Timeout
+- **Restart Policy:** คอนเทนเนอร์ `db` และ `phpmyadmin` กำหนด `restart: always` กู้คืนการทำงานอัตโนมัติหากเซอร์วิสขัดข้อง
+
+#### 5. สรุป Service Endpoints บน Cloud Production Host (`http://<SERVER_PUBLIC_IP>`)
+- **Web Application & UI (Thymeleaf):** `http://<SERVER_PUBLIC_IP>:8080/`
+- **API Documentation (Swagger UI):** `http://<SERVER_PUBLIC_IP>:8080/swagger-ui.html`
+- **OpenAPI Schema (JSON):** `http://<SERVER_PUBLIC_IP>:8080/api-docs`
+- **Health & Liveness Check (Spring Actuator):** `http://<SERVER_PUBLIC_IP>:8080/actuator/health`
+- **System Metrics (Spring Actuator):** `http://<SERVER_PUBLIC_IP>:8080/actuator/metrics`
+- **Database Administration (phpMyAdmin):** `http://<SERVER_PUBLIC_IP>:8081/`
+
+#### 6. คำสั่งในการ Deploy และจัดการบน Production Server
+```bash
+# 1. โคลนโปรเจกต์และเข้าสู่โฟลเดอร์ซอร์สโค้ด
+git clone <REPOSITORY_URL>
+cd AcadOS/code/acados
+
+# 2. บิลด์อิมเมจและสตาร์ตคอนเทนเนอร์ทั้งหมดในพื้นหลัง (Detached mode)
+docker compose up -d --build
+
+# 3. ตรวจสอบสถานะการทำงานของคอนเทนเนอร์และผล Healthcheck
+docker compose ps
+
+# 4. ดูบันทึกการทำงานของแอปพลิเคชัน (Log monitoring)
+docker compose logs -f app
+
+# 5. สั่งหยุดการทำงาน (รักษา Persistent Volume mysql_data ไว้)
+docker compose down
+```
+
+### 23.2 Deployment Checklist
 - [ ] แอปพลิเคชัน Start ผ่าน `mvn spring-boot:run` ได้โดยไม่มี Error
 - [ ] เชื่อมต่อ MySQL และสร้างโครงสร้างตารางได้ครบถ้วน
 - [ ] เข้าสู่ระบบได้ทุก Role (`ADMIN`, `TEACHER`, `STUDENT`)
@@ -1016,7 +1080,7 @@ AcadOS/
 | **Migration Scripts** | Flyway/Liquibase หรือ schema.sql + data.sql | **TBA** | กำหนดให้มี `schema.sql` และ `data.sql` ใน `code/` (รายละเอียด Script = TBA) |
 | **REST API Standards** | ครบ CRUD 2 Resources, Status Codes, Validation | **Complete** | Courses และ Rooms ทำ CRUD ครบ, มี DTO, Bean Validation |
 | **Git Workflow** | Branch `ชื่อ_รหัสนักศึกษา_section`, $\ge$ 15 commits/คน | **Complete** | กำหนดชื่อ Branch ของทั้ง 3 คนถูกต้องตามฟอร์แมต |
-| **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **Complete** | สถาปัตยกรรมยืนยัน: Cloud Host (VPS / Cloud VM + Docker Compose) รัน acados-app (Port 8080) และ acados-db พร้อม Persistent Volume `mysql_data` |
+| **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **Complete** | สถาปัตยกรรมยืนยันและรองรับด้วยโค้ดจริง 100%: Linux Cloud Host (VPS / Cloud VM + Docker Compose) รัน Multi-container (`acados-app` Port 8080, `acados-db` MySQL 8.4 Port 3306 พร้อม Healthcheck ping, `acados-phpmyadmin` Port 8081, Persistent Volume `mysql_data`, และ Spring Actuator `/actuator/health`) |
 
 ---
 
@@ -1024,7 +1088,7 @@ AcadOS/
 
 ส่วนสรุปรายการที่ยังต้องระบุหรือตัดสินใจเพิ่มเติมในขั้นตอนการพัฒนา (Implementation Phase):
 1. **Database Migration Scripts (TBA):** เนื้อหารายละเอียดของไฟล์ DDL `schema.sql` และ Initial Data `data.sql` ในโฟลเดอร์ `code/` จะถูกจัดทำขึ้นตาม Entity จริง
-2. **Cloud Provider & Public URL (Confirmed):** กำหนดใช้ Cloud Host Server (VPS / Cloud VM) พร้อม Docker Compose โดยเข้าถึงแอปพลิเคชันโดยตรงผ่าน Port 8080 (No Nginx Reverse Proxy) และเชื่อมต่อฐานข้อมูล MySQL ผ่าน Docker Internal Network (Port 3306) พร้อม Persistent Volume `mysql_data` (โดเมน Public URL จะผูกกับ IP ของโฮสต์ในวันนำเสนอ)
+2. **Cloud Provider & Public URL (Confirmed):** ยืนยันสถาปัตยกรรมตามโค้ดจริงใน `code/acados/docker-compose.yml` และ `Dockerfile`: รันด้วย Docker Compose บน Linux VPS Host โดยมี 3 คอนเทนเนอร์ (`acados-app` พอร์ต 8080, `acados-db` MySQL 8.4 พอร์ต 3306, `acados-phpmyadmin` พอร์ต 8081) เข้าถึงแอปพลิเคชันโดยตรงผ่าน Public URL `http://<SERVER_PUBLIC_IP>:8080` (Direct Port Access / No Nginx) พร้อมตรวจสุขภาพระบบผ่าน Spring Actuator `/actuator/health` และจัดการความคงอยู่ของฐานข้อมูลด้วย Persistent Volume `mysql_data`
 3. **Data Dictionary & ER Diagram (TBA):** รายละเอียดพจนานุกรมข้อมูล (ชนิดข้อมูล, ความยาว, Constraints) และไฟล์รูปภาพ ER Diagram ฉบับสมบูรณ์จะจัดทำในโฟลเดอร์ `doc/`
 4. **Use Case Descriptions (TBA):** เอกสารอธิบาย Use Case แต่ละตัวแบบละเอียด (Main Flow, Alternative Flow, Pre/Post-condition) จะถูกจัดทำเพิ่มเติมใน `doc/`
 5. **Teacher B Respond Endpoint & State (TBA):** รูปแบบ Request Body และ Endpoint ย่อยสำหรับการตอบรับคำขอสลับสอนของ Teacher B จะถูกกำหนดในขั้นตอน Implement
