@@ -1,0 +1,65 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>จัดการกลุ่มเรียน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>จัดการกลุ่มเรียน (Sections)</h1>
+        <p class="muted">รายชื่อกลุ่มเรียน ความจุ และสถานะกลุ่มเรียน</p>
+    </div>
+
+    <div class="card">
+        <h3>กลุ่มเรียนทั้งหมด</h3>
+        <div id="section-list" style="margin-top:12px; display:grid; gap:8px;"></div>
+    </div>
+</main>
+
+<script>
+    async function cancelSection(id) {
+        if (!confirm('ยืนยันยกเลิกกลุ่มเรียนนี้ (Cancel Section)? การลงทะเบียนทั้งหมดจะถูกยกเลิก')) return;
+        const res = await api.put(`/api/v1/sections/${id}/cancel`);
+        if (res.ok) {
+            alert('ยกเลิกกลุ่มเรียนเรียบร้อย');
+            loadSections();
+        } else {
+            alert(res.error.message);
+        }
+    }
+
+    async function loadSections() {
+        const list = document.getElementById('section-list');
+        const res = await api.get('/api/v1/sections');
+        if (!res.ok) {
+            list.innerHTML = `<p style="color:var(--danger);">${res.error.message}</p>`;
+            return;
+        }
+        const sections = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        list.innerHTML = '';
+        sections.forEach(s => {
+            const item = document.createElement('div');
+            item.style.padding = '10px 14px';
+            item.style.border = '1px solid var(--border)';
+            item.style.borderRadius = '6px';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.innerHTML = `
+                <div>
+                    <strong>${s.courseCode || 'วิชา'}</strong> (กลุ่ม ${s.sectionNumber})
+                    <span class="muted" style="margin-left:12px;">ความจุ: ${s.capacity} | สถานะ: ${s.status}</span>
+                </div>
+                <div>
+                    ${s.status === 'ACTIVE' ? `<button class="btn btn--sm" style="background:var(--danger); color:white;" onclick="cancelSection(${s.id})">ยกเลิกกลุ่ม</button>` : '<span class="muted">ยกเลิกแล้ว</span>'}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+    loadSections();
+</script>
+</body>
+</html>
+

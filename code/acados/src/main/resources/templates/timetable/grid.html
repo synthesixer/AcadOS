@@ -1,0 +1,239 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>ตารางสอนและตารางเรียน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div>
+            <h1>ตารางสอนและตารางเรียน (Timetable Grid)</h1>
+            <p class="muted">แสดงตารางการเรียนการสอนรายสัปดาห์ สถานะ DRAFT และ PUBLISHED</p>
+        </div>
+        <div sec:authorize="hasRole('ADMIN')" style="display:flex; gap:8px;">
+            <button id="btn-generate" class="btn btn--primary" type="button">⚡ จัดตารางอัตโนมัติ (Generate)</button>
+            <button id="btn-publish" class="btn" style="background:var(--ok); color:#fff;" type="button">✔ เผยแพร่ (Publish)</button>
+            <button id="btn-discard" class="btn" style="background:var(--danger); color:#fff;" type="button">✖ ลบร่าง (Discard)</button>
+        </div>
+    </div>
+
+    <!-- Alert Banner for notifications -->
+    <div id="status-alert" class="hidden" style="padding:12px 16px; border-radius:8px; margin-bottom:16px;"></div>
+
+    <div class="card" style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <h2>ตารางประจำสัปดาห์</h2>
+            <div style="display:flex; gap:12px; align-items:center;">
+                <label for="status-filter" class="muted">สถานะ:</label>
+                <select id="status-filter" class="form-control" style="padding:6px 12px; border-radius:6px; border:1px solid var(--border);">
+                    <option value="">ทั้งหมด (All)</option>
+                    <option value="PUBLISHED" selected>เผยแพร่แล้ว (PUBLISHED)</option>
+                    <option value="DRAFT">ฉบับร่าง (DRAFT)</option>
+                </select>
+            </div>
+        </div>
+
+        <div style="overflow-x:auto;">
+            <table class="table" style="width:100%; border-collapse:collapse; text-align:center;">
+                <thead>
+                    <tr style="background:var(--primary-50); border-bottom:2px solid var(--border);">
+                        <th style="padding:12px; width:120px;">วัน / เวลา</th>
+                        <th style="padding:12px;">08:00 - 10:00</th>
+                        <th style="padding:12px;">10:00 - 12:00</th>
+                        <th style="padding:12px;">13:00 - 15:00</th>
+                        <th style="padding:12px;">15:00 - 17:00</th>
+                        <th style="padding:12px;">17:00 - 19:00</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-body">
+                    <tr><td colspan="6" style="padding:24px;" class="muted">กำลังโหลดข้อมูลตาราง...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <div class="card">
+        <h3>รายการคาบสอนทั้งหมด (Schedule List)</h3>
+        <p class="muted" style="margin-bottom:12px;">รายละเอียดรายคาบ วิชา ผู้สอน และห้องเรียน</p>
+        <div id="schedule-list" style="display:grid; gap:8px;"></div>
+    </div>
+</main>
+
+<script>
+    const token = sessionStorage.getItem('acadosToken') || '';
+    const authHeaders = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...(token ? {'Authorization': 'Bearer ' + token} : {})
+    };
+
+    function showAlert(msg, isSuccess) {
+        const alert = document.getElementById('status-alert');
+        alert.textContent = msg;
+        alert.className = '';
+        alert.style.display = 'block';
+        alert.style.background = isSuccess ? 'var(--ok-bg)' : 'var(--danger-bg)';
+        alert.style.color = isSuccess ? 'var(--ok)' : 'var(--danger)';
+        setTimeout(() => { alert.style.display = 'none'; }, 4000);
+    }
+
+    async function loadSchedules() {
+        const filter = document.getElementById('status-filter').value;
+        const url = filter ? `/api/v1/schedules?status=${filter}` : '/api/v1/schedules';
+        const tbody = document.getElementById('timetable-body');
+        const list = document.getElementById('schedule-list');
+
+        try {
+            const res = await fetch(url, { headers: authHeaders });
+            if (!res.ok) throw new Error('ไม่สามารถโหลดตารางได้');
+            const data = await res.json();
+            const items = Array.isArray(data) ? data : (data.content || []);
+
+            renderGrid(items);
+            renderList(items);
+        } catch (e) {
+            tbody.innerHTML = `<tr><td colspan="6" style="padding:24px; color:var(--danger);">${e.message}</td></tr>`;
+        }
+    }
+
+    const DAYS = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY', 'SATURDAY', 'SUNDAY'];
+    const DAY_LABELS = {
+        MONDAY: 'จันทร์',
+        TUESDAY: 'อังคาร',
+        WEDNESDAY: 'พุธ',
+        THURSDAY: 'พฤหัสบดี',
+        FRIDAY: 'ศุกร์',
+        SATURDAY: 'เสาร์',
+        SUNDAY: 'อาทิตย์'
+    };
+
+    function renderGrid(schedules) {
+        const tbody = document.getElementById('timetable-body');
+        tbody.innerHTML = '';
+
+        DAYS.forEach(day => {
+            const row = document.createElement('tr');
+            row.style.borderBottom = '1px solid var(--border)';
+            
+            const dayCell = document.createElement('td');
+            dayCell.style.padding = '12px';
+            dayCell.style.fontWeight = '600';
+            dayCell.style.background = 'var(--bg)';
+            dayCell.textContent = DAY_LABELS[day];
+            row.appendChild(dayCell);
+
+            // 5 time slot columns placeholder
+            for (let i = 0; i < 5; i++) {
+                const cell = document.createElement('td');
+                cell.style.padding = '8px';
+                cell.style.verticalAlign = 'top';
+                cell.style.minHeight = '60px';
+
+                const daySchedules = schedules.filter(s => s.dayOfWeek === day);
+                if (daySchedules[i]) {
+                    const s = daySchedules[i];
+                    const badge = document.createElement('div');
+                    badge.style.padding = '8px';
+                    badge.style.borderRadius = '6px';
+                    badge.style.background = s.status === 'PUBLISHED' ? 'var(--ok-bg)' : 'var(--warn-bg)';
+                    badge.style.border = s.status === 'PUBLISHED' ? '1px solid var(--ok)' : '1px solid var(--warn)';
+                    badge.innerHTML = `
+                        <div style="font-weight:600;">${s.courseCode || 'Section ' + s.sectionNumber}</div>
+                        <div style="font-size:0.85em;" class="muted">${s.teacherName || ''}</div>
+                        <div style="font-size:0.8em; margin-top:4px;">ห้อง: ${s.roomNumber || 'TBA'}</div>
+                    `;
+                    cell.appendChild(badge);
+                } else {
+                    cell.innerHTML = '<span class="muted" style="font-size:0.8em;">-</span>';
+                }
+                row.appendChild(cell);
+            }
+            tbody.appendChild(row);
+        });
+    }
+
+    function renderList(schedules) {
+        const list = document.getElementById('schedule-list');
+        list.innerHTML = '';
+        if (schedules.length === 0) {
+            list.innerHTML = '<p class="muted">ไม่มีรายการคาบสอน</p>';
+            return;
+        }
+
+        schedules.forEach(s => {
+            const item = document.createElement('div');
+            item.style.padding = '12px 16px';
+            item.style.border = '1px solid var(--border)';
+            item.style.borderRadius = '8px';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.innerHTML = `
+                <div>
+                    <strong>${s.courseCode || ''} ${s.courseTitle || ''}</strong> (กลุ่ม ${s.sectionNumber})
+                    <div class="muted" style="font-size:0.9em;">ผู้สอน: ${s.teacherName || '-'} | ห้อง: ${s.roomNumber || 'TBA'}</div>
+                </div>
+                <div style="text-align:right;">
+                    <span style="display:inline-block; padding:4px 8px; border-radius:4px; font-size:0.8em; background:${s.status === 'PUBLISHED' ? 'var(--ok-bg)' : 'var(--warn-bg)'}; color:${s.status === 'PUBLISHED' ? 'var(--ok)' : 'var(--warn)'};">
+                        ${s.status}
+                    </span>
+                    <div class="muted" style="font-size:0.85em; margin-top:4px;">${s.dayOfWeek || ''} ${s.startTime || ''}-${s.endTime || ''}</div>
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    // Admin Action Listeners
+    const btnGen = document.getElementById('btn-generate');
+    if (btnGen) {
+        btnGen.addEventListener('click', async () => {
+            if (!confirm('ยืนยันสร้างตารางอัตโนมัติ (Candidate Schedule)?')) return;
+            try {
+                const res = await fetch('/api/v1/schedules/generate', { method: 'POST', headers: authHeaders });
+                if (!res.ok) throw new Error('ไม่สามารถจัดตารางได้');
+                showAlert('จัดตารางอัตโนมัติสำเร็จ (สร้าง DRAFT เรียบร้อย)', true);
+                loadSchedules();
+            } catch (e) {
+                showAlert(e.message, false);
+            }
+        });
+    }
+
+    const btnPub = document.getElementById('btn-publish');
+    if (btnPub) {
+        btnPub.addEventListener('click', async () => {
+            if (!confirm('ยืนยันเผยแพร่ตารางสอน (Publish)?')) return;
+            try {
+                const res = await fetch('/api/v1/schedules/publish', { method: 'PUT', headers: authHeaders });
+                if (!res.ok) throw new Error('ไม่สามารถเผยแพร่ตารางได้');
+                showAlert('เผยแพร่ตารางสอนเรียบร้อยแล้ว', true);
+                loadSchedules();
+            } catch (e) {
+                showAlert(e.message, false);
+            }
+        });
+    }
+
+    const btnDisc = document.getElementById('btn-discard');
+    if (btnDisc) {
+        btnDisc.addEventListener('click', async () => {
+            if (!confirm('ยืนยันลบฉบับร่าง (Discard DRAFT)?')) return;
+            try {
+                const res = await fetch('/api/v1/schedules/draft', { method: 'DELETE', headers: authHeaders });
+                if (!res.ok) throw new Error('ไม่สามารถลบฉบับร่างได้');
+                showAlert('ลบฉบับร่างเรียบร้อยแล้ว', true);
+                loadSchedules();
+            } catch (e) {
+                showAlert(e.message, false);
+            }
+        });
+    }
+
+    document.getElementById('status-filter').addEventListener('change', loadSchedules);
+    loadSchedules();
+</script>
+</body>
+</html>
+

@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>การลงทะเบียนทั้งหมด | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>การลงทะเบียนทั้งหมด (Registrations)</h1>
+        <p class="muted">ตรวจสอบข้อมูลการลงทะเบียนเรียนของนักศึกษาทั้งหมดในระบบ</p>
+    </div>
+
+    <div class="card">
+        <h3>รายการลงทะเบียนล่าสุด</h3>
+        <div id="all-registrations" style="margin-top:12px; display:grid; gap:8px;">
+            <p class="muted">เปิดดูผ่าน API หรือเลือกตรวจสอบตามกลุ่มเรียน</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+

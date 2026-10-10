@@ -1,0 +1,70 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>ปฏิทินการศึกษา | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div>
+            <h1>ปฏิทินการศึกษา (Academic Calendar)</h1>
+            <p class="muted">ช่วงเวลาเปิดภาคการศึกษา ช่วงลงทะเบียนเรียน และช่วงสอบ</p>
+        </div>
+    </div>
+
+    <div class="card">
+        <div id="events-list" style="display:grid; gap:12px;">
+            <p class="muted">กำลังโหลดข้อมูลปฏิทินการศึกษา...</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    const token = sessionStorage.getItem('acadosToken') || '';
+    const authHeaders = {
+        'Accept': 'application/json',
+        ...(token ? {'Authorization': 'Bearer ' + token} : {})
+    };
+
+    async function loadEvents() {
+        const list = document.getElementById('events-list');
+        try {
+            const res = await fetch('/api/v1/academic-events', { headers: authHeaders });
+            if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลปฏิทินได้');
+            const events = await res.json();
+            if (!events.length) {
+                list.innerHTML = '<p class="muted">ไม่มีกิจกรรมในปฏิทินการศึกษา</p>';
+                return;
+            }
+            list.innerHTML = '';
+            events.forEach(e => {
+                const item = document.createElement('div');
+                item.style.padding = '14px 18px';
+                item.style.border = '1px solid var(--border)';
+                item.style.borderRadius = '8px';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.innerHTML = `
+                    <div>
+                        <strong style="font-size:1.05em;">${e.eventName}</strong>
+                        <div class="muted" style="font-size:0.9em; margin-top:2px;">ประเภท: ${e.eventType}</div>
+                    </div>
+                    <div style="text-align:right;">
+                        <span style="display:inline-block; padding:4px 10px; border-radius:6px; font-size:0.85em; background:var(--primary-50); color:var(--primary); font-weight:500;">
+                            ${e.startDate} ถึง ${e.endDate}
+                        </span>
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        } catch (e) {
+            list.innerHTML = `<p style="color:var(--danger);">${e.message}</p>`;
+        }
+    }
+    loadEvents();
+</script>
+</body>
+</html>
+

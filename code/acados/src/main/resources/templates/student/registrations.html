@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>รายวิชาที่ลงทะเบียน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>รายวิชาที่ลงทะเบียน</h1>
+        <p class="muted">รายการกลุ่มเรียนที่คุณได้ทำการลงทะเบียนไว้ในระบบ</p>
+    </div>
+
+    <div id="status-alert" class="hidden" style="padding:12px 16px; border-radius:8px; margin-bottom:16px;"></div>
+
+    <div class="card">
+        <h2>วิชาที่คุณลงทะเบียนไว้</h2>
+        <div id="my-registrations" style="margin-top:16px; display:grid; gap:12px;">
+            <p class="muted">กำลังโหลดข้อมูล...</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    function showAlert(msg, isSuccess) {
+        const el = document.getElementById('status-alert');
+        el.textContent = msg;
+        el.className = '';
+        el.style.display = 'block';
+        el.style.background = isSuccess ? 'var(--ok-bg)' : 'var(--danger-bg)';
+        el.style.color = isSuccess ? 'var(--ok)' : 'var(--danger)';
+        setTimeout(() => { el.style.display = 'none'; }, 4000);
+    }
+
+    async function dropRegistration(id) {
+        if (!confirm('ยืนยันการถอนรายวิชานี้?')) return;
+        const res = await api.del(`/api/v1/registrations/${id}`);
+        if (res.ok) {
+            showAlert('ถอนรายวิชาสำเร็จ', true);
+            loadMyRegistrations();
+        } else {
+            showAlert(res.error ? res.error.message : 'เกิดข้อผิดพลาดในการถอนรายวิชา', false);
+        }
+    }
+
+    async function loadMyRegistrations() {
+        const list = document.getElementById('my-registrations');
+        const res = await api.get('/api/v1/registrations/my');
+        if (!res.ok) {
+            list.innerHTML = `<p style="color:var(--danger);">${res.error.message}</p>`;
+            return;
+        }
+
+        const regs = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        if (regs.length === 0) {
+            list.innerHTML = '<p class="muted">คุณยังไม่ได้ลงทะเบียนรายวิชาใดๆ</p>';
+            return;
+        }
+
+        list.innerHTML = '';
+        regs.forEach(r => {
+            const card = document.createElement('div');
+            card.style.padding = '14px 18px';
+            card.style.border = '1px solid var(--border)';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+
+            card.innerHTML = `
+                <div>
+                    <strong>${r.courseCode || ''} ${r.courseTitle || ''}</strong> (กลุ่ม ${r.sectionNumber})
+                    <div class="muted" style="font-size:0.9em; margin-top:2px;">
+                        ลงทะเบียนเมื่อ: ${r.registeredAt ? r.registeredAt.replace('T', ' ').substring(0, 16) : '-'}
+                    </div>
+                </div>
+                <div>
+                    <button class="btn" style="background:var(--danger); color:white;" type="button" onclick="dropRegistration(${r.id})">
+                        ถอนวิชา
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    loadMyRegistrations();
+</script>
+</body>
+</html>
+

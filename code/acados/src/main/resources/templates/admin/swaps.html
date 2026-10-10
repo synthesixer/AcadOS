@@ -1,0 +1,23 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>คำขอแลกคาบทั้งหมด | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>คำขอแลกคาบทั้งหมด (Teacher Swaps)</h1>
+        <p class="muted">ตรวจสอบและอนุมัติคำขอแลกคาบสอนระหว่างอาจารย์</p>
+    </div>
+
+    <div class="card">
+        <h3>รายการคำขอแลกคาบ</h3>
+        <div id="swap-list" style="margin-top:12px; display:grid; gap:8px;">
+            <p class="muted">เปิดดูผ่าน API หรือหน้าคำขอของอาจารย์</p>
+        </div>
+    </div>
+</main>
+</body>
+</html>
+

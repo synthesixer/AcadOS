@@ -1,0 +1,57 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>Admin Dashboard | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>ภาพรวมระบบ (Admin Dashboard)</h1>
+        <p class="muted">ศูนย์ควบคุมและบริหารจัดการงานวิชาการ</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px; margin-bottom:24px;">
+        <div class="card">
+            <h3>จัดตารางสอน</h3>
+            <p class="muted" style="margin:8px 0 16px;">คำนวณและเผยแพร่ตารางสอน</p>
+            <a class="btn btn--primary" th:href="@{/admin/schedules}">ไปยังหน้าจัดตาราง</a>
+        </div>
+        <div class="card">
+            <h3>จัดการรายวิชา</h3>
+            <p class="muted" style="margin:8px 0 16px;">เพิ่ม ลบ แก้ไข รายวิชา</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/admin/courses}">จัดการรายวิชา</a>
+        </div>
+        <div class="card">
+            <h3>จัดการห้องเรียน</h3>
+            <p class="muted" style="margin:8px 0 16px;">อาคาร ชั้น ความจุห้อง</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/admin/rooms}">จัดการห้องเรียน</a>
+        </div>
+        <div class="card">
+            <h3>จัดการกลุ่มเรียน (Sections)</h3>
+            <p class="muted" style="margin:8px 0 16px;">เปิดกลุ่มเรียน / ปรับความจุ</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/admin/sections}">จัดการกลุ่มเรียน</a>
+        </div>
+        <div class="card">
+            <h3>บัญชีผู้ใช้</h3>
+            <p class="muted" style="margin:8px 0 16px;">อาจารย์และนักศึกษา</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/admin/users}">จัดการผู้ใช้</a>
+        </div>
+        <div class="card">
+            <h3>ปฏิทินและวันหยุด</h3>
+            <p class="muted" style="margin:8px 0 16px;">ปฏิทินวิชาการและวันหยุดราชการ</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/admin/calendar}">เปิดปฏิทิน</a>
+        </div>
+    </div>
+</main>
+
+<script>
+    const token = sessionStorage.getItem('acadosToken');
+    const role = sessionStorage.getItem('acadosRole');
+    if (!token || role !== 'ADMIN') {
+        window.location.replace('/login');
+    }
+</script>
+</body>
+</html>
+

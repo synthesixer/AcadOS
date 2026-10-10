@@ -1,0 +1,91 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>ค้นหาและลงทะเบียนเรียน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>ค้นหาและลงทะเบียนเรียน</h1>
+        <p class="muted">เลือกกลุ่มเรียน (Section) ที่เปิดสอนและกดปุ่มลงทะเบียน</p>
+    </div>
+
+    <div id="status-alert" class="hidden" style="padding:12px 16px; border-radius:8px; margin-bottom:16px;"></div>
+
+    <div class="card">
+        <h2>กลุ่มเรียนที่เปิดสอน</h2>
+        <div id="section-list" style="margin-top:16px; display:grid; gap:12px;">
+            <p class="muted">กำลังโหลดรายวิชา...</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    function showAlert(msg, isSuccess) {
+        const el = document.getElementById('status-alert');
+        el.textContent = msg;
+        el.className = '';
+        el.style.display = 'block';
+        el.style.background = isSuccess ? 'var(--ok-bg)' : 'var(--danger-bg)';
+        el.style.color = isSuccess ? 'var(--ok)' : 'var(--danger)';
+        setTimeout(() => { el.style.display = 'none'; }, 5000);
+    }
+
+    async function registerSection(sectionId) {
+        if (!confirm('ยืนยันการลงทะเบียนกลุ่มเรียนนี้?')) return;
+        const res = await api.post('/api/v1/registrations', { sectionId: sectionId });
+        if (res.ok) {
+            showAlert('ลงทะเบียนสำเร็จเรียบร้อย!', true);
+            loadSections();
+        } else {
+            showAlert(res.error ? res.error.message : 'เกิดข้อผิดพลาดในการลงทะเบียน', false);
+        }
+    }
+
+    async function loadSections() {
+        const list = document.getElementById('section-list');
+        const res = await api.get('/api/v1/sections');
+        if (!res.ok) {
+            list.innerHTML = `<p style="color:var(--danger);">${res.error.message}</p>`;
+            return;
+        }
+
+        const sections = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        if (sections.length === 0) {
+            list.innerHTML = '<p class="muted">ยังไม่มีกลุ่มเรียนที่เปิดสอน</p>';
+            return;
+        }
+
+        list.innerHTML = '';
+        sections.forEach(s => {
+            const card = document.createElement('div');
+            card.style.padding = '14px 18px';
+            card.style.border = '1px solid var(--border)';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+
+            card.innerHTML = `
+                <div>
+                    <strong>${s.courseCode || 'วิชา'} ${s.courseTitle || ''}</strong> (กลุ่ม ${s.sectionNumber})
+                    <div class="muted" style="font-size:0.9em; margin-top:2px;">
+                        ความจุ: ${s.capacity} ที่นั่ง | สถานะ: <span style="font-weight:600;">${s.status}</span>
+                    </div>
+                </div>
+                <div>
+                    <button class="btn btn--primary" type="button" ${s.status !== 'ACTIVE' ? 'disabled' : ''} onclick="registerSection(${s.id})">
+                        ${s.status === 'ACTIVE' ? 'ลงทะเบียน' : 'ปิดรับ'}
+                    </button>
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    loadSections();
+</script>
+</body>
+</html>
+

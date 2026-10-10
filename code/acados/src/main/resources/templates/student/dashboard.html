@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>Student Dashboard | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="margin-bottom:24px;">
+        <h1>Student Dashboard</h1>
+        <p class="muted">ยินดีต้อนรับสู่ระบบบริการการศึกษาสำหรับนักศึกษา</p>
+    </div>
+
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(240px, 1fr)); gap:16px;">
+        <div class="card">
+            <h3>ค้นหาและลงทะเบียน</h3>
+            <p class="muted" style="margin:8px 0 16px;">เลือกรายวิชาและกลุ่มเรียนที่เปิดสอน</p>
+            <a class="btn btn--primary" th:href="@{/student/courses}">ไปหน้าลงทะเบียน</a>
+        </div>
+        <div class="card">
+            <h3>วิชาที่ลงทะเบียน</h3>
+            <p class="muted" style="margin:8px 0 16px;">ตรวจสอบรายวิชาที่ลงทะเบียนและสถานะ</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/student/registrations}">ดูวิชาที่ลงแล้ว</a>
+        </div>
+        <div class="card">
+            <h3>ตารางเรียน</h3>
+            <p class="muted" style="margin:8px 0 16px;">ดูตารางเรียนประจำสัปดาห์</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/student/timetable}">เปิดตารางเรียน</a>
+        </div>
+        <div class="card">
+            <h3>การแจ้งเตือน</h3>
+            <p class="muted" style="margin:8px 0 16px;">ผลการลงทะเบียนและประกาศ</p>
+            <a class="btn" style="border:1px solid var(--border);" th:href="@{/notifications}">ดูกล่องแจ้งเตือน</a>
+        </div>
+    </div>
+</main>
+
+<script>
+    const token = sessionStorage.getItem('acadosToken');
+    const role = sessionStorage.getItem('acadosRole');
+    if (!token || role !== 'STUDENT') {
+        window.location.replace('/login');
+    }
+</script>
+</body>
+</html>
+

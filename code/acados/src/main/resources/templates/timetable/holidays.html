@@ -1,0 +1,103 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>วันหยุดราชการ | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div>
+            <h1>วันหยุดราชการ (Public Holidays)</h1>
+            <p class="muted">รายการวันหยุดราชการประจำปี ดึงจาก Nager.Date API</p>
+        </div>
+        <div sec:authorize="hasRole('ADMIN')">
+            <button id="btn-sync" class="btn btn--primary" type="button">🔄 ซิงค์วันหยุด (Sync API)</button>
+        </div>
+    </div>
+
+    <div id="status-alert" class="hidden" style="padding:12px 16px; border-radius:8px; margin-bottom:16px;"></div>
+
+    <div class="card">
+        <div id="holidays-list" style="display:grid; gap:10px;">
+            <p class="muted">กำลังโหลดข้อมูลวันหยุดราชการ...</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    const token = sessionStorage.getItem('acadosToken') || '';
+    const authHeaders = {
+        'Accept': 'application/json',
+        'Content-Type': 'application/json',
+        ...(token ? {'Authorization': 'Bearer ' + token} : {})
+    };
+
+    function showAlert(msg, isSuccess) {
+        const alert = document.getElementById('status-alert');
+        alert.textContent = msg;
+        alert.className = '';
+        alert.style.display = 'block';
+        alert.style.background = isSuccess ? 'var(--ok-bg)' : 'var(--danger-bg)';
+        alert.style.color = isSuccess ? 'var(--ok)' : 'var(--danger)';
+        setTimeout(() => { alert.style.display = 'none'; }, 4000);
+    }
+
+    async function loadHolidays() {
+        const list = document.getElementById('holidays-list');
+        try {
+            const res = await fetch('/api/v1/holidays', { headers: authHeaders });
+            if (!res.ok) throw new Error('ไม่สามารถโหลดข้อมูลวันหยุดได้');
+            const holidays = await res.json();
+            if (!holidays.length) {
+                list.innerHTML = '<p class="muted">ไม่มีข้อมูลวันหยุดราชการในระบบ (กดปุ่มซิงค์ด้านบนเพื่อดึงข้อมูล)</p>';
+                return;
+            }
+            list.innerHTML = '';
+            holidays.forEach(h => {
+                const item = document.createElement('div');
+                item.style.padding = '12px 16px';
+                item.style.border = '1px solid var(--border)';
+                item.style.borderRadius = '8px';
+                item.style.display = 'flex';
+                item.style.justifyContent = 'space-between';
+                item.style.alignItems = 'center';
+                item.innerHTML = `
+                    <div>
+                        <strong>${h.name}</strong>
+                    </div>
+                    <div class="num" style="font-weight:600; color:var(--primary);">
+                        ${h.holidayDate}
+                    </div>
+                `;
+                list.appendChild(item);
+            });
+        } catch (e) {
+            list.innerHTML = `<p style="color:var(--danger);">${e.message}</p>`;
+        }
+    }
+
+    const btnSync = document.getElementById('btn-sync');
+    if (btnSync) {
+        btnSync.addEventListener('click', async () => {
+            btnSync.disabled = true;
+            btnSync.textContent = 'กำลังซิงค์...';
+            try {
+                const res = await fetch('/api/v1/holidays/sync', { method: 'POST', headers: authHeaders });
+                if (!res.ok) throw new Error('การซิงค์ล้มเหลว');
+                showAlert('ซิงค์วันหยุดจาก External API สำเร็จแล้ว', true);
+                loadHolidays();
+            } catch (e) {
+                showAlert(e.message, false);
+            } finally {
+                btnSync.disabled = false;
+                btnSync.textContent = '🔄 ซิงค์วันหยุด (Sync API)';
+            }
+        });
+    }
+
+    loadHolidays();
+</script>
+</body>
+</html>
+

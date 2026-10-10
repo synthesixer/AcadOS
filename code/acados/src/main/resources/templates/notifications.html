@@ -1,0 +1,83 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>การแจ้งเตือน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:center; margin-bottom:24px;">
+        <div>
+            <h1>กล่องการแจ้งเตือน (Notifications)</h1>
+            <p class="muted">ข้อความแจ้งเตือนผลการลงทะเบียน ตารางสอน และการขอแลกคาบ</p>
+        </div>
+        <div>
+            <button id="btn-read-all" class="btn" style="border:1px solid var(--border);" type="button">✔ อ่านทั้งหมด</button>
+        </div>
+    </div>
+
+    <div class="card">
+        <div id="notifications-list" style="display:grid; gap:12px;">
+            <p class="muted">กำลังโหลดข้อความแจ้งเตือน...</p>
+        </div>
+    </div>
+</main>
+
+<script>
+    async function markAsRead(id) {
+        await api.put(`/api/v1/notifications/${id}/read`);
+        loadNotifications();
+    }
+
+    async function loadNotifications() {
+        const list = document.getElementById('notifications-list');
+        const res = await api.get('/api/v1/notifications');
+        if (!res.ok) {
+            list.innerHTML = `<p style="color:var(--danger);">${res.error.message}</p>`;
+            return;
+        }
+
+        const notifs = Array.isArray(res.data) ? res.data : (res.data.content || []);
+        if (notifs.length === 0) {
+            list.innerHTML = '<p class="muted">ไม่มีข้อความแจ้งเตือน</p>';
+            return;
+        }
+
+        list.innerHTML = '';
+        notifs.forEach(n => {
+            const card = document.createElement('div');
+            card.style.padding = '14px 18px';
+            card.style.border = '1px solid var(--border)';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+            card.style.background = n.read ? 'var(--surface)' : 'var(--primary-50)';
+
+            card.innerHTML = `
+                <div>
+                    <div style="display:flex; align-items:center; gap:8px;">
+                        <strong>${n.title}</strong>
+                        ${!n.read ? '<span style="font-size:0.75em; padding:2px 6px; background:var(--primary); color:white; border-radius:4px;">ใหม่</span>' : ''}
+                    </div>
+                    <p style="margin:4px 0; font-size:0.95em;">${n.message}</p>
+                    <div class="muted" style="font-size:0.8em;">${n.createdAt ? n.createdAt.replace('T', ' ').substring(0, 16) : ''}</div>
+                </div>
+                <div>
+                    ${!n.read ? `<button class="btn btn--sm" style="border:1px solid var(--border);" onclick="markAsRead(${n.id})">อ่านแล้ว</button>` : '<span class="muted" style="font-size:0.85em;">อ่านแล้ว</span>'}
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    document.getElementById('btn-read-all').addEventListener('click', async () => {
+        await api.put('/api/v1/notifications/read-all');
+        loadNotifications();
+    });
+
+    loadNotifications();
+</script>
+</body>
+</html>
+
