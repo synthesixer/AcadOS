@@ -210,7 +210,7 @@ flowchart LR
 
 1. **Phase 1 — สถาปัตยกรรมฐานและโมเดลข้อมูล:** วางโครงสร้าง Maven Multi-layer, สร้าง Entity ทั้ง 16 ตัว, สร้างความสัมพันธ์ One-to-One / One-to-Many และจัดทำ `data.sql`
 2. **Phase 2 — Business Logic & Algorithm:** พัฒนา `ConstraintEvaluator` ตรวจสอบ Hard Constraints 7 ข้อ, ออกแบบ Multi-factor `ScoringStrategy`, พัฒนา State Pattern ในการยกเลิก Section และระบบสลับสอน
-3. **Phase 3 — Web APIs, Security & Frontend:** สร้าง REST Controllers 11 ชุด พร้อม DTO และ MapStruct, ติดตั้ง Spring Security ตรวจสอบ JWT Token และสร้างหน้าจอ Thymeleaf Views ให้ครบทุกบทบาท
+3. **Phase 3 — Web APIs, Security & Frontend:** สร้าง REST Controllers 12 ชุด พร้อม DTO และ MapStruct, ติดตั้ง Spring Security ตรวจสอบ JWT Token และสร้างหน้าจอ Thymeleaf Views ให้ครบทุกบทบาท
 4. **Phase 4 — การทดสอบและนำขึ้น Cloud:** เขียน Unit & Integration Tests ให้ผ่าน 100%, คอนฟิก Multi-Stage Dockerfile, ติดตั้ง GitHub Actions CI/CD และจัดทำคู่มือ Deploy บน Railway/Cloud
 
 ---
@@ -385,16 +385,22 @@ AcadOS/
 │   ├── prof_ruleset.md           # กฎเกณฑ์และ Checklist ข้อกำหนดของอาจารย์
 │   ├── PROJECT_STATUS.md         # บันทึกสถานะระบบและการเปลี่ยนแปลงโครงการ
 │   ├── diagram/                  # ไดอะแกรมระบบ (Class, Component, Activity, ER, Flow)
+│   │   ├── ClassDiagram/         # Class Diagrams (Full, Minimal, Repo, Exception)
+│   │   ├── ActivityDiagram/      # Activity Diagrams สำหรับ Workflows สำคัญ
+│   │   ├── StateDiagram/         # State Diagrams (Section State Pattern)
+│   │   └── UsecaseDiagram/       # Use Case Diagrams แยกตามระบบ
 │   └── slide/
 │       └── README.md             # ไดเรกทอรีสำหรับสไลด์นำเสนอโครงงาน
 ├── img/
 │   ├── README.md                 # คู่มือคลังรูปภาพและรายการ Screenshots
 │   ├── robot_testcase.robot      # สคริปต์ Robot Framework สำหรับบันทึกภาพหน้าจออัตโนมัติ
-│   └── *.png                     # ภาพหลักฐานการทดสอบจริง 10 ภาพ (TC01 - TC05)
+│   └── *.png                     # ภาพหลักฐานการทดสอบจริง 17 ภาพ (TC_NEG_01..03, TC01..05)
 ├── README.md                     # เอกสารแนะนำและคู่มือการใช้งานระบบฉบับสมบูรณ์
 └── .gitignore
 
 ```
+
+Slide Presentation : [https://canva.link/7kd96uokll32n4s]
 
 ---
 

@@ -47,6 +47,8 @@ component "AcadOS Application" as AcadOS {
     }
 
     component "Service Layer" as Services {
+        component "CourseService" as CourseService
+        component "RoomService" as RoomService
         component "RegistrationService" as RegistrationService
         component "SchedulingService\n(Orchestrator)" as SchedulingService
         component "TeacherSwapService" as TeacherSwapService

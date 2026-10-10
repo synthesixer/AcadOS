@@ -66,6 +66,18 @@
     - **การดำเนินการ:**
       - ยกระดับ [`README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/README.md) สู่ระดับ Production-Ready ละเอียดครบถ้วน 13 หัวข้อ: ใครทำ (ตารางสมาชิกครบทุกคนพร้อม Section/Branch/บทบาท), ที่มาและความสำคัญ, วัตถุประสงค์, ขอบเขต 3 บทบาท (Admin, Teacher, Student) และกฎ BR-01..11, ประโยชน์, Tech Stack, สถาปัตยกรรม 3-Tier และ SOLID 100%, 8 Design Patterns, วิธีดำเนินงาน Vertical Slicing, ผลการดำเนินงาน 326 Tests Green (100%), ขั้นตอนติดตั้งและทำซ้ำในเครื่อง, คู่มือ Deploy บน Railway Cloud, และโครงสร้างโปรเจกต์
       - สร้าง [`img/.gitkeep`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/.gitkeep), [`test/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/test/README.md), และ [`doc/slide/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/slide/README.md) เพื่อแก้ไขปัญหา Git ไม่ติดตามโฟลเดอร์ว่างเปล่า ให้มีโฟลเดอร์ครบถ้วนบน GitHub Remote 100% ตามเกณฑ์ข้อกำหนดอาจารย์
+15. **[Cross-Artifact Synchronization & Discrepancy Reconciliation]:**
+    - เพิ่ม `CourseService` และ `RoomService` ลงใน `component-diagram.puml` บล็อก Service Layer
+    - อัปเดตโน้ตของ `RoomSuitabilityScoreStrategy` ใน `class diagram.puml` สะท้อนเกณฑ์ที่เสร็จสมบูรณ์จริง (+20 คะแนน)
+    - ปรับปรุงจำนวน REST Controllers ใน `README.md`, `code/acados/README.md`, และ `doc/TEAM_WORK_DIVISION.md` เป็น 12 ชุด (สะท้อน `TeacherPreferenceApiController`)
+    - ปรับปรุงจำนวน Tests ใน `Implement_Plan-AcadOS.md` (บรรทัด 864, 893) จาก 247+ เป็น 326 Tests
+    - ปรับปรุงจำนวนภาพ Screenshots ในแผนผังของ `README.md` (บรรทัด 393) เป็น 17 ภาพ
+    - ปรับแผนผังแพ็กเกจใน `code/acados/README.md` ย้าย `state/` และ `strategy/` ออกจาก `pattern/` มาอยู่ที่ root package ตามโค้ดจริง
+16. **[Class Diagram Modularization into doc/diagram/ClassDiagram/]:**
+    - ย้าย Class Diagram ตัวเต็มเดิมไปไว้ที่ [`doc/diagram/ClassDiagram/Class-diagram-full.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ClassDiagram/Class-diagram-full.puml)
+    - สร้าง [`doc/diagram/ClassDiagram/Class-diagram-minimal.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ClassDiagram/Class-diagram-minimal.puml) สำหรับ Core Domain + Service + Design Patterns โดยแยก Repository และ Exception Layer ออก
+    - สร้าง [`doc/diagram/ClassDiagram/Repo-Class-diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ClassDiagram/Repo-Class-diagram.puml) โฟกัส Data Access Layer (16 Spring Data JPA Repositories + Generic JpaRepository + Service Consumers)
+    - สร้าง [`doc/diagram/ClassDiagram/Exception-Class-diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ClassDiagram/Exception-Class-diagram.puml) โฟกัส Centralized Exception Handling Architecture (`GlobalExceptionHandler`, `BusinessRuleException`, `ResourceNotFoundException`, `ErrorResponse`)
 
 ---
 

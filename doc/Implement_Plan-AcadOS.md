@@ -529,7 +529,7 @@ $$\text{Course (จำนวนชั่วโมง)} \longrightarrow \text{แ
 | :--- | :---: | :--- |
 | **No Conflict Baseline** | +100 | คะแนนฐานเมื่อผ่านการตรวจ Hard Constraints ทั้งหมด |
 | **Teacher Preference** | +30 | ตรงตามวิชาที่อาจารย์มีความต้องการสอนสูง |
-| **Room Suitability** | +20 | ห้องเรียนมีความเหมาะสม  (เงื่อนไข = TBA) |
+| **Room Suitability** | +20 | ห้องเรียนมีความเหมาะสม (ความจุห้อง section.capacity <= room <= 1.5x) |
 | **Workload Balance** | +20 | ช่วยกระจายภาระงานสอนของอาจารย์ในภาควิชาให้สมดุล ไม่กระจุกตัว |
 
 > [!IMPORTANT]
@@ -861,7 +861,7 @@ flowchart TD
     end
 
     subgraph Phase3["3. Test Execution & Probe Triggering"]
-        E --> F["Run 247+ JUnit Tests"]
+        E --> F["Run 326 JUnit Tests"]
         F --> G["Execution Probes Record Hits (Line & Branch)"]
         G --> H["Dump Execution Data to target/jacoco.exec"]
     end
@@ -890,7 +890,7 @@ flowchart TD
    - `prepare-agent`: ติดตั้ง Java Agent เบื้องหลังอัตโนมัติก่อนเริ่มรัน Unit/Integration Tests
    - `report`: สังเคราะห์รายงาน Coverage ทันทีที่การทดสอบในเฟส `test` หรือ `verify` สิ้นสุดลง โดยทีมงานไม่ต้องเปลี่ยนพฤติกรรมการพัฒนาหรือจำคำสั่งพิเศษเพิ่มเติม (เพียงรัน `mvn test` รายงานก็ถูกสร้างทันที)
 4. **ความแม่นยำสูงและมี Runtime Overhead ต่ำ (On-the-fly Bytecode Instrumentation):**
-   JaCoCo ใช้วิธีแทรก Instrumentation Code บน Bytecode ในหน่วยความจำขณะที่ ClassLoader กำลังโหลดคลาส (On-the-fly) ไม่ต้องแก้ไขไฟล์ Source Code หรือแปลงไฟล์ `.class` ล่วงหน้า (Offline) ส่งผลให้การรันชุดทดสอบ 247+ ข้อรวดเร็วและใช้เวลาเพียงไม่กี่นาที
+   JaCoCo ใช้วิธีแทรก Instrumentation Code บน Bytecode ในหน่วยความจำขณะที่ ClassLoader กำลังโหลดคลาส (On-the-fly) ไม่ต้องแก้ไขไฟล์ Source Code หรือแปลงไฟล์ `.class` ล่วงหน้า (Offline) ส่งผลให้การรันชุดทดสอบ 326 ข้อรวดเร็วและใช้เวลาเพียงไม่กี่นาที
 5. **ไม่ขัดแย้งกับ Spring Boot 3.3.4, Hibernate และ Mockito (Zero Interference):**
    JaCoCo ทำงานเข้ากันได้อย่างสมบูรณ์กับ Dynamic Proxies ของ Spring Boot, ByteBuddy Subclasses ของ Hibernate JPA, และ Mockito Inline Mock Maker โดยไม่ก่อให้เกิดปัญหา ClassLoader Leak หรือ Bytecode Mutation Conflict
 6. **รายงานผลรอบด้านหลายรูปแบบ (Multi-Format Reporting):**

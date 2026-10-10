@@ -1,0 +1,269 @@
+@startuml 03-repo-class-diagram
+title AcadOS - Repository Class Diagram (Data Access Layer · 16 Spring Data JPA Repositories)\nอ้างอิง Implement Plan v6 §7, §10, §16, §17.1 · Spring Data JPA Interface Hierarchy
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 35
+skinparam ranksep 45
+
+' =====================================================================
+' 0. Spring Data JPA Framework Base
+' =====================================================================
+package "org.springframework.data.jpa.repository" {
+  interface "JpaRepository<T, ID>" as JpaRepository {
+    + findAll(): List<T>
+    + findById(id: ID): Optional<T>
+    + save(entity: T): T
+    + delete(entity: T): void
+    + deleteById(id: ID): void
+    + count(): long
+    + existsById(id: ID): boolean
+  }
+}
+
+' =====================================================================
+' 1. Domain Entities (Managed Target Entities · 16 Entities)
+' =====================================================================
+package "domain.entity" {
+  class User
+  class Student
+  class Teacher
+  class Course
+  class Section
+  class Room
+  class TimeSlot
+  class Schedule
+  class Registration
+  class TeacherQualification
+  class TeacherPreference
+  class TeacherAvailability
+  class TeacherSwapRequest
+  class Notification
+  class AcademicEvent
+  class PublicHoliday
+}
+
+' =====================================================================
+' 2. Repository Layer (§7 repository · 16 Repositories)
+' =====================================================================
+package "repository" <<Repository>> {
+  interface UserRepository {
+    + findByUniversityId(universityId: String): Optional<User>
+    + findByEmail(email: String): Optional<User>
+    + existsByUniversityId(universityId: String): boolean
+    + existsByEmail(email: String): boolean
+  }
+
+  interface StudentRepository {
+    + findByUser(user: User): Optional<Student>
+    + findByUserId(userId: Long): Optional<Student>
+    + findByFullNameContainingIgnoreCase(keyword: String): List<Student>
+  }
+
+  interface TeacherRepository {
+    + findByUser(user: User): Optional<Teacher>
+    + findByUserId(userId: Long): Optional<Teacher>
+    + findByFullNameContainingIgnoreCase(keyword: String): List<Teacher>
+  }
+
+  interface CourseRepository {
+    + findByCourseCode(courseCode: String): Optional<Course>
+    + existsByCourseCode(courseCode: String): boolean
+  }
+
+  interface SectionRepository {
+    + findByCourseId(courseId: Long): List<Section>
+    + findByCourseIdAndSectionNumber(courseId: Long, sectionNumber: int): Optional<Section>
+    + findByStatus(status: SectionStatus): List<Section>
+  }
+
+  interface RoomRepository {
+    + findByRoomNumber(roomNumber: String): Optional<Room>
+    + findByCapacityGreaterThanEqual(capacity: int): List<Room>
+  }
+
+  interface TimeSlotRepository {
+    + findByDayOfWeek(dayOfWeek: DayOfWeek): List<TimeSlot>
+  }
+
+  interface ScheduleRepository {
+    + findByStatus(status: ScheduleStatus): List<Schedule>
+    + findBySectionId(sectionId: Long): List<Schedule>
+    + findByTeacherId(teacherId: Long): List<Schedule>
+    + findByRoomId(roomId: Long): List<Schedule>
+    + deleteByStatus(status: ScheduleStatus): void
+  }
+
+  interface RegistrationRepository {
+    + countBySectionId(sectionId: Long): long
+    + existsByStudentIdAndCourseId(studentId: Long, courseId: Long): boolean
+    + existsByStudentId(studentId: Long): boolean
+    + findByStudentId(studentId: Long): List<Registration>
+    + findBySectionId(sectionId: Long): List<Registration>
+    + deleteBySectionId(sectionId: Long): void
+  }
+
+  interface TeacherQualificationRepository {
+    + findByTeacherId(teacherId: Long): List<TeacherQualification>
+    + findByCourseId(courseId: Long): List<TeacherQualification>
+    + existsByTeacherIdAndCourseId(teacherId: Long, courseId: Long): boolean
+    + deleteByTeacherIdAndCourseId(teacherId: Long, courseId: Long): void
+  }
+
+  interface TeacherPreferenceRepository {
+    + findByTeacherId(teacherId: Long): List<TeacherPreference>
+    + findByCourseId(courseId: Long): List<TeacherPreference>
+    + deleteByTeacherIdAndCourseId(teacherId: Long, courseId: Long): void
+  }
+
+  interface TeacherAvailabilityRepository {
+    + findByTeacherId(teacherId: Long): List<TeacherAvailability>
+    + findByTeacherIdAndTimeSlotId(teacherId: Long, timeSlotId: Long): Optional<TeacherAvailability>
+  }
+
+  interface TeacherSwapRequestRepository {
+    + findByRequestingTeacherIdOrTargetTeacherId(teacherIdA: Long, teacherIdB: Long): List<TeacherSwapRequest>
+    + findByStatus(status: SwapStatus): List<TeacherSwapRequest>
+  }
+
+  interface NotificationRepository {
+    + findByUserIdOrderByCreatedAtDesc(userId: Long): List<Notification>
+    + countByUserIdAndIsReadFalse(userId: Long): long
+  }
+
+  interface AcademicEventRepository {
+    + findByEventType(type: AcademicEventType): List<AcademicEvent>
+  }
+
+  interface PublicHolidayRepository {
+    + findByDate(date: LocalDate): Optional<PublicHoliday>
+    + findByDateBetween(start: LocalDate, end: LocalDate): List<PublicHoliday>
+  }
+}
+
+' =====================================================================
+' 3. Repository Generic Inheritance (Spring Data JPA)
+' =====================================================================
+UserRepository --|> JpaRepository : <User, Long>
+StudentRepository --|> JpaRepository : <Student, Long>
+TeacherRepository --|> JpaRepository : <Teacher, Long>
+CourseRepository --|> JpaRepository : <Course, Long>
+SectionRepository --|> JpaRepository : <Section, Long>
+RoomRepository --|> JpaRepository : <Room, Long>
+TimeSlotRepository --|> JpaRepository : <TimeSlot, Long>
+ScheduleRepository --|> JpaRepository : <Schedule, Long>
+RegistrationRepository --|> JpaRepository : <Registration, Long>
+TeacherQualificationRepository --|> JpaRepository : <TeacherQualification, Long>
+TeacherPreferenceRepository --|> JpaRepository : <TeacherPreference, Long>
+TeacherAvailabilityRepository --|> JpaRepository : <TeacherAvailability, Long>
+TeacherSwapRequestRepository --|> JpaRepository : <TeacherSwapRequest, Long>
+NotificationRepository --|> JpaRepository : <Notification, Long>
+AcademicEventRepository --|> JpaRepository : <AcademicEvent, Long>
+PublicHolidayRepository --|> JpaRepository : <PublicHoliday, Long>
+
+' =====================================================================
+' 4. Repository -> Domain Entity Management
+' =====================================================================
+UserRepository ..> User : manages
+StudentRepository ..> Student : manages
+TeacherRepository ..> Teacher : manages
+CourseRepository ..> Course : manages
+SectionRepository ..> Section : manages
+RoomRepository ..> Room : manages
+TimeSlotRepository ..> TimeSlot : manages
+ScheduleRepository ..> Schedule : manages
+RegistrationRepository ..> Registration : manages
+TeacherQualificationRepository ..> TeacherQualification : manages
+TeacherPreferenceRepository ..> TeacherPreference : manages
+TeacherAvailabilityRepository ..> TeacherAvailability : manages
+TeacherSwapRequestRepository ..> TeacherSwapRequest : manages
+NotificationRepository ..> Notification : manages
+AcademicEventRepository ..> AcademicEvent : manages
+PublicHolidayRepository ..> PublicHoliday : manages
+
+' =====================================================================
+' 5. Service Layer Consumer Context (DIP: Consumers of Repositories)
+' =====================================================================
+package "service.consumers" {
+  interface RegistrationService
+  interface SchedulingService
+  interface TeacherSwapService
+  interface TeacherSwapQueryService
+  interface SectionCancellationService
+  interface NotificationService
+  interface HolidayService
+  interface CourseService
+  interface RoomService
+  interface UserService
+  interface SectionService
+  interface TeacherPreferenceService
+  interface AcademicEventService
+}
+
+RegistrationService --> AcademicEventRepository
+RegistrationService --> SectionRepository
+RegistrationService --> RegistrationRepository
+RegistrationService --> ScheduleRepository
+
+SchedulingService --> ScheduleRepository
+SchedulingService --> SectionRepository
+SchedulingService --> RoomRepository
+SchedulingService --> TimeSlotRepository
+SchedulingService --> TeacherQualificationRepository
+SchedulingService --> TeacherPreferenceRepository
+SchedulingService --> TeacherAvailabilityRepository
+
+TeacherSwapService --> TeacherSwapRequestRepository
+TeacherSwapService --> ScheduleRepository
+TeacherSwapService --> TeacherQualificationRepository
+TeacherSwapService --> TeacherAvailabilityRepository
+TeacherSwapQueryService --> TeacherSwapRequestRepository
+
+SectionCancellationService --> SectionRepository
+SectionCancellationService --> RegistrationRepository
+SectionCancellationService --> ScheduleRepository
+SectionCancellationService --> TeacherSwapRequestRepository
+
+NotificationService --> NotificationRepository
+HolidayService --> PublicHolidayRepository
+
+UserService --> UserRepository
+UserService --> StudentRepository
+UserService --> TeacherRepository
+UserService --> RegistrationRepository
+UserService --> ScheduleRepository
+
+SectionService --> SectionRepository
+SectionService --> CourseRepository
+SectionService --> RegistrationRepository
+SectionService --> ScheduleRepository
+SectionService --> TeacherRepository
+SectionService --> TeacherQualificationRepository
+SectionService --> TeacherAvailabilityRepository
+
+AcademicEventService --> AcademicEventRepository
+CourseService --> CourseRepository
+CourseService --> SectionRepository
+RoomService --> RoomRepository
+RoomService --> ScheduleRepository
+
+TeacherPreferenceService --> TeacherPreferenceRepository
+TeacherPreferenceService --> TeacherQualificationRepository
+TeacherPreferenceService --> TeacherAvailabilityRepository
+TeacherPreferenceService --> TimeSlotRepository
+TeacherPreferenceService --> CourseRepository
+TeacherPreferenceService --> TeacherRepository
+TeacherPreferenceService --> UserRepository
+
+' =====================================================================
+' Notes
+' =====================================================================
+note bottom of JpaRepository
+  Spring Data JPA สร้าง Dynamic Proxy Class ให้ที่ Runtime
+  มี Transaction Boundary (@Transactional readOnly=true / readOnly=false)
+  รองรับ Derived Method Queries, JPQL, และ @EntityGraph แก้ไขปัญหา N+1
+end note
+@enduml
+

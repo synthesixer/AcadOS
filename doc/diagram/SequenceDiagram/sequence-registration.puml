@@ -1,0 +1,82 @@
+```plantuml
+@startuml 04-sequence-registration
+title AcadOS - Sequence Diagram: Student Registration (S03)
+autonumber
+skinparam sequenceMessageAlign left
+skinparam responseMessageBelowArrow true
+
+actor Student
+participant "Security Filter\n(JWT)" as Sec
+participant "RegistrationApiController" as Ctrl
+participant "RegistrationService" as Svc
+participant "AcademicEventRepository" as EventRepo
+participant "SectionRepository" as SectionRepo
+participant "RegistrationRepository" as RegRepo
+participant "ScheduleRepository" as SchRepo
+participant "NotificationService" as Notif
+participant "NotificationStrategy\n(InApp / Email)" as Channel
+participant "GlobalExceptionHandler" as Err
+
+Student -> Sec : POST /api/v1/registrations\n{sectionId} + JWT
+Sec -> Sec : validate JWT, role = STUDENT
+Sec -> Ctrl : forward request
+Ctrl -> Svc : register(studentId, sectionId)
+activate Svc
+
+Svc -> EventRepo : find REGISTRATION_PERIOD
+EventRepo --> Svc : period
+alt today outside Registration Period (BR-09)
+  Svc --> Err : throw BusinessRuleException
+  Err --> Student : ErrorResponse (BR-09)
+end
+
+Svc -> SectionRepo : find section by id
+SectionRepo --> Svc : section (+ course)
+alt section status = CANCELLED
+  Svc --> Err : throw BusinessRuleException
+  Err --> Student : ErrorResponse (section cancelled)
+end
+
+Svc -> Svc : checkDuplicate()
+Svc -> RegRepo : student already registered this course?
+RegRepo --> Svc : result
+alt same course already registered (BR-04)
+  Svc --> Err : throw BusinessRuleException
+  Err --> Student : ErrorResponse (BR-04)
+end
+
+Svc -> RegRepo : count registrations of section
+RegRepo --> Svc : count
+alt count >= section capacity (BR-05)
+  Svc --> Err : throw BusinessRuleException
+  Err --> Student : ErrorResponse (BR-05)
+end
+
+Svc -> Svc : checkConflict()
+Svc -> SchRepo : PUBLISHED schedules of this section\nand of student's registered sections
+SchRepo --> Svc : schedules (TimeSlots)
+alt time overlap found (BR-03)
+  Svc -> Notif : sendNotification(student, CONFLICT_DETECTED)
+  Notif -> Channel : send() [InApp]
+  note right of Notif
+    saved in a new transaction (REQUIRES_NEW)
+    so it is kept when register() rolls back
+  end note
+  Svc --> Err : throw BusinessRuleException
+  Err --> Student : ErrorResponse (BR-03)
+end
+
+Svc -> RegRepo : save Registration\n(student, section, course = section.course)
+RegRepo --> Svc : saved
+Svc -> Notif : sendNotification(student, REGISTRATION_SUCCESS)
+Notif -> Channel : send() [InApp]
+Notif -> Channel : send() [Email]
+Svc --> Ctrl : registration
+deactivate Svc
+Ctrl --> Student : 201 Created (Response DTO)
+
+note over Svc, RegRepo
+  DB safety net: UNIQUE (student, section) and UNIQUE (student, course)
+end note
+@enduml
+```

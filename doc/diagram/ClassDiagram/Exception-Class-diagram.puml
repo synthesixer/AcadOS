@@ -1,0 +1,143 @@
+@startuml 03-exception-class-diagram
+title AcadOS - Exception Class Diagram (Centralized Error Handling Architecture)\nอ้างอิง Implement Plan v6 §5.1 ข้อ 4, §7 exception, §10.3, Decision D12 · REST API Error Contracts
+hide empty members
+skinparam classAttributeIconSize 0
+skinparam linetype polyline
+skinparam packageStyle rectangle
+skinparam shadowing false
+skinparam nodesep 40
+skinparam ranksep 50
+
+' =====================================================================
+' 0. Java Standard Exception Hierarchy
+' =====================================================================
+package "java.lang" {
+  class Throwable
+  class Exception
+  class RuntimeException
+
+  Throwable <|-- Exception
+  Exception <|-- RuntimeException
+}
+
+' =====================================================================
+' 1. Custom Domain Exception Layer (§7 exception)
+' =====================================================================
+package "exception" {
+  class BusinessRuleException {
+    + BusinessRuleException(message: String)
+  }
+
+  class ResourceNotFoundException {
+    + ResourceNotFoundException(message: String)
+  }
+
+  class ErrorResponse <<DTO>> {
+    - timestamp: LocalDateTime
+    - status: int
+    - error: String
+    - message: String
+    - path: String
+    - details: List<String>
+    + builder(): ErrorResponseBuilder
+  }
+
+  class GlobalExceptionHandler <<@RestControllerAdvice>> {
+    + handleBusinessRuleException(ex: BusinessRuleException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleResourceNotFoundException(ex: ResourceNotFoundException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleResponseStatusException(ex: ResponseStatusException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleValidationException(ex: MethodArgumentNotValidException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleAccessDeniedException(ex: AccessDeniedException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleBadCredentialsException(ex: BadCredentialsException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleIllegalArgumentException(ex: IllegalArgumentException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleGenericException(ex: Exception, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+  }
+}
+
+' =====================================================================
+' 2. Inheritance & Creation Relationships
+' =====================================================================
+RuntimeException <|-- BusinessRuleException : extends
+RuntimeException <|-- ResourceNotFoundException : extends
+
+GlobalExceptionHandler ..> BusinessRuleException : catches (HTTP 400 Bad Request)
+GlobalExceptionHandler ..> ResourceNotFoundException : catches (HTTP 404 Not Found)
+GlobalExceptionHandler ..> ErrorResponse : instantiates & returns JSON
+
+' =====================================================================
+' 3. Service Layer Callers (Throwers of Domain Exceptions)
+' =====================================================================
+package "service" {
+  interface RegistrationService
+  interface SchedulingService
+  interface TeacherSwapService
+  interface SectionCancellationService
+  interface SectionService
+  interface UserService
+  interface CourseService
+  interface RoomService
+  interface TeacherPreferenceService
+  interface AcademicEventService
+}
+
+RegistrationService ..> BusinessRuleException : throws (BR-03, BR-04, BR-05, BR-09)
+RegistrationService ..> ResourceNotFoundException : throws
+SchedulingService ..> BusinessRuleException : throws (BR-01, BR-02, BR-06, BR-07, BR-08)
+SchedulingService ..> ResourceNotFoundException : throws
+TeacherSwapService ..> BusinessRuleException : throws (BR-10, BR-11, DRAFT Check, Double Swap)
+TeacherSwapService ..> ResourceNotFoundException : throws
+SectionCancellationService ..> BusinessRuleException : throws (State Check)
+SectionCancellationService ..> ResourceNotFoundException : throws
+SectionService ..> BusinessRuleException : throws (BR-05 Capacity Check, BR-06, BR-07)
+SectionService ..> ResourceNotFoundException : throws
+UserService ..> BusinessRuleException : throws (Duplicate Check)
+UserService ..> ResourceNotFoundException : throws
+CourseService ..> BusinessRuleException : throws (Deletion constraint with sections)
+CourseService ..> ResourceNotFoundException : throws
+RoomService ..> BusinessRuleException : throws (Room schedule conflict)
+RoomService ..> ResourceNotFoundException : throws
+TeacherPreferenceService ..> BusinessRuleException : throws (Preference validation)
+TeacherPreferenceService ..> ResourceNotFoundException : throws
+AcademicEventService ..> BusinessRuleException : throws (Date range validation)
+AcademicEventService ..> ResourceNotFoundException : throws
+
+' =====================================================================
+' 4. REST Controller Entry Points (Protected by GlobalExceptionHandler)
+' =====================================================================
+package "controller.api" <<@RestController>> {
+  class AuthApiController
+  class CourseApiController
+  class RoomApiController
+  class SectionApiController
+  class ScheduleApiController
+  class RegistrationApiController
+  class TeacherSwapApiController
+  class TeacherPreferenceApiController
+  class UserApiController
+  class NotificationApiController
+  class AcademicEventApiController
+  class HolidayApiController
+}
+
+GlobalExceptionHandler ..> "controller.api" : intercepts all uncaught exceptions
+
+' =====================================================================
+' Notes
+' =====================================================================
+note bottom of GlobalExceptionHandler
+  @RestControllerAdvice ควบคุม REST API Controllers ทั้งหมดใน com.project.acados.controller.api
+  แปลง Java Exception ให้เป็นมาตรฐาน ErrorResponse (RFC 7807 Compliant)
+  • BusinessRuleException → 400 Bad Request
+  • ResourceNotFoundException → 404 Not Found
+  • MethodArgumentNotValidException → 400 Bad Request (พร้อม field error list)
+  • AccessDeniedException → 403 Forbidden
+  • BadCredentialsException → 401 Unauthorized
+  • Exception อื่นๆ → 500 Internal Server Error
+end note
+
+note bottom of BusinessRuleException
+  ใช้ส่งสัญญาณเมื่อการทำงานฝ่าฝืน Business Rules (BR-01 ถึง BR-11)
+  หรือการเปลี่ยนสถานะที่ไม่ถูกต้อง (Invalid State Transition)
+end note
+@enduml
+
