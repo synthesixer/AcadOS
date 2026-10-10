@@ -316,8 +316,9 @@ Course ──── Section ──── Schedule ──┬── Teacher
 │   ├── NotificationService.java
 │   ├── HolidayService.java
 │   ├── UserService.java                          # ใหม่: Account
-│   ├── SectionService.java                       # ใหม่: Section CRUD
-│   ├── TeacherAssignmentService.java             # ใหม่: Assign Teacher
+│   ├── SectionService.java                       # ใหม่: Section CRUD & Assign Teacher (A13)
+│   ├── TeacherPreferenceService.java             # ใหม่: Teacher Preferences & Availabilities (D21, D22)
+│   ├── TeacherSwapQueryService.java              # ใหม่: Swap Query CQRS
 │   └── AcademicEventService.java                 # ใหม่
 ├── repository/                   # Spring Data JPA Repositories
 │   ├── UserRepository.java

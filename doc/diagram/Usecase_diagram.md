@@ -165,9 +165,11 @@ rectangle "AcadOS (Teacher Scope)" {
         usecase "View Timetable" as UC_TViewTimetable
     }
     package "Profile & Availability (Profile Modal)" {
-        usecase "Manage Availability" as UC_TManageAvail
+        usecase "Manage Availability\n(D22, BR-07)" as UC_TManageAvail
         usecase "View Own Availability" as UC_TViewAvail
-        usecase "View Own Qualification" as UC_TViewQual
+        usecase "View Own Qualification\n(BR-06)" as UC_TViewQual
+        usecase "Manage Course Preferences\n(Priority 1-5, D21)" as UC_TManagePref
+        usecase "Change Password" as UC_TChangePassword
     }
     package "Teacher Swap Management" {
         usecase "Create Swap Request" as UC_TCreateSwap
@@ -193,6 +195,8 @@ Teacher --> UC_TViewTimetable
 Teacher --> UC_TManageAvail
 Teacher --> UC_TViewAvail
 Teacher --> UC_TViewQual
+Teacher --> UC_TManagePref
+Teacher --> UC_TChangePassword
 Teacher --> UC_TCreateSwap
 Teacher --> UC_TCancelSwap
 Teacher --> UC_TRespondSwap

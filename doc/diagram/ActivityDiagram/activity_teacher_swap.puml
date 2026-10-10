@@ -7,9 +7,12 @@ start
 :Teacher A opens Swap UI;
 :Teacher A submits swap request (requestingScheduleId, targetTeacherId, targetScheduleId) with JWT;
 partition "Security Filter" {
-    :Validate JWT, role = TEACHER;
-    if (JWT invalid?) then (yes)
-        :Return 401 Unauthorized;
+    :Validate JWT and Role;
+    if (Not authenticated / JWT invalid?) then (yes)
+        :Return 401 Unauthorized (Redirect to Login);
+        stop
+    elseif (Role != TEACHER?) then (yes)
+        :Return 403 Forbidden (Neutral Error Page);
         stop
     endif
 }
@@ -36,7 +39,14 @@ start
 partition "Cancel Flow" {
     :Teacher A sends cancel request (PUT /teacher-swaps/{id}/cancel) with JWT;
     partition "Security Filter" { 
-        :Validate JWT, role = TEACHER; 
+        :Validate JWT and Role;
+        if (Not authenticated / JWT invalid?) then (yes)
+            :Return 401 Unauthorized (Redirect to Login);
+            stop
+        elseif (Role != TEACHER?) then (yes)
+            :Return 403 Forbidden;
+            stop
+        endif
     }
     partition "TeacherSwap Service" {
         :find request by id;
@@ -59,7 +69,14 @@ start
 partition "Respond Flow" {
     :Teacher B sends response (accept/reject) with JWT;
     partition "Security Filter" { 
-        :Validate JWT, role = TEACHER; 
+        :Validate JWT and Role;
+        if (Not authenticated / JWT invalid?) then (yes)
+            :Return 401 Unauthorized (Redirect to Login);
+            stop
+        elseif (Role != TEACHER?) then (yes)
+            :Return 403 Forbidden;
+            stop
+        endif
     }
     partition "TeacherSwap Service" {
         :find request;
@@ -91,7 +108,14 @@ start
 partition "Admin Review Flow" {
     :Admin sends approve or reject for request (status must be ACCEPTED) with JWT;
     partition "Security Filter" { 
-        :Validate JWT, role = ADMIN; 
+        :Validate JWT and Role;
+        if (Not authenticated / JWT invalid?) then (yes)
+            :Return 401 Unauthorized (Redirect to Login);
+            stop
+        elseif (Role != ADMIN?) then (yes)
+            :Return 403 Forbidden;
+            stop
+        endif
     }
     partition "TeacherSwap Service" {
         :find request;

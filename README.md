@@ -3,7 +3,7 @@ Automated Proctor Scheduling and Academic Operations System (Version v4)
 
 AcadOS คือระบบบริหารจัดการงานวิชาการและจัดสรรตารางคุมสอบและตารางเรียน/ตารางสอนอัตโนมัติ พัฒนาด้วย Spring Boot 3 และ Java 21 ตามสถาปัตยกรรม Layered Architecture ระบบมีจุดเด่นในการใช้อัลกอริทึมสุ่มจัดตารางแบบมีเงื่อนไข (Constraint-based Randomization) และระบบการให้คะแนนแบบหลายปัจจัย เพื่อป้องกันปัญหาตารางชนกันและช่วยกระจายภาระงานของบุคลากรอย่างเป็นธรรม
 
-> 📖 **เอกสารข้อกำหนดทางเทคนิคฉบับเต็ม:** ดูรายละเอียดทั้งหมดได้ที่ [doc/AcadOS-v4.md](doc/AcadOS-v4.md)
+> 📖 **เอกสารข้อกำหนดทางเทคนิคฉบับเต็ม:** ดูรายละเอียดทั้งหมดได้ที่ [doc/Implement_Plan-AcadOS.md](doc/Implement_Plan-AcadOS.md)
 
 ---
 
@@ -50,7 +50,7 @@ Database Layer (MySQL Database)
 
 ## Database Design (ER Diagram)
 - ข้อมูลโมเดลฐานข้อมูลมีทั้งหมด 16 Entities โดยมีความสัมพันธ์ครบถ้วนทั้ง One-to-One และ One-to-Many
-- ดูรายละเอียดโครงสร้างเชิงแนวคิดได้ใน [doc/AcadOS-v4.md](doc/AcadOS-v4.md) และ [doc/diagrams/](doc/diagrams/)
+- ดูรายละเอียดโครงสร้างเชิงแนวคิดได้ใน [doc/Implement_Plan-AcadOS.md](doc/Implement_Plan-AcadOS.md), [doc/database.md](doc/database.md) และ [doc/diagram/](doc/diagram/)
 
 ---
 
@@ -98,26 +98,31 @@ mvn clean test
 ---
 
 ## Deployment URL
-- **Public URL:** TBA (จะระบุเมื่อ Deploy ขึ้น Cloud/Server ในขั้นตอน Day 4)
+- **Public URL:** TBA (จะระบุเมื่อ Deploy ขึ้น Cloud/Server ในขั้นตอนต่อไป)
 
 ---
 
 ## Project Structure
 ```
 AcadOS/
-├── code/                         # Source code Spring Boot + Maven POM
-│   ├── src/
-│   │   ├── main/java/com/project/
-│   │   └── main/resources/
-│   ├── pom.xml
-│   ├── Dockerfile
-│   └── docker-compose.yml
-├── test/                         # เอกสารและการทดสอบ
+├── code/
+│   └── acados/                   # Source code Spring Boot + Maven POM
+│       ├── src/
+│       │   ├── main/java/com/project/acados/
+│       │   ├── main/resources/
+│       │   └── test/java/com/project/acados/
+│       ├── pom.xml
+│       ├── Dockerfile
+│       └── docker-compose.yml
+├── test/                         # เอกสารและรายงานผลการทดสอบ
 ├── doc/                          # Technical Specifications & Diagrams
-│   ├── AcadOS-v4.md              # สเปกหลักฉบับสมบูรณ์
-│   ├── diagrams/                 # ไฟล์ PlantUML Diagrams (01 - 11)
-│   └── slide/                    # สไลด์นำเสนอ
-├── img/                          # รูปภาพประกอบ
+│   ├── Implement_Plan-AcadOS.md  # แผนการพัฒนาและสเปกระบบฉบับสมบูรณ์
+│   ├── database.md               # รายละเอียด Schema & Data Dictionary
+│   ├── prof_ruleset.md           # ข้อกำหนดตามอาจารย์ประจำวิชา
+│   ├── PROJECT_STATUS.md         # สรุปสถานะและ Task Memory
+│   ├── diagram/                  # ไดอะแกรมระบบ (Class, Component, Activity, Use Case, ER ฯลฯ)
+│   └── slide/                    # สไลด์นำเสนอ (TBA)
+├── img/                          # รูปภาพและ Asset ประกอบ
 ├── README.md
 └── .gitignore
 ```

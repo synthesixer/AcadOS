@@ -7,9 +7,12 @@ start
 :Student opens registration UI;
 :Student submits registration request (sectionId) with JWT;
 partition "Security Filter" {
-    :Validate JWT, role = STUDENT;
-    if (JWT invalid?) then (yes)
-        :Return 401 Unauthorized;
+    :Validate JWT and Role;
+    if (Not authenticated / JWT invalid?) then (yes)
+        :Return 401 Unauthorized (Redirect to Login);
+        stop
+    elseif (Role != STUDENT?) then (yes)
+        :Return 403 Forbidden (Neutral Error Page);
         stop
     endif
 }
