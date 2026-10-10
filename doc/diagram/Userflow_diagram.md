@@ -494,35 +494,24 @@ flowchart TD
 
 ### T02 กำหนด / แก้ไข / ลบ Availability
 
-**Role:** Teacher · **อ้างอิง:** §13.2.2 Manage Availability · BR-07 · D22 · ข้อตกลง C-01
+**Role:** Teacher · **อ้างอิง:** §13.2.2 Manage Availability · BR-07 · D22 · ข้อตกลง C-01 · Profile Modal (Tab: Teacher Preference & Availability)
 
 ```mermaid
 flowchart TD
-    n1(["Teacher Dashboard"]):::start
-    n2("เปิด Manage Availability"):::act
-    n3("เลือกช่วงเวลา (TimeSlot)"):::act
+    n1(["Teacher: เปิด Profile Modal<br/>(คลิกชื่อ/ไอคอนมุมขวาบน)"]):::start
+    n2("เลือก Tab: Teacher Preference & Availability"):::act
+    n3("เลือกช่วงเวลาในตาราง Unavailable Slots"):::act
     n1 --> n2
     n2 --> n3
-    n4{"ระบุสถานะ"}:::dec
+    n4{"คลิกสลับสถานะ"}:::dec
     n3 --> n4
-    n5("ว่าง (TRUE)"):::act
-    n6("ไม่พร้อมสอน (FALSE)"):::act
-    n7("ลบค่าที่ระบุไว้<br/>(กลับเป็นไม่ระบุ = ว่าง)"):::act
-    n4 -->|ว่าง| n5
-    n4 -->|ไม่ว่าง| n6
-    n4 -->|ลบ| n7
-    n8(["ลบสำเร็จ"]):::ok
-    n7 --> n8
-    n9{"ช่วงเวลานี้เคย<br/>ระบุไว้แล้ว?"}:::dec
-    n5 --> n9
-    n6 --> n9
-    n10("แก้ไขค่าเดิม"):::act
-    n11("เพิ่มใหม่"):::act
-    n9 -->|ใช่| n10
-    n9 -->|ไม่| n11
-    n12(["บันทึก"]):::ok
-    n10 --> n12
-    n11 --> n12
+    n5("สะดวกสอน (Default/เขียว)"):::act
+    n6("ไม่พร้อมสอน (Unavailable/แดง)"):::act
+    n4 -->|สลับเป็นสะดวก| n5
+    n4 -->|สลับเป็นไม่พร้อมสอน| n6
+    n12(["บันทึกและอัปเดตแบบ Interactive ทันที"]):::ok
+    n5 --> n12
+    n6 --> n12
     n13>"ไม่พร้อมสอน = ระบบห้าม Assign (BR-07 Hard Constraint)<br/>ช่วงที่ไม่ได้ระบุ = ถือว่าว่าง<br/>ช่วงทับกันและมี 'ไม่พร้อมสอน' = ไม่ว่าง"]:::note
     n12 -.- n13
     classDef start fill:#1F5F8B,stroke:#1F5F8B,color:#fff
@@ -535,13 +524,13 @@ flowchart TD
 
 ### T03 ดู Availability ของตัวเอง
 
-**Role:** Teacher · **อ้างอิง:** §13.2.2 View Own Availability
+**Role:** Teacher · **อ้างอิง:** §13.2.2 View Own Availability · Profile Modal
 
 ```mermaid
 flowchart TD
-    n1(["Teacher Dashboard"]):::start
-    n2("เปิด View Own Availability"):::act
-    n3(["แสดงช่วงเวลาที่ระบุว่า ว่าง / ไม่พร้อมสอน"]):::ok
+    n1(["Teacher: เปิด Profile Modal"]):::start
+    n2("เลือก Tab: Teacher Preference & Availability"):::act
+    n3(["แสดงตารางเวลาที่ไม่สะดวกสอน (Unavailable Slots Table)"]):::ok
     n1 --> n2
     n2 --> n3
     classDef start fill:#1F5F8B,stroke:#1F5F8B,color:#fff
@@ -554,13 +543,13 @@ flowchart TD
 
 ### T04 ดู Qualification ของตัวเอง
 
-**Role:** Teacher · **อ้างอิง:** §13.2.2 View Own Qualification · BR-06 · D20, D33
+**Role:** Teacher · **อ้างอิง:** §13.2.2 View Own Qualification · BR-06 · D20, D33 · Profile Modal
 
 ```mermaid
 flowchart TD
-    n1(["Teacher Dashboard"]):::start
-    n2("เปิด View Own Qualification"):::act
-    n3(["แสดงรายวิชาที่มีคุณสมบัติสอนได้ (ดูอย่างเดียว)"]):::ok
+    n1(["Teacher: เปิด Profile Modal"]):::start
+    n2("เลือก Tab: Teacher Preference & Availability"):::act
+    n3(["แสดง Dropdown รายวิชาที่มีคุณสมบัติสอนได้ (Qualified Course BR-06)"]):::ok
     n1 --> n2
     n2 --> n3
     n4>"Qualification ใช้เป็นเงื่อนไขตอน Assign / Generate Schedule (BR-06)<br/>และตอนแลกคาบ (T05, A06)"]:::note
@@ -1344,26 +1333,26 @@ flowchart TD
     classDef note fill:#F4F4F4,stroke:#999,color:#1a1a1a
 ```
 
-### A10-1 Fetch Public Holiday (ระบบดึงอัตโนมัติ)
+### A10-1 Fetch & Sync Public Holiday (ระบบดึงอัตโนมัติ / Admin สั่งซิงค์)
 
-**Role:** ระบบ · **อ้างอิง:** §14.7 Public Holiday API Flow · §13.2.1 Fetch Holiday Data · ข้อตกลง: ดึงเดือนละครั้ง
+**Role:** ระบบ / Admin · **อ้างอิง:** §14.7 Public Holiday API Flow · §13.2.1 Fetch Holiday Data · timetable/holidays.html (btn-sync)
 
 ```mermaid
 flowchart TD
-    n1(["ระบบ: ถึงรอบดึงข้อมูล<br/>(เดือนละครั้ง)"]):::start
-    n2("HolidayService.syncHolidays()"):::act
+    n1(["ระบบ: รอบดึงอัตโนมัติ<br/>หรือ Admin กดปุ่ม ซิงค์วันหยุด"]):::start
+    n2("HolidayService.syncHolidays(year)<br/>(POST /api/v1/holidays/sync)"):::act
     n3("ExternalHolidayAdapter<br/>เรียก External Holiday API"):::act
     n1 --> n2
     n2 --> n3
     n4{"API ตอบกลับ<br/>สำเร็จ?"}:::dec
     n3 --> n4
-    n5["ดึงไม่สำเร็จ<br/>รอรอบถัดไป"]:::bad
+    n5["ดึงไม่สำเร็จ<br/>แจ้งเตือนข้อผิดพลาด"]:::bad
     n4 -->|ไม่ผ่าน| n5
     n6("Validate & Transform"):::act
     n4 -->|ผ่าน| n6
     n7("บันทึกลง Database<br/>(PublicHolidayRepository · ข้อมูลซ้ำไม่บันทึกซ้ำ)"):::act
     n6 --> n7
-    n8(["Admin ดูได้ที่ A10-2 · ทุก Role ดูได้ที่ C06"]):::ok
+    n8(["แสดงผลในตารางวันหยุดทันที (A10-2 · C06)"]):::ok
     n7 --> n8
     classDef start fill:#1F5F8B,stroke:#1F5F8B,color:#fff
     classDef act fill:#EEF3F8,stroke:#5B7A94,color:#1a1a1a

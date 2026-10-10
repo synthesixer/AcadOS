@@ -77,6 +77,50 @@
             <!-- Rendered by JS -->
         </div>
     </div>
+
+    <!-- Edit Academic Event Modal -->
+    <div class="modal-backdrop" id="edit-event-backdrop" onclick="closeEditEventModal()"></div>
+    <div class="modal-dialog" id="edit-event-modal" role="dialog" aria-modal="true" style="max-width:520px;">
+        <div class="modal-dialog__header">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">แก้ไขกิจกรรมในปฏิทิน (Edit Academic Event)</h3>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="closeEditEventModal()">✕</button>
+        </div>
+        <form id="edit-event-form">
+            <div class="modal-dialog__body" style="display:flex; flex-direction:column; gap:14px;">
+                <input type="hidden" id="edit-event-id">
+                <div>
+                    <label for="edit-event-name" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชื่อกิจกรรม *</label>
+                    <input id="edit-event-name" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div>
+                    <label for="edit-event-type" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ประเภทกิจกรรม *</label>
+                    <select id="edit-event-type" required
+                            style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                        <option value="REGISTRATION_PERIOD">ช่วงลงทะเบียน (REGISTRATION_PERIOD)</option>
+                        <option value="EXAM_PERIOD">ช่วงสอบ (EXAM_PERIOD)</option>
+                        <option value="SEMESTER_PERIOD">ภาคการศึกษา (SEMESTER_PERIOD)</option>
+                    </select>
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                        <label for="edit-event-start-date" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">วันที่เริ่มต้น *</label>
+                        <input id="edit-event-start-date" type="date" required
+                               style="width:100%; padding:8px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                    </div>
+                    <div>
+                        <label for="edit-event-end-date" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">วันที่สิ้นสุด *</label>
+                        <input id="edit-event-end-date" type="date" required
+                               style="width:100%; padding:8px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                    </div>
+                </div>
+            </div>
+            <div class="modal-dialog__footer" style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn--secondary" onclick="closeEditEventModal()">ยกเลิก</button>
+                <button type="submit" class="btn btn--primary" id="btn-submit-edit-event">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
 </main>
 
 <script>
@@ -99,6 +143,22 @@
             }
         });
         renderCalendarItems();
+    }
+
+    function openEditEventModal(e) {
+        document.getElementById('edit-event-id').value = e.id;
+        document.getElementById('edit-event-name').value = e.eventName || e.title || '';
+        document.getElementById('edit-event-type').value = e.eventType || e.type || 'REGISTRATION_PERIOD';
+        document.getElementById('edit-event-start-date').value = e.startDate || '';
+        document.getElementById('edit-event-end-date').value = e.endDate || '';
+
+        document.getElementById('edit-event-backdrop').classList.add('is-open');
+        document.getElementById('edit-event-modal').classList.add('is-open');
+    }
+
+    function closeEditEventModal() {
+        document.getElementById('edit-event-backdrop').classList.remove('is-open');
+        document.getElementById('edit-event-modal').classList.remove('is-open');
     }
 
     function getEventTypeBadge(type) {
@@ -230,6 +290,9 @@
                             ${item.dateLabel}
                         </span>
                         ${isAdmin ? `
+                            <button type="button" class="btn btn--secondary btn--sm" onclick='openEditEventModal(${JSON.stringify(rawAcademicEvents.find(e => e.id === item.id) || item)})'>
+                                ✏ แก้ไข
+                            </button>
                             <button type="button" class="btn btn--danger btn--sm" onclick="deleteEvent(${item.id}, '${ui.escapeHtml(item.title)}')">
                                 ลบ
                             </button>
@@ -284,6 +347,34 @@
                 await loadEvents();
             } else {
                 ui.toast('error', res.error.message || 'ไม่สามารถเพิ่มกิจกรรมได้');
+            }
+        });
+    }
+
+    const editEventForm = document.getElementById('edit-event-form');
+    if (editEventForm) {
+        editEventForm.addEventListener('submit', async (e) => {
+            e.preventDefault();
+            const id = document.getElementById('edit-event-id').value;
+            const btn = document.getElementById('btn-submit-edit-event');
+            ui.setBusy(btn, true);
+
+            const payload = {
+                eventName: document.getElementById('edit-event-name').value.trim(),
+                eventType: document.getElementById('edit-event-type').value,
+                startDate: document.getElementById('edit-event-start-date').value,
+                endDate: document.getElementById('edit-event-end-date').value
+            };
+
+            const res = await api.put(`/api/v1/academic-events/${id}`, payload);
+            ui.setBusy(btn, false);
+
+            if (res.ok) {
+                ui.toast('success', `แก้ไขกิจกรรม ${payload.eventName} เรียบร้อยแล้ว`);
+                closeEditEventModal();
+                await loadEvents();
+            } else {
+                ui.toast('error', res.error.message || 'ไม่สามารถแก้ไขกิจกรรมได้');
             }
         });
     }

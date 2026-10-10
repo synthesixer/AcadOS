@@ -68,10 +68,66 @@
             <!-- Rendered by JS -->
         </div>
     </div>
+
+    <!-- Edit Room Modal -->
+    <div class="modal-backdrop" id="edit-room-backdrop" onclick="closeEditRoomModal()"></div>
+    <div class="modal-dialog" id="edit-room-modal" role="dialog" aria-modal="true" style="max-width:520px;">
+        <div class="modal-dialog__header">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">แก้ไขห้องเรียน (Edit Room)</h3>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="closeEditRoomModal()">✕</button>
+        </div>
+        <form id="edit-room-form">
+            <div class="modal-dialog__body" style="display:flex; flex-direction:column; gap:14px;">
+                <input type="hidden" id="edit-room-id">
+                <div>
+                    <label for="edit-room-building" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชื่ออาคาร *</label>
+                    <input id="edit-room-building" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div style="display:grid; grid-template-columns:1fr 1fr; gap:12px;">
+                    <div>
+                        <label for="edit-room-floor" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชั้นที่ *</label>
+                        <input id="edit-room-floor" type="number" min="1" max="99" required
+                               style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                    </div>
+                    <div>
+                        <label for="edit-room-number" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">หมายเลขห้อง *</label>
+                        <input id="edit-room-number" required
+                               style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                    </div>
+                </div>
+                <div>
+                    <label for="edit-room-capacity" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ความจุที่นั่ง *</label>
+                    <input id="edit-room-capacity" type="number" min="1" max="500" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+            </div>
+            <div class="modal-dialog__footer" style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn--secondary" onclick="closeEditRoomModal()">ยกเลิก</button>
+                <button type="submit" class="btn btn--primary" id="btn-submit-edit-room">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
 </main>
 
 <script>
     let allRooms = [];
+
+    function openEditRoomModal(r) {
+        document.getElementById('edit-room-id').value = r.id;
+        document.getElementById('edit-room-building').value = r.building || '';
+        document.getElementById('edit-room-floor').value = r.floor || 1;
+        document.getElementById('edit-room-number').value = r.roomNumber || '';
+        document.getElementById('edit-room-capacity').value = r.capacity || 40;
+
+        document.getElementById('edit-room-backdrop').classList.add('is-open');
+        document.getElementById('edit-room-modal').classList.add('is-open');
+    }
+
+    function closeEditRoomModal() {
+        document.getElementById('edit-room-backdrop').classList.remove('is-open');
+        document.getElementById('edit-room-modal').classList.remove('is-open');
+    }
 
     function renderFilteredRooms() {
         const list = document.getElementById('room-list');
@@ -116,6 +172,9 @@
                     <span style="font-size:0.85rem; font-weight:600; color:var(--teal-primary); background:var(--teal-50); padding:3px 12px; border-radius:4px; border:1px solid #CCFBF1;">
                         ความจุ <span class="num">${r.capacity || 0}</span> ที่นั่ง
                     </span>
+                    <button type="button" class="btn btn--secondary btn--sm" onclick='openEditRoomModal(${JSON.stringify(r)})'>
+                        ✏ แก้ไข
+                    </button>
                     <button type="button" class="btn btn--danger btn--sm" onclick="deleteRoom(${r.id}, '${ui.escapeHtml(r.building)} ${ui.escapeHtml(r.roomNumber)}')">
                         ลบ
                     </button>
@@ -143,6 +202,31 @@
             }
         });
     }
+
+    document.getElementById('edit-room-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-room-id').value;
+        const btn = document.getElementById('btn-submit-edit-room');
+        ui.setBusy(btn, true);
+
+        const payload = {
+            building: document.getElementById('edit-room-building').value.trim(),
+            floor: Number(document.getElementById('edit-room-floor').value),
+            roomNumber: document.getElementById('edit-room-number').value.trim(),
+            capacity: Number(document.getElementById('edit-room-capacity').value)
+        };
+
+        const res = await api.put(`/api/v1/rooms/${id}`, payload);
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', `แก้ไขห้องเรียน ${payload.roomNumber} สำเร็จ`);
+            closeEditRoomModal();
+            await loadRooms();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถแก้ไขห้องเรียนได้');
+        }
+    });
 
     async function loadRooms() {
         const list = document.getElementById('room-list');

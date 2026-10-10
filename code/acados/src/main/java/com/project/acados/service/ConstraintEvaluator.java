@@ -113,7 +113,7 @@ public class ConstraintEvaluator {
     }
 
     /**
-     * BR-07: Teacher must not be marked unavailable (is_available = false) during any time slot.
+     * BR-07: Teacher must not be marked unavailable (is_available = false) during any time slot or overlapping period.
      */
     private ValidationResult validateTeacherAvailability(Teacher teacher, List<TimeSlot> timeSlots) {
         for (TimeSlot slot : timeSlots) {
@@ -124,6 +124,22 @@ public class ConstraintEvaluator {
                         "BR-07: Teacher '%s' is marked unavailable on %s %s-%s",
                         teacher.getFullName(), slot.getDayOfWeek(), slot.getStartTime(), slot.getEndTime()
                 ));
+            }
+        }
+
+        List<TeacherAvailability> allTeacherAvails = teacherAvailabilityRepository.findByTeacherId(teacher.getId());
+        if (allTeacherAvails != null) {
+            for (TimeSlot slot : timeSlots) {
+                for (TeacherAvailability ta : allTeacherAvails) {
+                    if (!ta.isAvailable() && ta.getTimeSlot() != null && ta.getTimeSlot().overlapsWith(slot)) {
+                        return ValidationResult.fail(String.format(
+                                "BR-07: Teacher '%s' is marked unavailable on %s (%s-%s overlaps with %s-%s)",
+                                teacher.getFullName(), slot.getDayOfWeek(),
+                                slot.getStartTime(), slot.getEndTime(),
+                                ta.getTimeSlot().getStartTime(), ta.getTimeSlot().getEndTime()
+                        ));
+                    }
+                }
             }
         }
         return ValidationResult.pass();

@@ -63,10 +63,58 @@
             <!-- Rendered by JS -->
         </div>
     </div>
+
+    <!-- Edit Course Modal -->
+    <div class="modal-backdrop" id="edit-course-backdrop" onclick="closeEditCourseModal()"></div>
+    <div class="modal-dialog" id="edit-course-modal" role="dialog" aria-modal="true" style="max-width:520px;">
+        <div class="modal-dialog__header">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">แก้ไขรายวิชา (Edit Course)</h3>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="closeEditCourseModal()">✕</button>
+        </div>
+        <form id="edit-course-form">
+            <div class="modal-dialog__body" style="display:flex; flex-direction:column; gap:14px;">
+                <input type="hidden" id="edit-course-id">
+                <div>
+                    <label for="edit-course-code" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">รหัสวิชา *</label>
+                    <input id="edit-course-code" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div>
+                    <label for="edit-course-title" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชื่อวิชา *</label>
+                    <input id="edit-course-title" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div>
+                    <label for="edit-course-hours" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชั่วโมง/สัปดาห์ *</label>
+                    <input id="edit-course-hours" type="number" min="1" max="10" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+            </div>
+            <div class="modal-dialog__footer" style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn--secondary" onclick="closeEditCourseModal()">ยกเลิก</button>
+                <button type="submit" class="btn btn--primary" id="btn-submit-edit-course">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
 </main>
 
 <script>
     let allCourses = [];
+
+    function openEditCourseModal(c) {
+        document.getElementById('edit-course-id').value = c.id;
+        document.getElementById('edit-course-code').value = c.courseCode || '';
+        document.getElementById('edit-course-title').value = c.title || '';
+        document.getElementById('edit-course-hours').value = c.weeklyHours || 3;
+
+        document.getElementById('edit-course-backdrop').classList.add('is-open');
+        document.getElementById('edit-course-modal').classList.add('is-open');
+    }
+
+    function closeEditCourseModal() {
+        document.getElementById('edit-course-backdrop').classList.remove('is-open');
+        document.getElementById('edit-course-modal').classList.remove('is-open');
+    }
 
     function renderFilteredCourses() {
         const list = document.getElementById('course-list');
@@ -109,6 +157,9 @@
                     <span style="font-size:0.85rem; font-weight:500; color:var(--slate-neutral); background:var(--bg-canvas); padding:3px 10px; border-radius:4px; border:1px solid var(--border-subtle);">
                         <span class="num">${c.weeklyHours}</span> ชม./สัปดาห์
                     </span>
+                    <button type="button" class="btn btn--secondary btn--sm" onclick='openEditCourseModal(${JSON.stringify(c)})'>
+                        ✏ แก้ไข
+                    </button>
                     <button type="button" class="btn btn--danger btn--sm" onclick="deleteCourse(${c.id}, '${ui.escapeHtml(c.courseCode)}')">
                         ลบ
                     </button>
@@ -136,6 +187,30 @@
             }
         });
     }
+
+    document.getElementById('edit-course-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-course-id').value;
+        const btn = document.getElementById('btn-submit-edit-course');
+        ui.setBusy(btn, true);
+
+        const payload = {
+            courseCode: document.getElementById('edit-course-code').value.trim(),
+            title: document.getElementById('edit-course-title').value.trim(),
+            weeklyHours: Number(document.getElementById('edit-course-hours').value)
+        };
+
+        const res = await api.put(`/api/v1/courses/${id}`, payload);
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', `แก้ไขรายวิชา ${payload.courseCode} สำเร็จ`);
+            closeEditCourseModal();
+            await loadCourses();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถแก้ไขรายวิชาได้');
+        }
+    });
 
     async function loadCourses() {
         const list = document.getElementById('course-list');

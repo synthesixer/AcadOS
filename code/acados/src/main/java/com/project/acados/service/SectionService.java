@@ -25,4 +25,16 @@ public interface SectionService {
      * Changes the capacity of an ACTIVE section (BR-05: not below the registered count).
      */
     Section updateSection(Long id, SectionRequest request);
+
+    /**
+     * Assigns a teacher to all schedules of the section (Sub-feature A13).
+     * Validates qualification (BR-06), availability (BR-07), schedule conflict (BR-01),
+     * and ensures schedules are PUBLISHED.
+     */
+    Section assignTeacher(Long id, Long teacherId);
+
+    /**
+     * Returns all teachers indicating whether each is qualified for the section's course.
+     */
+    List<com.project.acados.dto.response.TeacherAssignmentOptionResponse> getTeacherOptions(Long id);
 }

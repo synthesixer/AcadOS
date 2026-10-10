@@ -122,6 +122,7 @@ Admin --> UC_ReadEvent
 Admin --> UC_UpdateEvent
 Admin --> UC_DeleteEvent
 Admin --> UC_ViewHoliday
+Admin --> UC_FetchHoliday
 Admin --> UC_AdminViewNotif
 Admin --> UC_AdminReadNotif
 
@@ -130,8 +131,8 @@ UC_ViewSchedule <.. UC_DiscardSchedule : <<extend>>
 
 UC_FetchHoliday --> HolidayAPI
 note right of UC_FetchHoliday
-  System fetches automatically
-  once a month (not triggered by Admin)
+  Admin triggers manual sync via UI (btn-sync)
+  and System fetches automatically once a month
 end note
 @enduml
 ```
@@ -163,7 +164,7 @@ rectangle "AcadOS (Teacher Scope)" {
         usecase "View Assigned Section" as UC_TViewSection
         usecase "View Timetable" as UC_TViewTimetable
     }
-    package "Profile & Availability" {
+    package "Profile & Availability (Profile Modal)" {
         usecase "Manage Availability" as UC_TManageAvail
         usecase "View Own Availability" as UC_TViewAvail
         usecase "View Own Qualification" as UC_TViewQual

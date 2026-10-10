@@ -121,6 +121,73 @@
         return '--:--';
     }
 
+    function mergeConsecutiveSchedules(schedules) {
+        if (!schedules || schedules.length <= 1) return schedules || [];
+
+        const groups = new Map();
+        schedules.forEach(s => {
+            const day = (s.dayOfWeek || '').toUpperCase().trim();
+            const sec = s.sectionId || ('sec-' + (s.courseCode || '') + '-' + (s.sectionNumber || ''));
+            const room = s.roomId || s.roomName || '';
+            const status = s.status || '';
+            const key = `${day}|${sec}|${room}|${status}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        });
+
+        const mergedResults = [];
+
+        groups.forEach(itemsInGroup => {
+            itemsInGroup.sort((a, b) => parseMinutes(a.startTime) - parseMinutes(b.startTime));
+
+            let currentMerged = null;
+
+            itemsInGroup.forEach(item => {
+                if (!currentMerged) {
+                    currentMerged = { ...item };
+                    if (!currentMerged.mergedIds) {
+                        currentMerged.mergedIds = [currentMerged.id];
+                    }
+                } else {
+                    const currentEndMinutes = parseMinutes(currentMerged.endTime);
+                    const nextStartMinutes = parseMinutes(item.startTime);
+
+                    if (currentEndMinutes === nextStartMinutes) {
+                        currentMerged.endTime = item.endTime;
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                        currentMerged.mergedIds.push(item.id);
+                    } else {
+                        mergedResults.push(currentMerged);
+                        currentMerged = { ...item };
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                    }
+                }
+            });
+
+            if (currentMerged) {
+                mergedResults.push(currentMerged);
+            }
+        });
+
+        mergedResults.sort((a, b) => {
+            const dayKeyA = String(a.dayOfWeek || '').toUpperCase();
+            const dayKeyB = String(b.dayOfWeek || '').toUpperCase();
+            const dayA = DAY_ORDER[dayKeyA] || 1;
+            const dayB = DAY_ORDER[dayKeyB] || 1;
+            if (dayA !== dayB) return dayA - dayB;
+            return parseMinutes(a.startTime) - parseMinutes(b.startTime);
+        });
+
+        return mergedResults;
+    }
+
     function findUpcomingClass(schedules) {
         if (!schedules || schedules.length === 0) return null;
 
@@ -266,7 +333,8 @@
             // Load my teaching schedules
             const schedRes = await api.get('/api/v1/teacher-swaps/my-schedules');
             if (schedRes.ok) {
-                const schedules = Array.isArray(schedRes.data) ? schedRes.data : (schedRes.data.content || []);
+                const rawSchedules = Array.isArray(schedRes.data) ? schedRes.data : (schedRes.data.content || []);
+                const schedules = mergeConsecutiveSchedules(rawSchedules);
                 document.getElementById('stat-schedule-count').textContent = schedules.length;
 
                 renderUpcomingClass(schedules);

@@ -84,6 +84,40 @@
             <!-- Rendered by JS -->
         </div>
     </div>
+
+    <!-- Assign Teacher Modal -->
+    <div class="modal-backdrop" id="assign-teacher-backdrop" onclick="closeAssignTeacherModal()"></div>
+    <div class="modal-dialog" id="assign-teacher-modal" role="dialog" aria-modal="true" style="max-width:520px;">
+        <div class="modal-dialog__header">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">มอบหมายผู้สอน (Assign Teacher · A13)</h3>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="closeAssignTeacherModal()">✕</button>
+        </div>
+        <form id="assign-teacher-form">
+            <div class="modal-dialog__body" style="display:flex; flex-direction:column; gap:14px;">
+                <input type="hidden" id="assign-section-id">
+                <div style="background:var(--surface-alt); padding:12px; border-radius:6px; border:1px solid var(--border-subtle); font-size:0.88rem;">
+                    <div><strong>รายวิชา:</strong> <span id="assign-course-info">-</span></div>
+                    <div style="margin-top:4px;"><strong>กลุ่มเรียน:</strong> <span id="assign-section-num">-</span></div>
+                </div>
+                <div>
+                    <label for="assign-teacher-select" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">
+                        เลือกอาจารย์ผู้สอน (Teacher) *
+                    </label>
+                    <select id="assign-teacher-select" required
+                            style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                        <option value="">-- กำลังโหลดรายชื่ออาจารย์... --</option>
+                    </select>
+                    <p class="muted" style="margin:6px 0 0; font-size:0.8rem;">
+                        * อาจารย์ที่เลือกต้องมีคุณสมบัติตรงตามรายวิชา (BR-06) และไม่มีตารางสอนชนกัน (BR-01, BR-07)
+                    </p>
+                </div>
+            </div>
+            <div class="modal-dialog__footer" style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn--secondary" onclick="closeAssignTeacherModal()">ยกเลิก</button>
+                <button type="submit" class="btn btn--primary" id="btn-submit-assign-teacher">บันทึกการมอบหมาย</button>
+            </div>
+        </form>
+    </div>
 </main>
 
 <script>
@@ -97,6 +131,41 @@
         if (filter === 'ACTIVE') document.getElementById('filter-active').classList.add('is-active');
         if (filter === 'CANCELLED') document.getElementById('filter-cancelled').classList.add('is-active');
         renderFilteredSections();
+    }
+
+    async function openAssignTeacherModal(s) {
+        document.getElementById('assign-section-id').value = s.id;
+        document.getElementById('assign-course-info').textContent = `${s.courseCode || ''} - ${s.courseTitle || ''}`;
+        document.getElementById('assign-section-num').textContent = `กลุ่ม ${s.sectionNumber} (ID: #${s.id})`;
+
+        const select = document.getElementById('assign-teacher-select');
+        select.innerHTML = '<option value="">-- กำลังโหลดรายชื่ออาจารย์... --</option>';
+
+        document.getElementById('assign-teacher-backdrop').classList.add('is-open');
+        document.getElementById('assign-teacher-modal').classList.add('is-open');
+
+        try {
+            const res = await api.get(`/api/v1/sections/${s.id}/teachers`);
+            if (res.ok && Array.isArray(res.data)) {
+                select.innerHTML = '<option value="">-- เลือกอาจารย์ผู้สอน --</option>';
+                res.data.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.teacherId;
+                    const qualLabel = t.qualified ? '✓ [Qualified]' : '✕ [ไม่มี Qualification]';
+                    opt.textContent = `${qualLabel} ${t.fullName} (${t.universityId})`;
+                    select.appendChild(opt);
+                });
+            } else {
+                select.innerHTML = '<option value="">ไม่สามารถโหลดรายชื่ออาจารย์ได้</option>';
+            }
+        } catch (e) {
+            select.innerHTML = '<option value="">เกิดข้อผิดพลาดในการโหลด</option>';
+        }
+    }
+
+    function closeAssignTeacherModal() {
+        document.getElementById('assign-teacher-backdrop').classList.remove('is-open');
+        document.getElementById('assign-teacher-modal').classList.remove('is-open');
     }
 
     function confirmCancelSection(s) {
@@ -199,6 +268,9 @@
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
                     ${isActive ? `
+                        <button type="button" class="btn btn--secondary btn--sm" onclick='openAssignTeacherModal(${JSON.stringify(s)})'>
+                            👤 มอบหมายผู้สอน
+                        </button>
                         <button type="button" class="btn btn--secondary btn--sm" onclick='editSectionCapacity(${JSON.stringify(s)})'>
                             ✏ ปรับความจุ
                         </button>

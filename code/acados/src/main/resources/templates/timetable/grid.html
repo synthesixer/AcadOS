@@ -463,6 +463,87 @@
         return 'ยังไม่ระบุอาจารย์';
     }
 
+    // Merge consecutive schedule periods (e.g. 10:00-11:00 and 11:00-12:00 for 2-hour classes) into a single unified block
+    function mergeConsecutiveSchedules(schedules) {
+        if (!schedules || schedules.length <= 1) return schedules || [];
+
+        const groups = new Map();
+        schedules.forEach(s => {
+            const day = getScheduleDay(s);
+            const sec = s.sectionId || ('sec-' + (s.courseCode || '') + '-' + (s.sectionNumber || ''));
+            const teacher = s.teacherId || getScheduleTeacher(s);
+            const room = s.roomId || getScheduleRoom(s);
+            const status = s.status || '';
+            const key = `${day}|${sec}|${teacher}|${room}|${status}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        });
+
+        const mergedResults = [];
+
+        groups.forEach(itemsInGroup => {
+            itemsInGroup.sort((a, b) => {
+                const aTime = parseTime(getScheduleStartTime(a));
+                const bTime = parseTime(getScheduleStartTime(b));
+                return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
+            });
+
+            let currentMerged = null;
+
+            itemsInGroup.forEach(item => {
+                if (!currentMerged) {
+                    currentMerged = { ...item };
+                    if (!currentMerged.mergedIds) {
+                        currentMerged.mergedIds = [currentMerged.id];
+                    }
+                } else {
+                    const currentEndTime = parseTime(getScheduleEndTime(currentMerged));
+                    const nextStartTime = parseTime(getScheduleStartTime(item));
+                    const currentEndMinutes = currentEndTime.hour * 60 + currentEndTime.minute;
+                    const nextStartMinutes = nextStartTime.hour * 60 + nextStartTime.minute;
+
+                    if (currentEndMinutes === nextStartMinutes) {
+                        currentMerged.endTime = getScheduleEndTime(item);
+                        if (currentMerged.timeSlot) {
+                            currentMerged.timeSlot = {
+                                ...currentMerged.timeSlot,
+                                endTime: getScheduleEndTime(item)
+                            };
+                        }
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                        currentMerged.mergedIds.push(item.id);
+                    } else {
+                        mergedResults.push(currentMerged);
+                        currentMerged = { ...item };
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                    }
+                }
+            });
+
+            if (currentMerged) {
+                mergedResults.push(currentMerged);
+            }
+        });
+
+        mergedResults.sort((a, b) => {
+            const dayA = DAYS_MAP.findIndex(d => d.key === getScheduleDay(a));
+            const dayB = DAYS_MAP.findIndex(d => d.key === getScheduleDay(b));
+            if (dayA !== dayB) return dayA - dayB;
+            const aTime = parseTime(getScheduleStartTime(a));
+            const bTime = parseTime(getScheduleStartTime(b));
+            return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
+        });
+
+        return mergedResults;
+    }
+
     async function loadCurrentUserContext() {
         try {
             const meRes = await api.get('/api/v1/auth/me', { redirectOn401: false });
@@ -602,9 +683,10 @@
 
     function renderView() {
         const filtered = getFilteredSchedules();
+        const merged = mergeConsecutiveSchedules(filtered);
         updateHeaderAndBadge();
-        renderMatrix(filtered);
-        renderRibbonList(filtered);
+        renderMatrix(merged);
+        renderRibbonList(merged);
     }
 
     function updateHeaderAndBadge() {
@@ -744,10 +826,11 @@
                         const durationLabel = `${duration} ชม.`;
 
                         // Check if this section has multiple sessions
-                        const sectionSessions = currentSchedules.filter(cs => cs.sectionId === currentItem.sectionId);
+                        const mergedAllSchedules = mergeConsecutiveSchedules(currentSchedules);
+                        const sectionSessions = mergedAllSchedules.filter(cs => cs.sectionId === currentItem.sectionId);
                         const isMultiSession = sectionSessions.length > 1;
-                        const sessionIndex = sectionSessions.findIndex(cs => cs.id === currentItem.id) + 1;
-                        const sessionTag = isMultiSession ? ` · คาบ ${sessionIndex}/${sectionSessions.length}` : '';
+                        const sessionIndex = sectionSessions.findIndex(cs => cs.id === currentItem.id || (currentItem.mergedIds && currentItem.mergedIds.includes(cs.id))) + 1;
+                        const sessionTag = isMultiSession ? ` · คาบ ${sessionIndex || 1}/${sectionSessions.length}` : '';
 
                         const compact = duration === 1;
                         const badgeText = compact ? `${duration} ชม.` : `${startStr} - ${endStr} (${durationLabel})`;

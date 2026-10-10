@@ -77,4 +77,22 @@ public class SectionApiController {
         sectionCancellationService.cancelSection(id);
         return sectionMapper.toResponse(sectionService.getSection(id));
     }
+
+    @PutMapping("/{id}/teacher")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Assign a teacher to all schedules of a section (Sub-feature A13)")
+    public SectionResponse assignTeacher(
+            @PathVariable Long id,
+            @Valid @RequestBody com.project.acados.dto.request.AssignTeacherRequest request
+    ) {
+        Section section = sectionService.assignTeacher(id, request.teacherId());
+        return sectionMapper.toResponse(section);
+    }
+
+    @GetMapping("/{id}/teachers")
+    @PreAuthorize("hasRole('ADMIN')")
+    @Operation(summary = "Get teacher options indicating qualification for this section")
+    public List<com.project.acados.dto.response.TeacherAssignmentOptionResponse> getTeacherOptions(@PathVariable Long id) {
+        return sectionService.getTeacherOptions(id);
+    }
 }

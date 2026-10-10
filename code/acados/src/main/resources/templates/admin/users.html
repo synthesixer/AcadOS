@@ -101,6 +101,43 @@
             <!-- Rendered by JS -->
         </div>
     </div>
+
+    <!-- Edit User Modal -->
+    <div class="modal-backdrop" id="edit-user-backdrop" onclick="closeEditUserModal()"></div>
+    <div class="modal-dialog" id="edit-user-modal" role="dialog" aria-modal="true" style="max-width:520px;">
+        <div class="modal-dialog__header">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">แก้ไขข้อมูลบัญชีผู้ใช้ (Edit User)</h3>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="closeEditUserModal()">✕</button>
+        </div>
+        <form id="edit-user-form">
+            <div class="modal-dialog__body" style="display:flex; flex-direction:column; gap:14px;">
+                <input type="hidden" id="edit-user-id">
+                <div style="background:var(--surface-alt); padding:10px 14px; border-radius:6px; border:1px solid var(--border-subtle); font-size:0.88rem;">
+                    <div><strong>University ID:</strong> <span class="mono" id="edit-user-uid">-</span></div>
+                    <div style="margin-top:4px;"><strong>บทบาท (Role):</strong> <span id="edit-user-role">-</span></div>
+                </div>
+                <div>
+                    <label for="edit-user-name" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ชื่อ-นามสกุล *</label>
+                    <input id="edit-user-name" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div>
+                    <label for="edit-user-email" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">อีเมล (Email) *</label>
+                    <input id="edit-user-email" type="email" required
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+                <div>
+                    <label for="edit-user-password" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">รหัสผ่านใหม่ (ปล่อยว่างถ้าไม่ต้องการเปลี่ยน)</label>
+                    <input id="edit-user-password" type="password" placeholder="ระบุรหัสผ่านใหม่เมื่อต้องการเปลี่ยน"
+                           style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+                </div>
+            </div>
+            <div class="modal-dialog__footer" style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn--secondary" onclick="closeEditUserModal()">ยกเลิก</button>
+                <button type="submit" class="btn btn--primary" id="btn-submit-edit-user">บันทึกการแก้ไข</button>
+            </div>
+        </form>
+    </div>
 </main>
 
 <script>
@@ -115,6 +152,23 @@
         if (role === 'TEACHER') document.getElementById('filter-role-teacher').classList.add('is-active');
         if (role === 'STUDENT') document.getElementById('filter-role-student').classList.add('is-active');
         renderFilteredUsers();
+    }
+
+    function openEditUserModal(u) {
+        document.getElementById('edit-user-id').value = u.id;
+        document.getElementById('edit-user-uid').textContent = u.universityId || '';
+        document.getElementById('edit-user-role').textContent = u.role || '';
+        document.getElementById('edit-user-name').value = u.fullName || '';
+        document.getElementById('edit-user-email').value = u.email || '';
+        document.getElementById('edit-user-password').value = '';
+
+        document.getElementById('edit-user-backdrop').classList.add('is-open');
+        document.getElementById('edit-user-modal').classList.add('is-open');
+    }
+
+    function closeEditUserModal() {
+        document.getElementById('edit-user-backdrop').classList.remove('is-open');
+        document.getElementById('edit-user-modal').classList.remove('is-open');
     }
 
     function getRoleBadge(role) {
@@ -177,6 +231,9 @@
                     </div>
                 </div>
                 <div style="display:flex; align-items:center; gap:10px;">
+                    <button type="button" class="btn btn--secondary btn--sm" onclick='openEditUserModal(${JSON.stringify(u)})'>
+                        ✏ แก้ไข
+                    </button>
                     <button type="button" class="btn btn--danger btn--sm" onclick="deleteUser(${u.id}, '${ui.escapeHtml(u.universityId)}')">
                         ลบผู้ใช้
                     </button>
@@ -204,6 +261,31 @@
             }
         });
     }
+
+    document.getElementById('edit-user-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const id = document.getElementById('edit-user-id').value;
+        const btn = document.getElementById('btn-submit-edit-user');
+        ui.setBusy(btn, true);
+
+        const passwordVal = document.getElementById('edit-user-password').value.trim();
+        const payload = {
+            fullName: document.getElementById('edit-user-name').value.trim(),
+            email: document.getElementById('edit-user-email').value.trim(),
+            password: passwordVal || null
+        };
+
+        const res = await api.put(`/api/v1/users/${id}`, payload);
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', `แก้ไขข้อมูลบัญชี ${document.getElementById('edit-user-uid').textContent} สำเร็จ`);
+            closeEditUserModal();
+            await loadUsers();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถแก้ไขข้อมูลผู้ใช้ได้');
+        }
+    });
 
     async function loadUsers() {
         const list = document.getElementById('user-list');
