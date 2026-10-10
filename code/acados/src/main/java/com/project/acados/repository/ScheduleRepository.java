@@ -2,6 +2,7 @@ package com.project.acados.repository;
 
 import com.project.acados.domain.entity.Schedule;
 import com.project.acados.domain.enums.ScheduleStatus;
+import org.springframework.data.jpa.repository.EntityGraph;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
@@ -17,15 +18,25 @@ import java.util.List;
 @Repository
 public interface ScheduleRepository extends JpaRepository<Schedule, Long> {
 
+    @EntityGraph(attributePaths = {"section", "section.course", "teacher", "room", "timeSlot"})
     List<Schedule> findByStatus(ScheduleStatus status);
 
+    @EntityGraph(attributePaths = {"section", "section.course", "teacher", "room", "timeSlot"})
     List<Schedule> findBySectionId(Long sectionId);
 
+    @EntityGraph(attributePaths = {"section", "section.course", "teacher", "room", "timeSlot"})
     List<Schedule> findByTeacherId(Long teacherId);
 
+    @EntityGraph(attributePaths = {"section", "section.course", "teacher", "room", "timeSlot"})
     List<Schedule> findByTeacherIdAndStatus(Long teacherId, ScheduleStatus status);
 
+    @EntityGraph(attributePaths = {"section", "section.course", "teacher", "room", "timeSlot"})
+    List<Schedule> findByRoomId(Long roomId);
+
+    @EntityGraph(attributePaths = {"section", "section.course", "teacher", "room", "timeSlot"})
     List<Schedule> findByRoomIdAndStatus(Long roomId, ScheduleStatus status);
+
+    long countByTeacherId(Long teacherId);
 
     boolean existsBySectionIdAndTimeSlotId(Long sectionId, Long timeSlotId);
 

@@ -32,5 +32,9 @@ target/
 .DS_Store
 Thumbs.db
 
+### ai agent ###
 AGENTS.md
 CLAUDE.md
+
+### Robot Framework Results ###
+**/results/

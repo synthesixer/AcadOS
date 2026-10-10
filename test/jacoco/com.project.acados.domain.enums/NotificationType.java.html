@@ -1,0 +1,19 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationType.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.domain.enums</a> &gt; <span class="el_source">NotificationType.java</span></div><h1>NotificationType.java</h1><pre class="source lang-java linenums">package com.project.acados.domain.enums;
+
+/**
+ * Notification type stored in notifications.type (VARCHAR(40), no CHECK constraint).
+ * Reference: database.md §2.14
+ */
+<span class="fc" id="L7">public enum NotificationType {</span>
+<span class="fc" id="L8">    REGISTRATION_SUCCESS,</span>
+<span class="fc" id="L9">    REGISTRATION_WITHDRAWN,</span>
+<span class="fc" id="L10">    SCHEDULE_CHANGED,</span>
+<span class="fc" id="L11">    SWAP_REQUESTED,</span>
+<span class="fc" id="L12">    SWAP_RESPONDED,</span>
+<span class="fc" id="L13">    SWAP_APPROVED,</span>
+<span class="fc" id="L14">    SWAP_REJECTED,</span>
+<span class="fc" id="L15">    SWAP_CANCELLED,</span>
+<span class="fc" id="L16">    SECTION_CANCELLED,</span>
+<span class="fc" id="L17">    CONFLICT_DETECTED</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

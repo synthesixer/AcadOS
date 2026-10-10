@@ -1,7 +1,7 @@
 @startuml
 skinparam backgroundColor #EEF2FF
 
-' Authentication Activity Diagram
+' Authentication & Authorization Activity Diagram
 
 start
 :User opens login page;
@@ -18,5 +18,18 @@ partition "Auth Service" {
     endif
 }
 :User stores JWT for subsequent requests;
+
+partition "Subsequent Requests (Security Filter)" {
+    :User accesses protected resource with JWT;
+    if (JWT missing, invalid, or expired?) then (yes)
+        :Return 401 Unauthorized (Redirect to Login);
+        stop
+    elseif (Role does not match endpoint authority?) then (yes)
+        :Return 403 Forbidden (Show Neutral Error 403 Page);
+        stop
+    else (authorized)
+        :Proceed to Controller & Business Logic;
+    endif
+}
 stop
 @enduml

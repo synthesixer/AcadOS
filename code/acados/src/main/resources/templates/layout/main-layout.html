@@ -1,48 +1,319 @@
 <!DOCTYPE html>
 <!--
-  AcadOS master layout. Owner: Track C.
-
-  How to use it in a page (no extra dependency, plain Thymeleaf fragment parameters):
-
-    <!DOCTYPE html>
-    <html lang="th" xmlns:th="http://www.thymeleaf.org"
-          th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
-    <head><title>รายวิชา</title></head>
-    <body>
-    <main> ... page content ... </main>
-    <script th:src="@{/js/pages/courses.js}"></script>
-    </body>
-    </html>
-
-  - title   : the page <title> element
-  - content : the page <main> element (rendered inside the content area)
-  - scripts : the page <script> elements, loaded after api.js and ui.js; pass ~{} when the page has none
+  AcadOS Master Layout — Academic Operations Platform
+  Layout Paradigm: Rail + Workbench + Context Strip
+  Owner: Track C
 -->
 <html lang="th" xmlns:th="http://www.thymeleaf.org" th:fragment="layout(title, content, scripts)">
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title th:replace="${title}">AcadOS</title>
+    <link rel="icon" type="image/svg+xml" th:href="@{/favicon.svg}">
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link rel="stylesheet"
-          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans+Thai:wght@400;500;600&display=swap">
+          href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500;600;700&family=IBM+Plex+Sans+Thai:wght@400;500;600;700&family=Noto+Sans+Thai:wght@400;500;600;700&display=swap">
     <link rel="stylesheet" th:href="@{/css/app.css}">
 </head>
 <body>
+<!-- 1. Left Navigation Rail -->
 <aside th:replace="~{layout/fragments/sidebar :: sidebar}"></aside>
 <div class="sidebar-backdrop" id="sidebar-backdrop"></div>
 
+<!-- 2. Main Workbench Shell -->
 <div class="app">
+    <!-- Topbar & Operational Task Ribbon -->
     <header th:replace="~{layout/fragments/topbar :: topbar}"></header>
 
-    <div class="content">
-        <main th:replace="${content}"></main>
+    <div class="workbench-layout" id="workbench-layout">
+        <!-- Main Content Workspace -->
+        <div class="content">
+            <main th:replace="${content}"></main>
+        </div>
+
+        <!-- Right Context Strip (Signals, Upcoming Events, Quick Alerts) -->
+        <aside class="context-strip" id="context-strip" aria-label="ข้อมูลประกอบการตัดสินใจ">
+            <!-- Registration Period Signal -->
+            <div class="context-card">
+                <div class="context-card__title">
+                    <span>ช่วงเวลาลงทะเบียน</span>
+                    <span class="badge badge--ok" style="font-size:0.7rem;">ACTIVE</span>
+                </div>
+                <p style="font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:4px;">
+                    ภาคเรียน 1/2569
+                </p>
+                <p class="muted" style="font-size:0.78rem;">
+                    เปิดระบบลงทะเบียนตามกำหนดการปฏิทินการศึกษา สามารถเลือกหรือเปลี่ยนกลุ่มเรียนได้
+                </p>
+            </div>
+
+            <!-- Calendar Event Milestone -->
+            <div class="context-card">
+                <div class="context-card__title">
+                    <span>กำหนดการสำคัญ</span>
+                    <svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg>
+                </div>
+                <div style="display:flex; flex-direction:column; gap:8px; font-size:0.82rem;" id="context-milestones-list">
+                    <div style="border-left:2px solid var(--primary); padding-left:8px;">
+                        <div class="mono" style="font-size:0.75rem; color:var(--ink-muted);">20-31 ต.ค. 2569</div>
+                        <div style="font-weight:600; color:var(--ink-navy);">สอบปลายภาค (Final Exam)</div>
+                    </div>
+                    <div style="border-left:2px solid var(--draft-amber); padding-left:8px;">
+                        <div class="mono" style="font-size:0.75rem; color:var(--ink-muted);">05 พ.ย. 2569</div>
+                        <div style="font-weight:600; color:var(--ink-navy);">สิ้นสุดภาคการศึกษา</div>
+                    </div>
+                    <div style="border-left:2px solid var(--danger-red); padding-left:8px; background:var(--danger-bg); border-radius:0 4px 4px 0; padding-top:2px; padding-bottom:2px;">
+                        <div class="mono" style="font-size:0.72rem; color:var(--danger-red); font-weight:700;">🚩 13-15 เม.ย. · วันหยุดราชการ</div>
+                        <div style="font-weight:600; color:var(--danger-text);">วันสงกรานต์ (Songkran Festival)</div>
+                    </div>
+                    <div style="border-left:2px solid var(--danger-red); padding-left:8px; background:var(--danger-bg); border-radius:0 4px 4px 0; padding-top:2px; padding-bottom:2px;">
+                        <div class="mono" style="font-size:0.72rem; color:var(--danger-red); font-weight:700;">🚩 23 ต.ค. · วันหยุดราชการ</div>
+                        <div style="font-weight:600; color:var(--danger-text);">วันปิยมหาราช (Chulalongkorn Day)</div>
+                    </div>
+                    <div style="border-left:2px solid var(--danger-red); padding-left:8px; background:var(--danger-bg); border-radius:0 4px 4px 0; padding-top:2px; padding-bottom:2px;">
+                        <div class="mono" style="font-size:0.72rem; color:var(--danger-red); font-weight:700;">🚩 05 ธ.ค. · วันหยุดราชการ</div>
+                        <div style="font-weight:600; color:var(--danger-text);">วันพ่อแห่งชาติ (Father's Day)</div>
+                    </div>
+                    <div style="border-left:2px solid var(--danger-red); padding-left:8px; background:var(--danger-bg); border-radius:0 4px 4px 0; padding-top:2px; padding-bottom:2px;">
+                        <div class="mono" style="font-size:0.72rem; color:var(--danger-red); font-weight:700;">🚩 31 ธ.ค. - 01 ม.ค. · วันหยุดราชการ</div>
+                        <div style="font-weight:600; color:var(--danger-text);">วันสิ้นปี & วันขึ้นปีใหม่</div>
+                    </div>
+                </div>
+            </div>
+
+        </aside>
     </div>
 
-    <footer class="footer">AcadOS v4 · CP353002 Principles of Software Design and Development</footer>
+    <footer class="footer">
+        AcadOS · ศูนย์กลางการบริหารจัดการตารางวิชาการและภาระงานสอน
+    </footer>
 </div>
 
+<!-- 3. Signature Decision Sheet (Slide-in Right Panel for Impact Assessment) -->
+<div class="decision-backdrop" id="decision-backdrop"></div>
+<aside class="decision-sheet" id="decision-sheet" aria-modal="true" role="dialog" aria-hidden="true">
+    <div class="decision-sheet__header">
+        <div>
+            <h3 id="decision-sheet-title" style="color:var(--ink-navy);">ยืนยันการตัดสินใจ</h3>
+            <p class="muted" id="decision-sheet-desc" style="font-size:0.82rem; margin-top:2px;">
+                กรุณาตรวจสอบผลกระทบก่อนดำเนินการ
+            </p>
+        </div>
+        <button type="button" class="btn btn--secondary btn--sm" id="decision-sheet-close" aria-label="ปิด">
+            ✕
+        </button>
+    </div>
+    <div class="decision-sheet__body">
+        <div class="decision-sheet__impact-box">
+            <div class="decision-sheet__impact-title">ผลกระทบที่จะเกิดขึ้นกับระบบ:</div>
+            <ul class="decision-sheet__impact-list" id="decision-sheet-impacts">
+                <li>ข้อมูลจะได้รับการบันทึกและประมวลผลทันที</li>
+            </ul>
+        </div>
+        <div id="decision-sheet-custom-content"></div>
+    </div>
+    <div class="decision-sheet__footer">
+        <button type="button" class="btn btn--secondary" id="decision-sheet-cancel">ยกเลิก</button>
+        <button type="button" class="btn btn--primary" id="decision-sheet-confirm">ยืนยันดำเนินการ</button>
+    </div>
+</aside>
+
+<!-- 4. User Profile & Account Settings Modal (ทุก Role: ข้อมูล, เปลี่ยนรหัสผ่าน, สำหรับอาจารย์: จัดการ Preference) -->
+<div class="modal-backdrop" id="user-profile-backdrop"></div>
+<div class="modal-dialog" id="user-profile-modal" role="dialog" aria-modal="true" aria-labelledby="profile-modal-title">
+    <div class="modal-dialog__header">
+        <div style="display:flex; align-items:center; gap:8px;">
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" style="color:var(--primary);"><path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"/><circle cx="12" cy="7" r="4"/></svg>
+            <h3 id="profile-modal-title" style="color:var(--ink-navy); margin:0;">ข้อมูลผู้ใช้และการตั้งค่า (User Profile)</h3>
+        </div>
+        <button type="button" class="btn btn--secondary btn--sm" id="btn-close-profile-modal" aria-label="ปิดหน้าต่าง">✕</button>
+    </div>
+
+    <div class="modal-dialog__body">
+        <div class="modal-tabs" id="profile-modal-tabs">
+            <button type="button" class="modal-tab-btn is-active" data-tab="tab-profile-info">👤 ข้อมูลส่วนตัว</button>
+            <button type="button" class="modal-tab-btn" data-tab="tab-change-password">🔑 เปลี่ยนรหัสผ่าน</button>
+            <button type="button" class="modal-tab-btn hidden" id="tab-btn-teacher-pref" data-tab="tab-teacher-pref">📚 ความประสงค์การสอน</button>
+        </div>
+
+        <!-- TAB 1: Profile Info -->
+        <div id="tab-profile-info" class="modal-tab-content">
+            <div id="profile-info-loading" style="padding:16px 0;">
+                <div class="muted">กำลังโหลดข้อมูลผู้ใช้...</div>
+            </div>
+            <div id="profile-info-body" class="hidden">
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:12px; margin-bottom:16px;">
+                    <div style="background:var(--surface-alt); padding:10px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+                        <div class="muted" style="font-size:0.75rem;">University ID (รหัสผู้ใช้)</div>
+                        <div class="mono" style="font-weight:700; font-size:1.05rem; color:var(--ink-navy);" id="prof-university-id">-</div>
+                    </div>
+                    <div style="background:var(--surface-alt); padding:10px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle);">
+                        <div class="muted" style="font-size:0.75rem;">บทบาทในระบบ (Role)</div>
+                        <div id="prof-role-badge">-</div>
+                    </div>
+                </div>
+
+                <div style="display:flex; flex-direction:column; gap:10px; font-size:0.9rem;">
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+                        <span class="muted">ชื่อ-นามสกุล:</span>
+                        <strong style="color:var(--ink-navy);" id="prof-full-name">-</strong>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+                        <span class="muted">อีเมล (Email):</span>
+                        <span class="mono" style="color:var(--ink-navy);" id="prof-email">-</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+                        <span class="muted">ภาควิชา/สังกัด (Department):</span>
+                        <span style="color:var(--ink-navy);" id="prof-department">-</span>
+                    </div>
+                    <div style="display:flex; justify-content:space-between; padding:8px 0; border-bottom:1px solid var(--border-subtle);">
+                        <span class="muted">เบอร์โทรศัพท์ (Phone):</span>
+                        <span class="mono" style="color:var(--ink-navy);" id="prof-phone">-</span>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- TAB 2: Change Password -->
+        <div id="tab-change-password" class="modal-tab-content hidden">
+            <form id="form-change-password">
+                <div class="form-group">
+                    <label for="cp-old-password">รหัสผ่านเดิม (Current Password) *</label>
+                    <input type="password" id="cp-old-password" class="form-control" placeholder="รหัสผ่านปัจจุบันของคุณ" required autocomplete="current-password">
+                </div>
+                <div class="form-group">
+                    <label for="cp-new-password">รหัสผ่านใหม่ (New Password) *</label>
+                    <input type="password" id="cp-new-password" class="form-control" placeholder="ต้องมีความยาวอย่างน้อย 6 ตัวอักษร" minlength="6" required autocomplete="new-password">
+                </div>
+                <div class="form-group">
+                    <label for="cp-confirm-password">ยืนยันรหัสผ่านใหม่ (Confirm New Password) *</label>
+                    <input type="password" id="cp-confirm-password" class="form-control" placeholder="กรอกรหัสผ่านใหม่อีกครั้งให้ตรงกัน" minlength="6" required autocomplete="new-password">
+                </div>
+                <div id="change-pwd-error" class="hidden" style="padding:8px 12px; border-radius:var(--radius-sm); background:var(--danger-bg); color:var(--danger-text); font-size:0.85rem; margin-bottom:12px;"></div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="btn btn--primary" id="btn-submit-change-pwd">บันทึกรหัสผ่านใหม่</button>
+                </div>
+            </form>
+        </div>
+
+        <!-- TAB 3: Teacher Preference & Availability (สำหรับอาจารย์เท่านั้น) -->
+        <div id="tab-teacher-pref" class="modal-tab-content hidden">
+            <!-- Part 1: Qualified Course Preferences (D21) -->
+            <div style="margin-bottom:14px; background:var(--surface-alt); padding:10px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); font-size:0.85rem;">
+                <span style="font-weight:600; color:var(--ink-navy);">💡 คำแนะนำ:</span> อาจารย์สามารถระบุรายวิชาที่ประสงค์จะสอน (จากรายวิชาที่มี Qualification BR-06) พร้อมกำหนด Priority 1-5 และกำหนด <strong>ช่วงเวลาที่ไม่สะดวกสอน (Unavailable Slots)</strong> เพื่อให้ระบบใช้เป็น Hard Constraint (BR-07)
+            </div>
+
+            <!-- Form: Add Course Preference -->
+            <form id="form-add-preference" style="background:var(--surface-alt); padding:14px; border-radius:var(--radius-md); border:1px solid var(--border); margin-bottom:16px;">
+                <div style="font-weight:600; color:var(--ink-navy); font-size:0.92rem; margin-bottom:10px;">➕ ระบุความประสงค์รายวิชาที่ต้องการสอน (Course Preference)</div>
+                <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(200px, 1fr)); gap:10px; margin-bottom:10px;">
+                    <div>
+                        <label for="pref-course-select" style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:4px;">รายวิชาที่สอนได้ (Qualified Course) *</label>
+                        <select id="pref-course-select" class="form-control" required style="font-size:0.85rem;">
+                            <option value="">-- เลือกรายวิชาที่สอนได้ --</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="pref-score-select" style="display:block; font-size:0.8rem; font-weight:600; margin-bottom:4px;">ระดับความประสงค์ (Priority 1-5) *</label>
+                        <select id="pref-score-select" class="form-control" required style="font-size:0.85rem;">
+                            <option value="1" selected>⭐⭐⭐⭐⭐ Priority 1 (ต้องการสอนมากที่สุด)</option>
+                            <option value="2">⭐⭐⭐⭐ Priority 2 (ต้องการสอนมาก)</option>
+                            <option value="3">⭐⭐⭐ Priority 3 (ต้องการสอนปานกลาง)</option>
+                            <option value="4">⭐⭐ Priority 4 (ความประสงค์น้อย)</option>
+                            <option value="1">⭐ Priority 5 (ความประสงค์น้อยที่สุด)</option>
+                        </select>
+                    </div>
+                </div>
+                <div style="display:flex; justify-content:flex-end;">
+                    <button type="submit" class="btn btn--primary btn--sm" id="btn-save-pref">+ บันทึกความประสงค์รายวิชา</button>
+                </div>
+            </form>
+
+            <!-- Table: Current Preferences -->
+            <div style="font-weight:600; color:var(--ink-navy); font-size:0.92rem; margin-bottom:8px;">รายการวิชาที่ประสงค์สอน (บันทึกแล้ว)</div>
+            <div id="teacher-pref-list" style="display:flex; flex-direction:column; gap:8px; margin-bottom:20px;">
+                <div class="muted" style="font-size:0.85rem; padding:12px 0;">กำลังโหลดรายการความประสงค์...</div>
+            </div>
+
+            <!-- Part 2: Interactive Table for Unavailable Time Slots (D22, BR-07) -->
+            <div style="border-top:1px dashed var(--border); padding-top:16px;">
+                <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:10px; flex-wrap:wrap; gap:8px;">
+                    <div>
+                        <div style="font-weight:700; color:var(--ink-navy); font-size:0.95rem; display:flex; align-items:center; gap:6px;">
+                            <span>📅 ตารางกำหนดเวลาที่ไม่สะดวกสอน (Unavailable Slots Table)</span>
+                        </div>
+                        <p class="muted" style="font-size:0.8rem; margin:2px 0 0 0;">
+                            คลิกที่แต่ละช่องเวลาเพื่อสลับเป็น <strong><span style="color:#DC2626;">[✕ ไม่สะดวกสอน] (สีแดง)</span></strong> โดยระบบจะไม่จัดตารางสอนของท่านในช่วงเวลานั้นเด็ดขาด (Hard Constraint BR-07)
+                        </p>
+                    </div>
+                    <div style="display:flex; gap:8px; align-items:center; font-size:0.75rem;">
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:4px; background:#ECFDF5; color:#065F46; border:1px solid #A7F3D0; font-weight:600;">✓ สะดวกสอน</span>
+                        <span style="display:inline-flex; align-items:center; gap:4px; padding:3px 8px; border-radius:4px; background:#FEF2F2; color:#991B1B; border:1px solid #FECACA; font-weight:700;">✕ ไม่สะดวกสอน</span>
+                    </div>
+                </div>
+
+                <!-- Quick Custom Time Window Setter Form -->
+                <div style="background:var(--surface-alt); padding:10px 14px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); margin-bottom:12px; display:flex; flex-wrap:wrap; align-items:flex-end; gap:10px;">
+                    <div>
+                        <label for="avail-day-select" style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:2px; color:var(--ink-navy);">วันในสัปดาห์</label>
+                        <select id="avail-day-select" class="form-control" style="font-size:0.8rem; padding:4px 8px; height:32px;">
+                            <option value="MONDAY">วันจันทร์ (Mon)</option>
+                            <option value="TUESDAY">วันอังคาร (Tue)</option>
+                            <option value="WEDNESDAY">วันพุธ (Wed)</option>
+                            <option value="THURSDAY">วันพฤหัสบดี (Thu)</option>
+                            <option value="FRIDAY">วันศุกร์ (Fri)</option>
+                            <option value="ALL">ทุกวัน (จันทร์-ศุกร์)</option>
+                        </select>
+                    </div>
+                    <div>
+                        <label for="avail-start-time" style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:2px; color:var(--ink-navy);">เวลาเริ่มต้น</label>
+                        <input id="avail-start-time" type="time" class="form-control" value="09:00" style="font-size:0.8rem; padding:4px 8px; height:32px;" required>
+                    </div>
+                    <div>
+                        <label for="avail-end-time" style="display:block; font-size:0.75rem; font-weight:600; margin-bottom:2px; color:var(--ink-navy);">เวลาสิ้นสุด</label>
+                        <input id="avail-end-time" type="time" class="form-control" value="10:30" style="font-size:0.8rem; padding:4px 8px; height:32px;" required>
+                    </div>
+                    <div style="display:flex; gap:6px;">
+                        <button type="button" class="btn btn--danger btn--sm" id="btn-mark-unavailable" style="height:32px; font-size:0.78rem;" onclick="ui.applyCustomUnavailableRange(false)">
+                            ✕ กำหนดเป็นไม่สะดวกสอน
+                        </button>
+                        <button type="button" class="btn btn--secondary btn--sm" id="btn-mark-available" style="height:32px; font-size:0.78rem;" onclick="ui.applyCustomUnavailableRange(true)">
+                            ✓ รีเซ็ตเป็นสะดวกสอน
+                        </button>
+                    </div>
+                </div>
+
+                <div class="table-container" style="overflow-x:auto;">
+                    <table class="table" style="min-width:540px; text-align:center; font-size:0.85rem; margin-bottom:4px;">
+                        <thead>
+                            <tr style="background:var(--surface-alt);">
+                                <th style="width:130px; text-align:left;">ช่วงเวลา / วัน</th>
+                                <th>วันจันทร์</th>
+                                <th>วันอังคาร</th>
+                                <th>วันพุธ</th>
+                                <th>วันพฤหัสบดี</th>
+                                <th>วันศุกร์</th>
+                            </tr>
+                        </thead>
+                        <tbody id="teacher-availability-grid">
+                            <tr><td colspan="6" class="muted" style="padding:16px;">กำลังโหลดตารางความพร้อมสอน...</td></tr>
+                        </tbody>
+                    </table>
+                </div>
+                <div class="muted" style="font-size:0.75rem; margin-top:6px;">
+                    * การคลิกแต่ละช่องจะบันทึกผลทันทีลงระบบอัตโนมัติ
+                </div>
+            </div>
+        </div>
+    </div>
+
+    <div class="modal-dialog__footer">
+        <button type="button" class="btn btn--secondary" id="btn-footer-close-profile">ปิด</button>
+    </div>
+</div>
+
+<!-- Core Client Scripts -->
 <script th:src="@{/js/api.js}"></script>
 <script th:src="@{/js/ui.js}"></script>
 <th:block th:replace="${scripts}"></th:block>

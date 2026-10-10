@@ -1,0 +1,208 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ExternalHolidayAdapter.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.pattern.holiday</a> &gt; <span class="el_source">ExternalHolidayAdapter.java</span></div><h1>ExternalHolidayAdapter.java</h1><pre class="source lang-java linenums">package com.project.acados.pattern.holiday;
+
+import com.project.acados.domain.entity.PublicHoliday;
+import com.project.acados.pattern.holiday.dto.ThailandFormatsHolidayDto;
+import com.project.acados.pattern.holiday.dto.ThailandFormatsResponse;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Component;
+import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Adapter Pattern implementation connecting to ThailandFormats Public Holiday API using Spring RestClient.
+ * Adapts third-party ThailandFormats REST API to the internal HolidayProvider interface.
+ * Reference: class diagram.puml (§7 adapter), Implement_Plan-AcadOS.md §4, §10.3, §14.5, §17.4
+ * Endpoint: https://thailandformats.com/api/v1/holidays/{year}
+ */
+@Component
+public class ExternalHolidayAdapter implements HolidayProvider {
+
+<span class="fc" id="L27">    private static final Logger log = LoggerFactory.getLogger(ExternalHolidayAdapter.class);</span>
+    private static final String DEFAULT_BASE_URL = &quot;https://thailandformats.com/api/v1&quot;;
+
+    private final RestClient restClient;
+
+    @org.springframework.beans.factory.annotation.Autowired
+    public ExternalHolidayAdapter(
+            @Value(&quot;${acados.holiday.api.base-url:&quot; + DEFAULT_BASE_URL + &quot;}&quot;) String baseUrl,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) RestClient.Builder restClientBuilder
+<span class="fc" id="L36">    ) {</span>
+<span class="fc" id="L37">        String effectiveBaseUrl = normalizeBaseUrl(baseUrl);</span>
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        this.restClient = restClientBuilder != null</span>
+<span class="fc" id="L39">                ? restClientBuilder.baseUrl(effectiveBaseUrl).build()</span>
+<span class="pc" id="L40">                : RestClient.builder().baseUrl(effectiveBaseUrl).build();</span>
+<span class="fc" id="L41">    }</span>
+
+    /**
+     * Constructor for manual injection / unit testing.
+     */
+<span class="fc" id="L46">    public ExternalHolidayAdapter(RestClient restClient) {</span>
+<span class="fc" id="L47">        this.restClient = restClient;</span>
+<span class="fc" id="L48">    }</span>
+
+    @Override
+    public List&lt;PublicHoliday&gt; fetchHolidays() {
+<span class="nc" id="L52">        return fetchHolidays(LocalDate.now().getYear());</span>
+    }
+
+    @Override
+    public List&lt;PublicHoliday&gt; fetchHolidays(int year) {
+<span class="fc" id="L57">        log.info(&quot;Fetching public holidays from ThailandFormats API for year: {}&quot;, year);</span>
+        try {
+<span class="fc" id="L59">            ThailandFormatsResponse response = restClient.get()</span>
+<span class="fc" id="L60">                    .uri(&quot;/holidays/{year}&quot;, year)</span>
+<span class="fc" id="L61">                    .retrieve()</span>
+<span class="fc" id="L62">                    .body(ThailandFormatsResponse.class);</span>
+
+<span class="pc bpc" id="L64" title="2 of 6 branches missed.">            if (response == null || response.getHolidays() == null || response.getHolidays().isEmpty()) {</span>
+<span class="fc" id="L65">                log.error(&quot;ThailandFormats API returned empty holiday list for year: {}&quot;, year);</span>
+<span class="fc" id="L66">                throw new ResponseStatusException(</span>
+                        HttpStatus.BAD_GATEWAY,
+                        &quot;ThailandFormats API returned empty holiday list for year &quot; + year
+                );
+            }
+
+<span class="fc" id="L72">            List&lt;PublicHoliday&gt; result = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L73" title="All 2 branches covered.">            for (ThailandFormatsHolidayDto dto : response.getHolidays()) {</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">                if (dto.getStartDate() == null) {</span>
+<span class="nc" id="L75">                    continue;</span>
+                }
+
+<span class="fc" id="L78">                LocalDate startDate = dto.getStartDate();</span>
+<span class="pc bpc" id="L79" title="2 of 4 branches missed.">                LocalDate endDate = dto.getEndDate() != null &amp;&amp; !dto.getEndDate().isBefore(startDate)</span>
+<span class="fc" id="L80">                        ? dto.getEndDate()</span>
+<span class="pc" id="L81">                        : startDate;</span>
+
+<span class="fc" id="L83">                String name = resolveThaiName(dto.getSlug(), dto.getTitle());</span>
+<span class="pc bpc" id="L84" title="2 of 4 branches missed.">                String description = dto.getDetails() != null &amp;&amp; !dto.getDetails().isBlank()</span>
+<span class="fc" id="L85">                        ? dto.getDetails()</span>
+<span class="pc" id="L86">                        : dto.getTitle();</span>
+
+<span class="pc bpc" id="L88" title="2 of 4 branches missed.">                if (description != null &amp;&amp; description.length() &gt; 500) {</span>
+<span class="nc" id="L89">                    description = description.substring(0, 497) + &quot;...&quot;;</span>
+                }
+
+                // Expand date range into individual daily public holidays (e.g. Songkran 13-15 April)
+<span class="fc bfc" id="L93" title="All 2 branches covered.">                for (LocalDate date = startDate; !date.isAfter(endDate); date = date.plusDays(1)) {</span>
+<span class="fc" id="L94">                    PublicHoliday holiday = PublicHoliday.builder()</span>
+<span class="fc" id="L95">                            .date(date)</span>
+<span class="fc" id="L96">                            .name(name)</span>
+<span class="fc" id="L97">                            .description(description)</span>
+<span class="fc" id="L98">                            .build();</span>
+
+<span class="fc" id="L100">                    result.add(holiday);</span>
+                }
+<span class="fc" id="L102">            }</span>
+
+<span class="pc bpc" id="L104" title="1 of 2 branches missed.">            if (result.isEmpty()) {</span>
+<span class="nc" id="L105">                log.error(&quot;No valid public holiday dates could be adapted from ThailandFormats API for year: {}&quot;, year);</span>
+<span class="nc" id="L106">                throw new ResponseStatusException(</span>
+                        HttpStatus.BAD_GATEWAY,
+                        &quot;No valid public holiday dates could be adapted from ThailandFormats API for year &quot; + year
+                );
+            }
+
+<span class="fc" id="L112">            log.info(&quot;Successfully fetched and adapted {} public holiday dates from ThailandFormats API for year {}&quot;, result.size(), year);</span>
+<span class="fc" id="L113">            return result;</span>
+<span class="fc" id="L114">        } catch (ResponseStatusException rse) {</span>
+<span class="fc" id="L115">            throw rse;</span>
+<span class="fc" id="L116">        } catch (Exception e) {</span>
+<span class="fc" id="L117">            log.error(&quot;Failed to fetch public holidays from ThailandFormats API for year {}: {}&quot;, year, e.getMessage(), e);</span>
+<span class="fc" id="L118">            throw new ResponseStatusException(</span>
+                    HttpStatus.BAD_GATEWAY,
+<span class="fc" id="L120">                    &quot;Failed to fetch public holidays from ThailandFormats API: &quot; + e.getMessage(),</span>
+                    e
+            );
+        }
+    }
+
+    /**
+     * Resolves official Thai public holiday name based on ThailandFormats slug and title.
+     */
+    private String resolveThaiName(String slug, String title) {
+<span class="pc bpc" id="L130" title="1 of 2 branches missed.">        if (slug != null) {</span>
+<span class="pc bpc" id="L131" title="24 of 26 branches missed.">            switch (slug) {</span>
+                case &quot;new-years-day&quot;:
+<span class="fc" id="L133">                    return &quot;วันขึ้นปีใหม่ (New Year's Day)&quot;;</span>
+                case &quot;special-public-holiday&quot;:
+<span class="nc" id="L135">                    return &quot;วันหยุดพิเศษช่วงปีใหม่ (Special Public Holiday)&quot;;</span>
+                case &quot;makha-bucha-day&quot;:
+<span class="nc" id="L137">                    return &quot;วันมาฆบูชา (Makha Bucha Day)&quot;;</span>
+                case &quot;substitution-for-makha-bucha-day&quot;:
+<span class="nc" id="L139">                    return &quot;วันหยุดชดเชยวันมาฆบูชา&quot;;</span>
+                case &quot;chakri-memorial-day&quot;:
+<span class="nc" id="L141">                    return &quot;วันจักรี (Chakri Memorial Day)&quot;;</span>
+                case &quot;songkran-festival&quot;:
+<span class="fc" id="L143">                    return &quot;วันสงกรานต์ (Songkran Festival)&quot;;</span>
+                case &quot;national-labour-day&quot;:
+<span class="nc" id="L145">                    return &quot;วันแรงงานแห่งชาติ (National Labour Day)&quot;;</span>
+                case &quot;substitution-for-national-labour-day&quot;:
+<span class="nc" id="L147">                    return &quot;วันหยุดชดเชยวันแรงงานแห่งชาติ&quot;;</span>
+                case &quot;coronation-day&quot;:
+<span class="nc" id="L149">                    return &quot;วันฉัตรมงคล (Coronation Day)&quot;;</span>
+                case &quot;visakha-bucha-day&quot;:
+<span class="nc" id="L151">                    return &quot;วันวิสาขบูชา (Visakha Bucha Day)&quot;;</span>
+                case &quot;substitution-for-visakha-bucha-day&quot;:
+<span class="nc" id="L153">                    return &quot;วันหยุดชดเชยวันวิสาขบูชา&quot;;</span>
+                case &quot;hm-queen-suthidas-birthday&quot;:
+<span class="nc" id="L155">                    return &quot;วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าฯ พระบรมราชินี&quot;;</span>
+                case &quot;substitution-for-buddhist-lent-day&quot;:
+<span class="nc" id="L157">                    return &quot;วันหยุดชดเชยวันเข้าพรรษา&quot;;</span>
+                case &quot;hm-king-maha-vajiralongkorns-birthday&quot;:
+<span class="nc" id="L159">                    return &quot;วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว (ร.10)&quot;;</span>
+                case &quot;asanha-bucha-day&quot;:
+<span class="nc" id="L161">                    return &quot;วันอาสาฬหบูชา (Asanha Bucha Day)&quot;;</span>
+                case &quot;substitution-for-asanha-bucha-day&quot;:
+<span class="nc" id="L163">                    return &quot;วันหยุดชดเชยวันอาสาฬหบูชา&quot;;</span>
+                case &quot;buddhist-lent-day&quot;:
+<span class="nc" id="L165">                    return &quot;วันเข้าพรรษา (Buddhist Lent Day)&quot;;</span>
+                case &quot;hm-queen-sirikit-the-queen-mothers-birthday-mothers-day&quot;:
+<span class="nc" id="L167">                    return &quot;วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง และวันแม่แห่งชาติ&quot;;</span>
+                case &quot;hm-king-bhumibol-adulyadej-the-great-memorial-day&quot;:
+<span class="nc" id="L169">                    return &quot;วันนวมินทรมหาราช (King Bhumibol Memorial Day)&quot;;</span>
+                case &quot;chulalongkorn-memorial-day&quot;:
+<span class="nc" id="L171">                    return &quot;วันปิยมหาราช (Chulalongkorn Memorial Day)&quot;;</span>
+                case &quot;substitution-for-chulalongkorn-memorial-day&quot;:
+<span class="nc" id="L173">                    return &quot;วันหยุดชดเชยวันปิยมหาราช&quot;;</span>
+                case &quot;hm-king-bhumibol-adulyadejs-birthday-national-day-fathers-day&quot;:
+                case &quot;hm-king-bhumibol-adulyadej-the-greats-birthday-national-day-fathers-day&quot;:
+<span class="nc" id="L176">                    return &quot;วันคล้ายวันพระบรมราชสมภพ ร.9 วันชาติ และวันพ่อแห่งชาติ&quot;;</span>
+                case &quot;substitution-for-hm-king-bhumibol-adulyadejs-birthday&quot;:
+                case &quot;substitution-for-hm-king-bhumibol-adulyadej-the-greats-birthday&quot;:
+<span class="nc" id="L179">                    return &quot;วันหยุดชดเชยวันพ่อแห่งชาติ&quot;;</span>
+                case &quot;constitution-day&quot;:
+<span class="nc" id="L181">                    return &quot;วันรัฐธรรมนูญ (Constitution Day)&quot;;</span>
+                case &quot;new-years-eve&quot;:
+<span class="nc" id="L183">                    return &quot;วันสิ้นปี (New Year's Eve)&quot;;</span>
+                default:
+<span class="nc bnc" id="L185" title="All 2 branches missed.">                    if (slug.startsWith(&quot;substitution-for-&quot;)) {</span>
+<span class="nc" id="L186">                        return &quot;วันหยุดชดเชย (&quot; + title + &quot;)&quot;;</span>
+                    }
+                    break;
+            }
+        }
+<span class="nc bnc" id="L191" title="All 4 branches missed.">        return title != null &amp;&amp; !title.isBlank() ? title : &quot;วันหยุดราชการ&quot;;</span>
+    }
+
+    private static String normalizeBaseUrl(String url) {
+<span class="pc bpc" id="L195" title="2 of 4 branches missed.">        if (url == null || url.isBlank()) {</span>
+<span class="nc" id="L196">            return DEFAULT_BASE_URL;</span>
+        }
+<span class="fc" id="L198">        String trimmed = url.trim();</span>
+<span class="pc bpc" id="L199" title="1 of 2 branches missed.">        while (trimmed.endsWith(&quot;/&quot;)) {</span>
+<span class="nc" id="L200">            trimmed = trimmed.substring(0, trimmed.length() - 1);</span>
+        }
+<span class="pc bpc" id="L202" title="1 of 2 branches missed.">        if (trimmed.endsWith(&quot;/api&quot;)) {</span>
+<span class="nc" id="L203">            return trimmed + &quot;/v1&quot;;</span>
+        }
+<span class="fc" id="L205">        return trimmed;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

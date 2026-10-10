@@ -1,0 +1,293 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SchedulingServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">SchedulingServiceImpl.java</span></div><h1>SchedulingServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.*;
+import com.project.acados.domain.enums.ScheduleStatus;
+import com.project.acados.domain.enums.SectionStatus;
+import com.project.acados.pattern.observer.ScheduleChangePublisher;
+import com.project.acados.repository.*;
+import com.project.acados.service.*;
+import lombok.RequiredArgsConstructor;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.*;
+
+/**
+ * Implementation of SchedulingService coordinating ConstraintEvaluator and ScheduleSelector.
+ * Follows the flow defined in Sequence Diagram 05, class diagram.puml, activity_schedule_generation.puml, and §12.
+ * Reference: Implement_Plan-AcadOS.md §7 (service/impl/), §10.2, §12
+ */
+@Service
+@RequiredArgsConstructor
+public class SchedulingServiceImpl implements SchedulingService {
+
+<span class="fc" id="L26">    private static final Logger log = LoggerFactory.getLogger(SchedulingServiceImpl.class);</span>
+    private static final int MAX_SLOT_COMBINATIONS = 50;
+
+    private final SectionRepository sectionRepository;
+    private final RoomRepository roomRepository;
+    private final TimeSlotRepository timeSlotRepository;
+    private final TeacherQualificationRepository teacherQualificationRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final ConstraintEvaluator constraintEvaluator;
+    private final ScheduleSelector scheduleSelector;
+    private final ScheduleChangePublisher scheduleChangePublisher;
+
+    @Override
+    @Transactional
+    public void generateSchedule() {
+<span class="fc" id="L41">        log.info(&quot;Starting automated schedule generation for all active sections&quot;);</span>
+        // 1. Discard existing draft schedules (Sequence 05)
+<span class="fc" id="L43">        discardDraft();</span>
+
+        // 2. Fetch all ACTIVE sections
+<span class="fc" id="L46">        List&lt;Section&gt; activeSections = sectionRepository.findByStatus(SectionStatus.ACTIVE);</span>
+<span class="fc" id="L47">        List&lt;TimeSlot&gt; allTimeSlots = timeSlotRepository.findAll();</span>
+
+<span class="pc bpc" id="L49" title="1 of 2 branches missed.">        if (allTimeSlots.isEmpty()) {</span>
+<span class="nc" id="L50">            log.warn(&quot;Cannot generate schedule: No TimeSlots available in database&quot;);</span>
+<span class="nc" id="L51">            return;</span>
+        }
+
+<span class="fc bfc" id="L54" title="All 2 branches covered.">        for (Section section : activeSections) {</span>
+<span class="fc" id="L55">            Course course = section.getCourse();</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">            if (course == null) {</span>
+<span class="nc" id="L57">                continue;</span>
+            }
+
+            // Find qualified teachers
+<span class="fc" id="L61">            List&lt;TeacherQualification&gt; qualifications = teacherQualificationRepository.findByCourseId(course.getId());</span>
+<span class="pc bpc" id="L62" title="1 of 2 branches missed.">            if (qualifications.isEmpty()) {</span>
+<span class="nc" id="L63">                log.warn(&quot;No qualified teachers for course {}&quot;, course.getCourseCode());</span>
+<span class="nc" id="L64">                continue;</span>
+            }
+<span class="fc" id="L66">            List&lt;Teacher&gt; qualifiedTeachers = qualifications.stream()</span>
+<span class="fc" id="L67">                    .map(TeacherQualification::getTeacher)</span>
+<span class="fc" id="L68">                    .filter(Objects::nonNull)</span>
+<span class="fc" id="L69">                    .toList();</span>
+
+            // Find eligible rooms (capacity &gt;= section capacity, isAvailable = true)
+<span class="fc" id="L72">            List&lt;Room&gt; eligibleRooms = roomRepository</span>
+<span class="fc" id="L73">                    .findByCapacityGreaterThanEqualAndIsAvailableTrue(section.getCapacity());</span>
+<span class="pc bpc" id="L74" title="1 of 2 branches missed.">            if (eligibleRooms.isEmpty()) {</span>
+<span class="nc" id="L75">                log.warn(&quot;No available rooms for section {} (capacity {})&quot;, section.getId(), section.getCapacity());</span>
+<span class="nc" id="L76">                continue;</span>
+            }
+
+<span class="pc bpc" id="L79" title="1 of 2 branches missed.">            int requiredHours = course.getWeeklyHours() != null ? course.getWeeklyHours() : 1;</span>
+<span class="fc" id="L80">            List&lt;List&lt;TimeSlot&gt;&gt; slotCombinations = generateSlotCombinations(allTimeSlots, requiredHours);</span>
+
+<span class="pc bpc" id="L82" title="1 of 2 branches missed.">            if (slotCombinations.isEmpty()) {</span>
+<span class="nc" id="L83">                log.warn(&quot;No valid time slot combinations for course {} (requires {} hours)&quot;,</span>
+<span class="nc" id="L84">                        course.getCourseCode(), requiredHours);</span>
+<span class="nc" id="L85">                continue;</span>
+            }
+
+            // Build and evaluate candidates using ConstraintEvaluator
+<span class="fc" id="L89">            List&lt;Candidate&gt; validCandidates = new ArrayList&lt;&gt;();</span>
+<span class="fc" id="L90">            String lastFailureReason = &quot;No candidate combinations passed all 7 hard constraints&quot;;</span>
+
+<span class="fc bfc" id="L92" title="All 2 branches covered.">            for (Teacher teacher : qualifiedTeachers) {</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">                for (Room room : eligibleRooms) {</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">                    for (List&lt;TimeSlot&gt; slots : slotCombinations) {</span>
+<span class="fc" id="L95">                        Candidate candidate = Candidate.builder()</span>
+<span class="fc" id="L96">                                .section(section)</span>
+<span class="fc" id="L97">                                .teacher(teacher)</span>
+<span class="fc" id="L98">                                .room(room)</span>
+<span class="fc" id="L99">                                .timeSlots(slots)</span>
+<span class="fc" id="L100">                                .build();</span>
+
+<span class="fc" id="L102">                        ValidationResult valResult = constraintEvaluator.validate(candidate);</span>
+<span class="fc bfc" id="L103" title="All 2 branches covered.">                        if (valResult.isPassed()) {</span>
+<span class="fc" id="L104">                            validCandidates.add(candidate);</span>
+                        } else {
+<span class="fc" id="L106">                            lastFailureReason = valResult.getReason();</span>
+                        }
+<span class="fc" id="L108">                    }</span>
+<span class="fc" id="L109">                }</span>
+<span class="fc" id="L110">            }</span>
+
+<span class="fc bfc" id="L112" title="All 2 branches covered.">            if (validCandidates.isEmpty()) {</span>
+<span class="fc" id="L113">                log.warn(&quot;Section {} failed scheduling: {}&quot;, section.getId(), lastFailureReason);</span>
+<span class="fc" id="L114">                continue;</span>
+            }
+
+            // Select highest scoring candidate using ScheduleSelector (ranks and breaks ties)
+<span class="fc" id="L118">            Candidate winner = scheduleSelector.selectBest(validCandidates);</span>
+<span class="fc" id="L119">            log.info(&quot;Section {} scheduled with Teacher '{}', Room '{} {}', Score: {}&quot;,</span>
+<span class="fc" id="L120">                    section.getId(),</span>
+<span class="fc" id="L121">                    winner.getTeacher().getFullName(),</span>
+<span class="fc" id="L122">                    winner.getRoom().getBuilding(),</span>
+<span class="fc" id="L123">                    winner.getRoom().getRoomNumber(),</span>
+<span class="fc" id="L124">                    winner.getScore());</span>
+
+            // Persist as DRAFT schedules (1 row per TimeSlot)
+<span class="fc bfc" id="L127" title="All 2 branches covered.">            for (TimeSlot slot : winner.getTimeSlots()) {</span>
+<span class="fc" id="L128">                Schedule schedule = Schedule.builder()</span>
+<span class="fc" id="L129">                        .section(section)</span>
+<span class="fc" id="L130">                        .teacher(winner.getTeacher())</span>
+<span class="fc" id="L131">                        .room(winner.getRoom())</span>
+<span class="fc" id="L132">                        .timeSlot(slot)</span>
+<span class="fc" id="L133">                        .status(ScheduleStatus.DRAFT)</span>
+<span class="fc" id="L134">                        .build();</span>
+
+<span class="fc" id="L136">                scheduleRepository.save(schedule);</span>
+<span class="fc" id="L137">            }</span>
+<span class="fc" id="L138">        }</span>
+<span class="fc" id="L139">    }</span>
+
+    @Override
+    @Transactional
+    public void publishSchedule() {
+<span class="fc" id="L144">        log.info(&quot;Publishing all DRAFT schedules to PUBLISHED status&quot;);</span>
+<span class="fc" id="L145">        List&lt;Schedule&gt; draftSchedules = scheduleRepository.findByStatus(ScheduleStatus.DRAFT);</span>
+<span class="fc bfc" id="L146" title="All 2 branches covered.">        for (Schedule schedule : draftSchedules) {</span>
+<span class="fc" id="L147">            schedule.setStatus(ScheduleStatus.PUBLISHED);</span>
+<span class="fc" id="L148">            scheduleRepository.save(schedule);</span>
+<span class="fc" id="L149">        }</span>
+<span class="fc" id="L150">        log.info(&quot;Successfully published {} schedules&quot;, draftSchedules.size());</span>
+
+<span class="fc" id="L152">        List&lt;Section&gt; affectedSections = draftSchedules.stream()</span>
+<span class="fc" id="L153">                .map(Schedule::getSection)</span>
+<span class="fc" id="L154">                .filter(Objects::nonNull)</span>
+<span class="fc" id="L155">                .distinct()</span>
+<span class="fc" id="L156">                .toList();</span>
+
+<span class="pc bpc" id="L158" title="2 of 4 branches missed.">        if (!affectedSections.isEmpty() &amp;&amp; scheduleChangePublisher != null) {</span>
+<span class="fc" id="L159">            scheduleChangePublisher.notifyObservers(affectedSections);</span>
+        }
+<span class="fc" id="L161">    }</span>
+
+    @Override
+    @Transactional
+    public void discardDraft() {
+<span class="fc" id="L166">        log.info(&quot;Discarding all DRAFT schedules&quot;);</span>
+<span class="fc" id="L167">        scheduleRepository.deleteByStatus(ScheduleStatus.DRAFT);</span>
+<span class="fc" id="L168">    }</span>
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;Schedule&gt; getDraftSchedules() {
+<span class="fc" id="L173">        return scheduleRepository.findByStatus(ScheduleStatus.DRAFT);</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;Schedule&gt; getPublishedSchedules() {
+<span class="fc" id="L179">        return scheduleRepository.findByStatus(ScheduleStatus.PUBLISHED);</span>
+    }
+
+    /**
+     * Calculates duration of a TimeSlot in hours.
+     */
+    private int getSlotHours(TimeSlot slot) {
+<span class="pc bpc" id="L186" title="3 of 6 branches missed.">        if (slot == null || slot.getStartTime() == null || slot.getEndTime() == null) {</span>
+<span class="nc" id="L187">            return 1;</span>
+        }
+<span class="fc" id="L189">        long hours = java.time.Duration.between(slot.getStartTime(), slot.getEndTime()).toHours();</span>
+<span class="pc bpc" id="L190" title="1 of 2 branches missed.">        return hours &gt; 0 ? (int) hours : 1;</span>
+    }
+
+    /**
+     * Generates non-overlapping TimeSlot combinations whose total duration matches requiredHours.
+     * Supports multi-session sections (e.g. 2 sessions of 2 hours for a 4-hour course)
+     * as well as single-session periods.
+     */
+    private List&lt;List&lt;TimeSlot&gt;&gt; generateSlotCombinations(List&lt;TimeSlot&gt; allSlots, int requiredHours) {
+<span class="pc bpc" id="L199" title="3 of 6 branches missed.">        if (allSlots == null || allSlots.isEmpty() || requiredHours &lt;= 0) {</span>
+<span class="nc" id="L200">            return Collections.emptyList();</span>
+        }
+
+<span class="fc" id="L203">        List&lt;List&lt;TimeSlot&gt;&gt; result = new ArrayList&lt;&gt;();</span>
+        // 1. Duration-based matching: total hours across slots == requiredHours
+<span class="fc" id="L205">        findDurationCombinationsRecursive(allSlots, requiredHours, 0, new ArrayList&lt;&gt;(), 0, result);</span>
+
+        // 2. Fallback: if no combination matches exact total duration, fallback to count-based
+<span class="pc bpc" id="L208" title="1 of 2 branches missed.">        if (result.isEmpty()) {</span>
+<span class="nc" id="L209">            findCountCombinationsRecursive(allSlots, requiredHours, 0, new ArrayList&lt;&gt;(), result);</span>
+        }
+
+<span class="fc" id="L212">        return result;</span>
+    }
+
+    private void findDurationCombinationsRecursive(
+            List&lt;TimeSlot&gt; allSlots,
+            int targetHours,
+            int startIndex,
+            List&lt;TimeSlot&gt; current,
+            int currentHours,
+            List&lt;List&lt;TimeSlot&gt;&gt; accumulator
+    ) {
+<span class="pc bpc" id="L223" title="1 of 2 branches missed.">        if (accumulator.size() &gt;= MAX_SLOT_COMBINATIONS) {</span>
+<span class="nc" id="L224">            return;</span>
+        }
+
+<span class="fc bfc" id="L227" title="All 2 branches covered.">        if (currentHours == targetHours) {</span>
+<span class="fc" id="L228">            accumulator.add(new ArrayList&lt;&gt;(current));</span>
+<span class="fc" id="L229">            return;</span>
+        }
+
+<span class="pc bpc" id="L232" title="1 of 2 branches missed.">        if (currentHours &gt; targetHours) {</span>
+<span class="nc" id="L233">            return;</span>
+        }
+
+<span class="fc bfc" id="L236" title="All 2 branches covered.">        for (int i = startIndex; i &lt; allSlots.size(); i++) {</span>
+<span class="fc" id="L237">            TimeSlot candidateSlot = allSlots.get(i);</span>
+<span class="fc" id="L238">            int slotHours = getSlotHours(candidateSlot);</span>
+<span class="pc bpc" id="L239" title="1 of 2 branches missed.">            if (currentHours + slotHours &gt; targetHours) {</span>
+<span class="nc" id="L240">                continue;</span>
+            }
+
+<span class="fc" id="L243">            boolean overlaps = false;</span>
+<span class="fc bfc" id="L244" title="All 2 branches covered.">            for (TimeSlot existing : current) {</span>
+<span class="fc bfc" id="L245" title="All 2 branches covered.">                if (existing.overlapsWith(candidateSlot)) {</span>
+<span class="fc" id="L246">                    overlaps = true;</span>
+<span class="fc" id="L247">                    break;</span>
+                }
+<span class="fc" id="L249">            }</span>
+
+<span class="fc bfc" id="L251" title="All 2 branches covered.">            if (!overlaps) {</span>
+<span class="fc" id="L252">                current.add(candidateSlot);</span>
+<span class="fc" id="L253">                findDurationCombinationsRecursive(allSlots, targetHours, i + 1, current, currentHours + slotHours, accumulator);</span>
+<span class="fc" id="L254">                current.remove(current.size() - 1);</span>
+            }
+        }
+<span class="fc" id="L257">    }</span>
+
+    private void findCountCombinationsRecursive(
+            List&lt;TimeSlot&gt; allSlots,
+            int targetSize,
+            int startIndex,
+            List&lt;TimeSlot&gt; current,
+            List&lt;List&lt;TimeSlot&gt;&gt; accumulator
+    ) {
+<span class="nc bnc" id="L266" title="All 2 branches missed.">        if (accumulator.size() &gt;= MAX_SLOT_COMBINATIONS) {</span>
+<span class="nc" id="L267">            return;</span>
+        }
+
+<span class="nc bnc" id="L270" title="All 2 branches missed.">        if (current.size() == targetSize) {</span>
+<span class="nc" id="L271">            accumulator.add(new ArrayList&lt;&gt;(current));</span>
+<span class="nc" id="L272">            return;</span>
+        }
+
+<span class="nc bnc" id="L275" title="All 2 branches missed.">        for (int i = startIndex; i &lt; allSlots.size(); i++) {</span>
+<span class="nc" id="L276">            TimeSlot candidateSlot = allSlots.get(i);</span>
+<span class="nc" id="L277">            boolean overlaps = false;</span>
+<span class="nc bnc" id="L278" title="All 2 branches missed.">            for (TimeSlot existing : current) {</span>
+<span class="nc bnc" id="L279" title="All 2 branches missed.">                if (existing.overlapsWith(candidateSlot)) {</span>
+<span class="nc" id="L280">                    overlaps = true;</span>
+<span class="nc" id="L281">                    break;</span>
+                }
+<span class="nc" id="L283">            }</span>
+
+<span class="nc bnc" id="L285" title="All 2 branches missed.">            if (!overlaps) {</span>
+<span class="nc" id="L286">                current.add(candidateSlot);</span>
+<span class="nc" id="L287">                findCountCombinationsRecursive(allSlots, targetSize, i + 1, current, accumulator);</span>
+<span class="nc" id="L288">                current.remove(current.size() - 1);</span>
+            }
+        }
+<span class="nc" id="L291">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

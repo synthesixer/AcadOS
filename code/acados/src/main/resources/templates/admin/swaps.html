@@ -1,0 +1,274 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>อนุมัติคำขอแลกคาบสอน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Operations · Scenario 3</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">อนุมัติคำขอแลกคาบสอน (Teacher Swap Review)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">ตรวจสอบและอนุมัติคำขอแลกคาบสอนที่ผ่านการตอบรับ (ACCEPTED) จากอาจารย์คู่แลกแล้ว</p>
+        </div>
+        <div>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="loadAllSwaps()">
+                🔄 รีเฟรชรายการ
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Ledger Pills -->
+    <div class="status-ledger" style="margin-bottom:20px;">
+        <button type="button" class="status-ledger__item" id="filter-all" onclick="setFilter('ALL')">
+            <span class="status-ledger__dot" style="background:var(--ink-navy);"></span>
+            <span>ทั้งหมด</span>
+            <span class="status-ledger__count num" id="count-all">0</span>
+        </button>
+        <button type="button" class="status-ledger__item is-active" id="filter-accepted" onclick="setFilter('ACCEPTED')">
+            <span class="status-ledger__dot" style="background:var(--teal-primary);"></span>
+            <span>รออนุมัติ (ACCEPTED)</span>
+            <span class="status-ledger__count num" id="count-accepted">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-pending" onclick="setFilter('PENDING')">
+            <span class="status-ledger__dot" style="background:var(--amber-draft);"></span>
+            <span>รออาจารย์ตอบรับ (PENDING)</span>
+            <span class="status-ledger__count num" id="count-pending">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-approved" onclick="setFilter('APPROVED')">
+            <span class="status-ledger__dot" style="background:var(--ok-green);"></span>
+            <span>อนุมัติแล้ว (APPROVED)</span>
+            <span class="status-ledger__count num" id="count-approved">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-rejected" onclick="setFilter('REJECTED')">
+            <span class="status-ledger__dot" style="background:var(--danger-red);"></span>
+            <span>ปฏิเสธ (REJECTED)</span>
+            <span class="status-ledger__count num" id="count-rejected">0</span>
+        </button>
+    </div>
+
+    <!-- Main Swaps Ledger Workbench Card -->
+    <div class="card" style="padding:22px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">บัญชีคำขอแลกคาบสอนในระบบ</h3>
+                <span class="muted" style="font-size:0.85rem;" id="filter-status-label">(แสดงเฉพาะรายการรออนุมัติ)</span>
+            </div>
+            <div>
+                <input type="text" id="swap-filter-input" placeholder="ค้นหาชื่ออาจารย์, รหัสคำขอ..." 
+                       style="padding:7px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; width:260px;"
+                       oninput="renderFilteredSwaps()">
+            </div>
+        </div>
+
+        <div id="swap-list-container" style="display:grid; gap:12px;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+    <!-- Scenario 3 Workflow Guide -->
+    <div class="card" style="padding:22px;">
+        <h3 style="margin:0 0 12px; font-size:1.1rem; color:var(--ink-navy);">วงจรชีวิตคำขอแลกคาบสอน (Scenario 3 Workflow)</h3>
+        <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-top:12px;">
+            <div style="padding:16px; background:var(--bg-canvas); border-radius:8px; border-left:3px solid var(--amber-draft);">
+                <div style="font-weight:700; color:var(--ink-navy); font-size:0.92rem; margin-bottom:4px;">1. สร้างคำขอ (PENDING)</div>
+                <div class="muted" style="font-size:0.85rem;">อาจารย์ผู้ขอส่งคำขอแลกคาบ โดยระบบตรวจสอบ Conflict พื้นฐาน</div>
+            </div>
+            <div style="padding:16px; background:var(--bg-canvas); border-radius:8px; border-left:3px solid var(--teal-primary);">
+                <div style="font-weight:700; color:var(--ink-navy); font-size:0.92rem; margin-bottom:4px;">2. ตอบรับคำขอ (ACCEPTED)</div>
+                <div class="muted" style="font-size:0.85rem;">อาจารย์คู่แลกเข้าสู่ระบบและกดตอบรับคำขอ เพื่อส่งต่อให้ผู้ดูแลระบบ</div>
+            </div>
+            <div style="padding:16px; background:var(--bg-canvas); border-radius:8px; border-left:3px solid var(--ok-green);">
+                <div style="font-weight:700; color:var(--ink-navy); font-size:0.92rem; margin-bottom:4px;">3. อนุมัติขั้นสุดท้าย (APPROVED)</div>
+                <div class="muted" style="font-size:0.85rem;">Admin กดอนุมัติ ระบบสลับตารางสอนจริงและส่งการแจ้งเตือนทั้งสองฝ่าย</div>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    let allSwaps = [];
+    let currentFilter = 'ACCEPTED'; // Default to ACCEPTED so Admin sees what needs action immediately
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.status-ledger__item').forEach(el => el.classList.remove('is-active'));
+        const btnMap = {
+            ALL: 'filter-all',
+            ACCEPTED: 'filter-accepted',
+            PENDING: 'filter-pending',
+            APPROVED: 'filter-approved',
+            REJECTED: 'filter-rejected'
+        };
+        if (btnMap[filter]) document.getElementById(btnMap[filter]).classList.add('is-active');
+
+        const labels = {
+            ALL: '(แสดงทุกสถานะ)',
+            ACCEPTED: '(แสดงเฉพาะรายการรอ Admin อนุมัติ)',
+            PENDING: '(แสดงเฉพาะรายการรออาจารย์คู่แลกตอบรับ)',
+            APPROVED: '(แสดงเฉพาะรายการที่อนุมัติแล้ว)',
+            REJECTED: '(แสดงเฉพาะรายการที่ปฏิเสธแล้ว)'
+        };
+        document.getElementById('filter-status-label').textContent = labels[filter] || '';
+        renderFilteredSwaps();
+    }
+
+    function renderFilteredSwaps() {
+        const container = document.getElementById('swap-list-container');
+        const query = (document.getElementById('swap-filter-input').value || '').trim().toLowerCase();
+
+        let filtered = allSwaps.filter(s => {
+            if (currentFilter !== 'ALL' && s.status !== currentFilter) return false;
+            if (query) {
+                const idStr = String(s.id);
+                const reqTeacher = (s.requestingTeacherName || '').toLowerCase();
+                const targetTeacher = (s.targetTeacherName || '').toLowerCase();
+                const reqSched = (s.requestingScheduleDetails || '').toLowerCase();
+                const targetSched = (s.targetScheduleDetails || '').toLowerCase();
+                return idStr.includes(query) || reqTeacher.includes(query) || targetTeacher.includes(query) ||
+                       reqSched.includes(query) || targetSched.includes(query);
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            ui.renderEmpty(container, 'ไม่พบคำขอแลกคาบที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรองที่เลือก');
+            return;
+        }
+
+        container.innerHTML = '';
+        filtered.forEach(item => {
+            const card = document.createElement('div');
+            card.style.padding = '18px 22px';
+            card.style.background = 'var(--surface)';
+            card.style.border = '1px solid var(--border-subtle)';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+            card.style.flexWrap = 'wrap';
+            card.style.gap = '16px';
+
+            const statusColors = {
+                ACCEPTED: 'var(--teal-primary)',
+                PENDING: 'var(--amber-draft)',
+                APPROVED: 'var(--ok-green)',
+                REJECTED: 'var(--danger-red)',
+                CANCELLED: 'var(--slate-neutral)'
+            };
+            card.style.borderLeft = `4px solid ${statusColors[item.status] || 'var(--slate-neutral)'}`;
+
+            let actionsHtml = '';
+            if (item.status === 'ACCEPTED') {
+                actionsHtml = `
+                    <div style="display:flex; gap:8px;">
+                        <button type="button" class="btn btn--primary btn--sm" onclick="reviewSwap(${item.id}, true)">
+                            ✓ อนุมัติ (Approve)
+                        </button>
+                        <button type="button" class="btn btn--danger btn--sm" onclick="reviewSwap(${item.id}, false)">
+                            ✕ ปฏิเสธ (Reject)
+                        </button>
+                    </div>
+                `;
+            } else if (item.status === 'PENDING') {
+                actionsHtml = `<span class="muted" style="font-size:0.85rem;">รออาจารย์คู่แลกตอบรับก่อน</span>`;
+            } else {
+                actionsHtml = `<span class="muted" style="font-size:0.85rem;">ดำเนินการเสร็จสิ้นแล้ว</span>`;
+            }
+
+            const reqTeacher = item.requestingTeacherName || `อาจารย์ ID ${item.requestingTeacherId}`;
+            const targetTeacher = item.targetTeacherName || `อาจารย์ ID ${item.targetTeacherId}`;
+            const reqSched = item.requestingScheduleDetails || `คาบ ID #${item.requestingScheduleId || '—'}`;
+            const targetSched = item.targetScheduleDetails || `คาบ ID #${item.targetScheduleId || '—'}`;
+
+            card.innerHTML = `
+                <div style="flex:1; min-width:300px;">
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:8px;">
+                        <span style="font-weight:700; color:var(--ink-navy); font-size:1.1rem;">คำขอ #${item.id}</span>
+                        ${ui.badge(item.status)}
+                    </div>
+
+                    <div style="background:var(--bg-canvas); padding:12px 16px; border-radius:6px; border:1px solid var(--border-subtle); margin-bottom:8px;">
+                        <div style="font-size:0.9rem; color:var(--ink-navy); margin-bottom:6px;">
+                            <strong>อาจารย์ผู้ขอ:</strong> ${ui.escapeHtml(reqTeacher)}
+                            <div class="muted" style="font-size:0.85rem; margin-top:2px;">คาบสอน: ${ui.escapeHtml(reqSched)}</div>
+                        </div>
+                        <div style="font-size:0.9rem; color:var(--ink-navy); border-top:1px dashed var(--border-subtle); padding-top:6px;">
+                            <strong>อาจารย์คู่แลก:</strong> ${ui.escapeHtml(targetTeacher)}
+                            <div class="muted" style="font-size:0.85rem; margin-top:2px;">คาบสอน: ${ui.escapeHtml(targetSched)}</div>
+                        </div>
+                    </div>
+
+                    <div class="muted" style="font-size:0.82rem;">
+                        ยื่นคำขอเมื่อ: <span class="mono">${item.createdAt ? item.createdAt.replace('T', ' ').substring(0, 16) : '-'}</span>
+                        ${item.respondedAt ? ` · ตอบรับเมื่อ: <span class="mono">${item.respondedAt.replace('T', ' ').substring(0, 16)}</span>` : ''}
+                        ${item.reviewedAt ? ` · ตรวจสอบเมื่อ: <span class="mono">${item.reviewedAt.replace('T', ' ').substring(0, 16)}</span>` : ''}
+                    </div>
+                </div>
+                <div>
+                    ${actionsHtml}
+                </div>
+            `;
+            container.appendChild(card);
+        });
+    }
+
+    function reviewSwap(swapId, isApprove) {
+        ui.openDecisionSheet({
+            title: isApprove ? `ยืนยันอนุมัติคำขอแลกคาบ #${swapId}` : `ยืนยันปฏิเสธคำขอแลกคาบ #${swapId}`,
+            desc: isApprove ? 
+                'การอนุมัติคำขอจะทำการสลับตารางสอนของอาจารย์ทั้งสองท่านทันที' : 
+                'การปฏิเสธจะทำให้คำขอสิ้นสุดลง และไม่มีการสลับตารางสอน',
+            impacts: isApprove ? [
+                'ตารางสอนของอาจารย์ทั้งสองท่านจะถูกสลับคาบเรียนจริงในฐานข้อมูล',
+                'สถานะคำขอจะเปลี่ยนเป็น APPROVED',
+                'ระบบจะส่งการแจ้งเตือน In-app Notification ไปยังอาจารย์ทั้งสองท่านโดยอัตโนมัติ'
+            ] : [
+                'สถานะคำขอจะเปลี่ยนเป็น REJECTED',
+                'ตารางสอนของทั้งสองฝ่ายจะคงเดิมไม่มีการเปลี่ยนแปลง'
+            ],
+            confirmText: isApprove ? 'ยืนยันอนุมัติคำขอ' : 'ยืนยันปฏิเสธคำขอ',
+            confirmClass: isApprove ? 'btn--primary' : 'btn--danger',
+            onConfirm: async () => {
+                const endpoint = isApprove ? 
+                    `/api/v1/teacher-swaps/${swapId}/approve` : 
+                    `/api/v1/teacher-swaps/${swapId}/reject`;
+                const res = await api.put(endpoint);
+                if (res.ok) {
+                    ui.toast('success', isApprove ? `อนุมัติคำขอ #${swapId} และสลับตารางสอนเรียบร้อย` : `ปฏิเสธคำขอ #${swapId} เรียบร้อย`);
+                    await loadAllSwaps();
+                } else {
+                    ui.toast('error', res.error.message || 'ดำเนินการไม่สำเร็จ');
+                }
+            }
+        });
+    }
+
+    async function loadAllSwaps() {
+        const container = document.getElementById('swap-list-container');
+        ui.renderLoading(container, 3);
+        const res = await api.get('/api/v1/teacher-swaps/all');
+        if (!res.ok) {
+            ui.renderError(container, res.error);
+            return;
+        }
+
+        allSwaps = Array.isArray(res.data) ? res.data : [];
+
+        // Update ledger counts
+        document.getElementById('count-all').textContent = allSwaps.length;
+        document.getElementById('count-accepted').textContent = allSwaps.filter(s => s.status === 'ACCEPTED').length;
+        document.getElementById('count-pending').textContent = allSwaps.filter(s => s.status === 'PENDING').length;
+        document.getElementById('count-approved').textContent = allSwaps.filter(s => s.status === 'APPROVED').length;
+        document.getElementById('count-rejected').textContent = allSwaps.filter(s => s.status === 'REJECTED').length;
+
+        renderFilteredSwaps();
+    }
+
+    loadAllSwaps();
+</script>
+</body>
+</html>

@@ -1,0 +1,251 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ConstraintEvaluator.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service</a> &gt; <span class="el_source">ConstraintEvaluator.java</span></div><h1>ConstraintEvaluator.java</h1><pre class="source lang-java linenums">package com.project.acados.service;
+
+import com.project.acados.domain.entity.*;
+import com.project.acados.repository.ScheduleRepository;
+import com.project.acados.repository.TeacherAvailabilityRepository;
+import com.project.acados.repository.TeacherQualificationRepository;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.List;
+import java.util.Optional;
+
+/**
+ * Evaluates candidate schedule assignments against the 7 Hard Constraints defined in §12.3.
+ * All hard constraints must pass before a candidate can be assigned or scored.
+ * Reference: class diagram.puml (§6 scheduling), Implement_Plan-AcadOS.md §10.3, §12.3
+ */
+@Component
+@RequiredArgsConstructor
+public class ConstraintEvaluator {
+
+    private final TeacherQualificationRepository teacherQualificationRepository;
+    private final TeacherAvailabilityRepository teacherAvailabilityRepository;
+    private final ScheduleRepository scheduleRepository;
+
+    /**
+     * Validates a candidate against all 7 Hard Constraints according to class diagram.puml.
+     *
+     * @param candidate candidate containing teacher, room, section, and timeSlots
+     * @return ValidationResult with passed status and failure reason if rejected
+     */
+    public ValidationResult validate(Candidate candidate) {
+<span class="pc bpc" id="L33" title="1 of 2 branches missed.">        if (candidate == null) {</span>
+<span class="nc" id="L34">            return ValidationResult.fail(&quot;Candidate cannot be null&quot;);</span>
+        }
+
+<span class="fc" id="L37">        Section section = candidate.getSection();</span>
+<span class="fc" id="L38">        Teacher teacher = candidate.getTeacher();</span>
+<span class="fc" id="L39">        Room room = candidate.getRoom();</span>
+<span class="fc" id="L40">        List&lt;TimeSlot&gt; timeSlots = candidate.getTimeSlots();</span>
+
+<span class="pc bpc" id="L42" title="2 of 4 branches missed.">        if (section == null || section.getCourse() == null) {</span>
+<span class="nc" id="L43">            return ValidationResult.fail(&quot;Section and associated course cannot be null&quot;);</span>
+        }
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (teacher == null) {</span>
+<span class="nc" id="L46">            return ValidationResult.fail(&quot;Teacher cannot be null&quot;);</span>
+        }
+<span class="pc bpc" id="L48" title="1 of 2 branches missed.">        if (room == null) {</span>
+<span class="nc" id="L49">            return ValidationResult.fail(&quot;Room cannot be null&quot;);</span>
+        }
+<span class="pc bpc" id="L51" title="2 of 4 branches missed.">        if (timeSlots == null || timeSlots.isEmpty()) {</span>
+<span class="nc" id="L52">            return ValidationResult.fail(&quot;Time slots cannot be empty&quot;);</span>
+        }
+
+        // 1. Hard Constraint 1: Teacher Qualification (BR-06)
+<span class="fc" id="L56">        ValidationResult qualResult = validateTeacherQualification(teacher, section.getCourse());</span>
+<span class="fc bfc" id="L57" title="All 2 branches covered.">        if (!qualResult.isPassed()) {</span>
+<span class="fc" id="L58">            return qualResult;</span>
+        }
+
+        // 2. Hard Constraint 2: Teacher Availability (BR-07)
+<span class="fc" id="L62">        ValidationResult availResult = validateTeacherAvailability(teacher, timeSlots);</span>
+<span class="fc bfc" id="L63" title="All 2 branches covered.">        if (!availResult.isPassed()) {</span>
+<span class="fc" id="L64">            return availResult;</span>
+        }
+
+        // 3. Hard Constraint 3: Teacher Time Conflict (BR-01)
+<span class="fc" id="L68">        ValidationResult teacherConflictResult = validateTeacherConflict(teacher, section, timeSlots);</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        if (!teacherConflictResult.isPassed()) {</span>
+<span class="fc" id="L70">            return teacherConflictResult;</span>
+        }
+
+        // 4. Hard Constraint 4: Room Time Conflict (BR-02)
+<span class="fc" id="L74">        ValidationResult roomConflictResult = validateRoomConflict(room, section, timeSlots);</span>
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (!roomConflictResult.isPassed()) {</span>
+<span class="fc" id="L76">            return roomConflictResult;</span>
+        }
+
+        // 5. Hard Constraint 5: Room Availability (BR-08)
+<span class="fc" id="L80">        ValidationResult roomAvailResult = validateRoomAvailability(room);</span>
+<span class="fc bfc" id="L81" title="All 2 branches covered.">        if (!roomAvailResult.isPassed()) {</span>
+<span class="fc" id="L82">            return roomAvailResult;</span>
+        }
+
+        // 6. Hard Constraint 6: Section / Student Conflict (BR-03)
+<span class="fc" id="L86">        ValidationResult sectionConflictResult = validateSectionInternalConflict(section, timeSlots);</span>
+<span class="fc bfc" id="L87" title="All 2 branches covered.">        if (!sectionConflictResult.isPassed()) {</span>
+<span class="fc" id="L88">            return sectionConflictResult;</span>
+        }
+
+        // 7. Hard Constraint 7: Room Capacity (BR-05)
+<span class="fc" id="L92">        ValidationResult capacityResult = validateRoomCapacity(room, section);</span>
+<span class="fc bfc" id="L93" title="All 2 branches covered.">        if (!capacityResult.isPassed()) {</span>
+<span class="fc" id="L94">            return capacityResult;</span>
+        }
+
+<span class="fc" id="L97">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-06: Teacher must have qualification for the course.
+     */
+    private ValidationResult validateTeacherQualification(Teacher teacher, Course course) {
+<span class="fc" id="L104">        boolean qualified = teacherQualificationRepository</span>
+<span class="fc" id="L105">                .existsByTeacherIdAndCourseId(teacher.getId(), course.getId());</span>
+<span class="fc bfc" id="L106" title="All 2 branches covered.">        if (!qualified) {</span>
+<span class="fc" id="L107">            return ValidationResult.fail(String.format(</span>
+                    &quot;BR-06: Teacher '%s' lacks qualification for course '%s'&quot;,
+<span class="fc" id="L109">                    teacher.getFullName(), course.getCourseCode()</span>
+            ));
+        }
+<span class="fc" id="L112">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-07: Teacher must not be marked unavailable (is_available = false) during any time slot or overlapping period.
+     */
+    private ValidationResult validateTeacherAvailability(Teacher teacher, List&lt;TimeSlot&gt; timeSlots) {
+<span class="fc bfc" id="L119" title="All 2 branches covered.">        for (TimeSlot slot : timeSlots) {</span>
+<span class="fc" id="L120">            Optional&lt;TeacherAvailability&gt; availOpt = teacherAvailabilityRepository</span>
+<span class="fc" id="L121">                    .findByTeacherIdAndTimeSlotId(teacher.getId(), slot.getId());</span>
+<span class="pc bpc" id="L122" title="1 of 4 branches missed.">            if (availOpt.isPresent() &amp;&amp; !availOpt.get().isAvailable()) {</span>
+<span class="fc" id="L123">                return ValidationResult.fail(String.format(</span>
+                        &quot;BR-07: Teacher '%s' is marked unavailable on %s %s-%s&quot;,
+<span class="fc" id="L125">                        teacher.getFullName(), slot.getDayOfWeek(), slot.getStartTime(), slot.getEndTime()</span>
+                ));
+            }
+<span class="fc" id="L128">        }</span>
+
+<span class="fc" id="L130">        List&lt;TeacherAvailability&gt; allTeacherAvails = teacherAvailabilityRepository.findByTeacherId(teacher.getId());</span>
+<span class="pc bpc" id="L131" title="1 of 2 branches missed.">        if (allTeacherAvails != null) {</span>
+<span class="fc bfc" id="L132" title="All 2 branches covered.">            for (TimeSlot slot : timeSlots) {</span>
+<span class="pc bpc" id="L133" title="1 of 2 branches missed.">                for (TeacherAvailability ta : allTeacherAvails) {</span>
+<span class="nc bnc" id="L134" title="All 6 branches missed.">                    if (!ta.isAvailable() &amp;&amp; ta.getTimeSlot() != null &amp;&amp; ta.getTimeSlot().overlapsWith(slot)) {</span>
+<span class="nc" id="L135">                        return ValidationResult.fail(String.format(</span>
+                                &quot;BR-07: Teacher '%s' is marked unavailable on %s (%s-%s overlaps with %s-%s)&quot;,
+<span class="nc" id="L137">                                teacher.getFullName(), slot.getDayOfWeek(),</span>
+<span class="nc" id="L138">                                slot.getStartTime(), slot.getEndTime(),</span>
+<span class="nc" id="L139">                                ta.getTimeSlot().getStartTime(), ta.getTimeSlot().getEndTime()</span>
+                        ));
+                    }
+<span class="nc" id="L142">                }</span>
+<span class="fc" id="L143">            }</span>
+        }
+<span class="fc" id="L145">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-01: Teacher cannot have overlapping teaching schedules (DRAFT or PUBLISHED).
+     */
+    private ValidationResult validateTeacherConflict(Teacher teacher, Section section, List&lt;TimeSlot&gt; timeSlots) {
+<span class="fc" id="L152">        List&lt;Schedule&gt; existingSchedules = scheduleRepository.findByTeacherId(teacher.getId());</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">        for (Schedule existing : existingSchedules) {</span>
+<span class="pc bpc" id="L154" title="1 of 4 branches missed.">            if (existing.getSection() != null &amp;&amp; existing.getSection().getId().equals(section.getId())) {</span>
+<span class="fc" id="L155">                continue;</span>
+            }
+<span class="fc bfc" id="L157" title="All 2 branches covered.">            for (TimeSlot candidateSlot : timeSlots) {</span>
+<span class="pc bpc" id="L158" title="1 of 4 branches missed.">                if (existing.getTimeSlot() != null &amp;&amp; existing.getTimeSlot().overlapsWith(candidateSlot)) {</span>
+<span class="fc" id="L159">                    return ValidationResult.fail(String.format(</span>
+                            &quot;BR-01: Teacher '%s' has conflicting schedule on %s %s-%s&quot;,
+<span class="fc" id="L161">                            teacher.getFullName(), candidateSlot.getDayOfWeek(),</span>
+<span class="fc" id="L162">                            candidateSlot.getStartTime(), candidateSlot.getEndTime()</span>
+                    ));
+                }
+<span class="fc" id="L165">            }</span>
+<span class="fc" id="L166">        }</span>
+<span class="fc" id="L167">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-02: Room cannot host overlapping sections (DRAFT or PUBLISHED).
+     */
+    private ValidationResult validateRoomConflict(Room room, Section section, List&lt;TimeSlot&gt; timeSlots) {
+<span class="fc" id="L174">        List&lt;Schedule&gt; existingSchedules = scheduleRepository.findByRoomId(room.getId());</span>
+<span class="fc bfc" id="L175" title="All 2 branches covered.">        for (Schedule existing : existingSchedules) {</span>
+<span class="pc bpc" id="L176" title="1 of 4 branches missed.">            if (existing.getSection() != null &amp;&amp; existing.getSection().getId().equals(section.getId())) {</span>
+<span class="fc" id="L177">                continue;</span>
+            }
+<span class="pc bpc" id="L179" title="1 of 2 branches missed.">            for (TimeSlot candidateSlot : timeSlots) {</span>
+<span class="pc bpc" id="L180" title="2 of 4 branches missed.">                if (existing.getTimeSlot() != null &amp;&amp; existing.getTimeSlot().overlapsWith(candidateSlot)) {</span>
+<span class="fc" id="L181">                    return ValidationResult.fail(String.format(</span>
+                            &quot;BR-02: Room '%s %s' has conflicting schedule on %s %s-%s&quot;,
+<span class="fc" id="L183">                            room.getBuilding(), room.getRoomNumber(),</span>
+<span class="fc" id="L184">                            candidateSlot.getDayOfWeek(), candidateSlot.getStartTime(), candidateSlot.getEndTime()</span>
+                    ));
+                }
+<span class="nc" id="L187">            }</span>
+<span class="nc" id="L188">        }</span>
+<span class="fc" id="L189">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-08: Room must be active and available.
+     */
+    private ValidationResult validateRoomAvailability(Room room) {
+<span class="fc bfc" id="L196" title="All 2 branches covered.">        if (!Boolean.TRUE.equals(room.getIsAvailable())) {</span>
+<span class="fc" id="L197">            return ValidationResult.fail(String.format(</span>
+                    &quot;BR-08: Room '%s %s' is not available&quot;,
+<span class="fc" id="L199">                    room.getBuilding(), room.getRoomNumber()</span>
+            ));
+        }
+<span class="fc" id="L202">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-03: Section time slots must not overlap internally or with existing section schedules.
+     */
+    private ValidationResult validateSectionInternalConflict(Section section, List&lt;TimeSlot&gt; timeSlots) {
+        // Internal overlap within candidate slots
+<span class="fc bfc" id="L210" title="All 2 branches covered.">        for (int i = 0; i &lt; timeSlots.size(); i++) {</span>
+<span class="fc bfc" id="L211" title="All 2 branches covered.">            for (int j = i + 1; j &lt; timeSlots.size(); j++) {</span>
+<span class="fc bfc" id="L212" title="All 2 branches covered.">                if (timeSlots.get(i).overlapsWith(timeSlots.get(j))) {</span>
+<span class="fc" id="L213">                    return ValidationResult.fail(String.format(</span>
+                            &quot;BR-03: Candidate time slots overlap each other internally (%s %s-%s and %s %s-%s)&quot;,
+<span class="fc" id="L215">                            timeSlots.get(i).getDayOfWeek(), timeSlots.get(i).getStartTime(), timeSlots.get(i).getEndTime(),</span>
+<span class="fc" id="L216">                            timeSlots.get(j).getDayOfWeek(), timeSlots.get(j).getStartTime(), timeSlots.get(j).getEndTime()</span>
+                    ));
+                }
+            }
+        }
+
+        // Overlap with existing schedules of this section
+<span class="fc" id="L223">        List&lt;Schedule&gt; sectionSchedules = scheduleRepository.findBySectionId(section.getId());</span>
+<span class="fc bfc" id="L224" title="All 2 branches covered.">        for (Schedule existing : sectionSchedules) {</span>
+<span class="fc bfc" id="L225" title="All 2 branches covered.">            for (TimeSlot candidateSlot : timeSlots) {</span>
+<span class="pc bpc" id="L226" title="1 of 4 branches missed.">                if (existing.getTimeSlot() != null &amp;&amp; existing.getTimeSlot().overlapsWith(candidateSlot)) {</span>
+<span class="fc" id="L227">                    return ValidationResult.fail(String.format(</span>
+                            &quot;BR-03: Section already has scheduled period on %s %s-%s&quot;,
+<span class="fc" id="L229">                            candidateSlot.getDayOfWeek(), candidateSlot.getStartTime(), candidateSlot.getEndTime()</span>
+                    ));
+                }
+<span class="fc" id="L232">            }</span>
+<span class="fc" id="L233">        }</span>
+
+<span class="fc" id="L235">        return ValidationResult.pass();</span>
+    }
+
+    /**
+     * BR-05: Room capacity must be greater than or equal to section capacity.
+     */
+    private ValidationResult validateRoomCapacity(Room room, Section section) {
+<span class="fc bfc" id="L242" title="All 2 branches covered.">        if (room.getCapacity() &lt; section.getCapacity()) {</span>
+<span class="fc" id="L243">            return ValidationResult.fail(String.format(</span>
+                    &quot;BR-05: Room capacity (%d) is insufficient for section capacity (%d)&quot;,
+<span class="fc" id="L245">                    room.getCapacity(), section.getCapacity()</span>
+            ));
+        }
+<span class="fc" id="L248">        return ValidationResult.pass();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

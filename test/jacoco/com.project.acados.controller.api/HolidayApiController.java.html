@@ -1,0 +1,54 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HolidayApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">HolidayApiController.java</span></div><h1>HolidayApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.dto.response.HolidayResponse;
+import com.project.acados.service.HolidayService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * REST API Controller for Public Holiday management.
+ * Reference: Implement_Plan-AcadOS.md §7, §16
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/holidays&quot;)
+@RequiredArgsConstructor
+public class HolidayApiController {
+
+    private final HolidayService holidayService;
+
+    @GetMapping
+    public ResponseEntity&lt;List&lt;HolidayResponse&gt;&gt; getHolidays() {
+<span class="fc" id="L25">        List&lt;HolidayResponse&gt; holidays = holidayService.getHolidays().stream()</span>
+<span class="fc" id="L26">                .map(HolidayResponse::fromEntity)</span>
+<span class="fc" id="L27">                .toList();</span>
+<span class="fc" id="L28">        return ResponseEntity.ok(holidays);</span>
+    }
+
+    /**
+     * NOTE [CONFIRMED ADMIN EXTENSION]:
+     * Endpoint สำหรับ ADMIN สั่ง Sync วันหยุดจาก ThailandFormats API ลงฐานข้อมูล
+     * กำหนดไว้ใน Implement_Plan-AcadOS.md §16 เพื่อรองรับการทดสอบ, การทดสอบผ่าน Swagger UI, และการ Demo สด
+     */
+    @PostMapping(&quot;/sync&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;List&lt;HolidayResponse&gt;&gt; syncHolidays(
+            @RequestParam(required = false) Integer year
+    ) {
+<span class="pc bpc" id="L41" title="1 of 2 branches missed.">        if (year != null) {</span>
+<span class="fc" id="L42">            holidayService.syncHolidays(year);</span>
+        } else {
+<span class="nc" id="L44">            holidayService.syncHolidays();</span>
+        }
+
+<span class="fc" id="L47">        List&lt;HolidayResponse&gt; holidays = holidayService.getHolidays().stream()</span>
+<span class="fc" id="L48">                .map(HolidayResponse::fromEntity)</span>
+<span class="fc" id="L49">                .toList();</span>
+<span class="fc" id="L50">        return ResponseEntity.ok(holidays);</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

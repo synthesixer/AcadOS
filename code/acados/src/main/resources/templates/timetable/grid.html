@@ -1,0 +1,1204 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org" xmlns:sec="http://www.thymeleaf.org/extras/spring-security"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>ตารางสอนและตารางเรียน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header">
+        <div>
+            <h1>ตารางสอนและตารางเรียน (Timetable Workbench)</h1>
+            <p class="muted">แสดงผลผังตารางเรียนและคาบสอนรายสัปดาห์ · กำหนดเวลาจริงและรองรับหลายคาบต่อสัปดาห์</p>
+        </div>
+        <div sec:authorize="hasRole('ADMIN')" style="display:flex; flex-wrap:wrap; gap:8px;">
+            <button id="btn-generate" class="btn btn--primary" type="button">
+                ⚡ จัดตารางอัตโนมัติ (Generate)
+            </button>
+            <button id="btn-publish" class="btn btn--success" type="button">
+                ✔ เผยแพร่ตาราง (Publish)
+            </button>
+            <button id="btn-discard" class="btn btn--danger btn--sm" type="button">
+                ✖ ลบร่าง (Discard)
+            </button>
+        </div>
+    </div>
+
+    <!-- View Filter Toolbar (สำหรับผู้ดูแลระบบและผู้ใช้งานในการเปิดดูตารางของทุกคน) -->
+    <div class="view-filter-bar">
+        <div class="view-filter-bar__controls">
+            <div class="form-group-inline">
+                <label for="view-mode">🔍 มุมมองตาราง:</label>
+                <select id="view-mode" onchange="onViewModeChange()">
+                    <option value="ALL">🌐 ผังรวมทุกคนในระบบ (Master Timetable)</option>
+                    <option value="TEACHER">👨‍🏫 ดูตามอาจารย์ผู้สอน (By Teacher)</option>
+                    <option value="ROOM">🏢 ดูตามห้องเรียน (By Room)</option>
+                    <option value="SECTION">📚 ดูตามรายวิชาและกลุ่มเรียน (By Course & Section)</option>
+                </select>
+            </div>
+            <div class="form-group-inline" id="target-container" style="display:none;">
+                <label for="view-target" id="target-label">เลือกอาจารย์:</label>
+                <select id="view-target" onchange="onViewTargetChange()" style="min-width:220px;">
+                    <!-- Dynamically populated -->
+                </select>
+            </div>
+            <div class="form-group-inline">
+                <label for="view-week">📅 สัปดาห์การเรียน:</label>
+                <select id="view-week" onchange="onWeekChange()" style="font-weight:600; color:var(--ink-navy); min-width:200px;">
+                    <option value="NORMAL" selected>สัปดาห์ปกติ (ไม่มีวันหยุดราชการ)</option>
+                    <option value="SONGKRAN">🚩 สัปดาห์สงกรานต์ (13-17 เม.ย. หยุด จ.-พ.)</option>
+                    <option value="CHULALONGKORN">🚩 สัปดาห์วันปิยมหาราช (23 ต.ค. หยุดวันศุกร์)</option>
+                    <option value="FATHERS_DAY">🚩 สัปดาห์วันพ่อแห่งชาติ (5 ธ.ค. หยุดวันเสาร์)</option>
+                    <option value="NEW_YEAR">🚩 สัปดาห์ส่งท้ายปีเก่า (31 ธ.ค. - 1 ม.ค. หยุด พฤ.-ศ.)</option>
+                </select>
+            </div>
+            <div class="form-group-inline">
+                <label for="view-search">ค้นหาด่วน:</label>
+                <input type="text" id="view-search" placeholder="รหัสวิชา, ชื่อวิชา, ห้อง, ผู้สอน..." oninput="onSearchInput()" style="width:210px;">
+            </div>
+        </div>
+        <div>
+            <button type="button" class="btn btn--outline btn--sm" onclick="resetFilters()">
+                🔄 ล้างตัวกรอง
+            </button>
+        </div>
+    </div>
+
+    <!-- Holiday Week Notice Banner (แสดงเมื่อสัปดาห์ที่เลือกมีวันหยุดราชการ) -->
+    <div id="holiday-alert-banner" class="hidden" style="background:#FFF1F2; border:1px solid #FCA5A5; border-left:5px solid #DC2626; border-radius:var(--radius-md); padding:14px 18px; margin-bottom:18px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:12px;">
+        <div style="display:flex; align-items:center; gap:12px;">
+            <span style="font-size:1.6rem;">🚩</span>
+            <div>
+                <strong style="color:#991B1B; font-size:0.96rem;" id="holiday-banner-title">สัปดาห์นี้มีวันหยุดราชการ</strong>
+                <p style="color:#7F1D1D; font-size:0.83rem; margin:2px 0 0;" id="holiday-banner-desc">คาบเรียนที่ตรงกับวันหยุดราชการจะถูกเน้นเป็นสีแดง และมีป้ายเตือนงดการเรียนการสอน</p>
+            </div>
+        </div>
+        <span class="badge badge--danger" style="background:#FEE2E2; color:#991B1B; border:1px solid #FCA5A5; font-weight:700; padding:4px 10px;">
+            HOLIDAY WEEK ALERT
+        </span>
+    </div>
+
+    <!-- Status Ledger Filters -->
+    <div class="status-ledger" id="grid-status-ledger">
+        <button type="button" class="status-pill is-active" data-filter="" onclick="setStatusFilter('')">
+            <span>ทั้งหมด (All)</span>
+            <span class="status-pill__count" id="count-all">0</span>
+        </button>
+        <button type="button" class="status-pill" data-filter="PUBLISHED" onclick="setStatusFilter('PUBLISHED')">
+            <span class="status-pill__dot status-pill__dot--published"></span>
+            <span>เผยแพร่แล้ว (PUBLISHED)</span>
+            <span class="status-pill__count" id="count-pub">0</span>
+        </button>
+        <button type="button" class="status-pill" data-filter="DRAFT" onclick="setStatusFilter('DRAFT')">
+            <span class="status-pill__dot status-pill__dot--draft"></span>
+            <span>ฉบับร่าง (DRAFT)</span>
+            <span class="status-pill__count" id="count-draft">0</span>
+        </button>
+    </div>
+
+    <!-- Weekly Timetable Matrix Card -->
+    <div class="card" style="margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+                <h2 id="matrix-title">ผังตารางประจำสัปดาห์ — ผังรวมทุกคนในระบบ</h2>
+                <p class="muted" style="font-size:0.82rem; margin:2px 0 0 0;">
+                    ตารางเวลา 09:00 - 17:00 น. · รองรับคาบสอน 1 ชม., 2 ชม. (เช่น 09:00 - 11:00 น.), 3 ชม. และกลุ่มที่สอน 2 คาบ/สัปดาห์
+                </p>
+            </div>
+            <div id="active-perspective-badge" style="font-size:0.82rem; font-weight:600; color:var(--primary);">
+                🌐 ผังรวมทั้งหมด
+            </div>
+        </div>
+
+        <div class="table-container" style="overflow-x:auto;">
+            <table class="timetable-grid" style="min-width:1280px;">
+                <thead>
+                    <tr>
+                        <th class="day-header" style="width:92px;">วัน / เวลา</th>
+                        <th>09:00 - 10:00</th>
+                        <th>10:00 - 11:00</th>
+                        <th>11:00 - 12:00</th>
+                        <th class="lunch-header" style="width:76px;">12:00 - 13:00</th>
+                        <th>13:00 - 14:00</th>
+                        <th>14:00 - 15:00</th>
+                        <th>15:00 - 16:00</th>
+                        <th>16:00 - 17:00</th>
+                    </tr>
+                </thead>
+                <tbody id="timetable-matrix">
+                    <tr><td colspan="9" style="padding:28px; text-align:center;" class="muted">กำลังโหลดข้อมูลตารางสอน...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Detailed Schedule List Card -->
+    <div class="card">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:14px; flex-wrap:wrap; gap:8px;">
+            <div>
+                <h3>รายการคาบสอนและกลุ่มเรียนทั้งหมด (Detailed Registry)</h3>
+                <p class="muted" style="font-size:0.8rem; margin:2px 0 0 0;">
+                    แสดงข้อมูลรายกลุ่มเรียนและโครงสร้างคาบสอนรายสัปดาห์ พร้อมระบุกรณีสอน 2 รอบ/สัปดาห์
+                </p>
+            </div>
+            <span class="muted" id="registry-summary" style="font-size:0.82rem;"></span>
+        </div>
+        <div id="schedule-ribbon-list" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(320px, 1fr)); gap:14px;"></div>
+    </div>
+
+    <!-- Generating Modal / Scanning Progress Overlay (Requirement 1: เพื่อแสดงสถานะการคำนวณและตรวจสอบระบบแบบเรียลไทม์) -->
+    <div class="modal-backdrop hidden" id="gen-progress-backdrop" style="z-index:9998; background:rgba(15, 23, 42, 0.7); backdrop-filter:blur(4px);"></div>
+    <div class="modal-dialog hidden" id="gen-progress-modal" role="dialog" aria-modal="true" style="z-index:9999; max-width:540px; border-top:4px solid var(--teal-primary);">
+        <div class="modal-dialog__header" style="border-bottom:none; padding-bottom:4px;">
+            <div style="display:flex; align-items:center; gap:10px;">
+                <div class="gen-pulse-spinner" style="width:28px; height:28px; border:3px solid var(--border); border-top-color:var(--teal-primary); border-radius:50%; animation:spin 0.8s linear infinite;"></div>
+                <div>
+                    <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);" id="gen-modal-title">ระบบกำลังคำนวณและจัดตารางอัตโนมัติ</h3>
+                    <p class="muted" style="font-size:0.8rem; margin:2px 0 0 0;">Constraint & Scoring Engine กำลังประมวลผลตามเงื่อนไขทางวิชาการ</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="modal-dialog__body" style="padding-top:14px;">
+            <!-- Dynamic Progress Bar -->
+            <div style="margin-bottom:18px;">
+                <div style="display:flex; justify-content:space-between; font-size:0.82rem; margin-bottom:6px;">
+                    <span style="font-weight:600; color:var(--ink-navy);" id="gen-current-step-label">กำลังเริ่มต้นการตรวจสอบ...</span>
+                    <span class="mono" style="font-weight:700; color:var(--teal-primary);" id="gen-progress-percent">0%</span>
+                </div>
+                <div style="height:8px; background:var(--surface-alt); border-radius:4px; overflow:hidden; border:1px solid var(--border-subtle);">
+                    <div id="gen-progress-bar" style="height:100%; width:0%; background:linear-gradient(90deg, var(--teal-primary), #0D9488); transition:width 0.4s ease; border-radius:4px;"></div>
+                </div>
+            </div>
+
+            <!-- Steps Checklist -->
+            <div style="display:flex; flex-direction:column; gap:10px; font-size:0.85rem;" id="gen-steps-list">
+                <div class="gen-step-item" id="step-1" style="display:flex; align-items:center; gap:10px; color:var(--ink-muted);">
+                    <span class="gen-step-icon" style="width:20px; text-align:center;">⏳</span>
+                    <span>1. คัดกรองกลุ่มเรียนที่เปิดสอน (Scanning Active Sections)</span>
+                </div>
+                <div class="gen-step-item" id="step-2" style="display:flex; align-items:center; gap:10px; color:var(--ink-muted);">
+                    <span class="gen-step-icon" style="width:20px; text-align:center;">⏳</span>
+                    <span>2. ตรวจสอบคุณสมบัติและความพร้อมสอนอาจารย์ (BR-06 Qualifications, BR-07 Availability)</span>
+                </div>
+                <div class="gen-step-item" id="step-3" style="display:flex; align-items:center; gap:10px; color:var(--ink-muted);">
+                    <span class="gen-step-icon" style="width:20px; text-align:center;">⏳</span>
+                    <span>3. ตรวจสอบความจุและสถานะห้องเรียน (BR-05 Capacity, BR-08 Room Status)</span>
+                </div>
+                <div class="gen-step-item" id="step-4" style="display:flex; align-items:center; gap:10px; color:var(--ink-muted);">
+                    <span class="gen-step-icon" style="width:20px; text-align:center;">⏳</span>
+                    <span>4. ประเมิน Soft Constraints และคำนวณคะแนน Schedule Selector</span>
+                </div>
+                <div class="gen-step-item" id="step-5" style="display:flex; align-items:center; gap:10px; color:var(--ink-muted);">
+                    <span class="gen-step-icon" style="width:20px; text-align:center;">⏳</span>
+                    <span>5. จัดเก็บผลลัพธ์ลงฐานข้อมูลในสถานะร่าง (Persisting DRAFT Schedules)</span>
+                </div>
+            </div>
+
+            <div style="margin-top:16px; background:var(--surface-alt); padding:10px 14px; border-radius:6px; font-size:0.8rem; color:var(--ink-muted); border:1px solid var(--border-subtle); display:flex; align-items:center; gap:8px;">
+                <span>ℹ️</span>
+                <span>ระบบกำลังประมวลผลและทดสอบเงื่อนไขในเบื้องหลัง กรุณาอย่าปิดหน้าต่างนี้</span>
+            </div>
+        </div>
+    </div>
+</main>
+
+<script>
+    let activeStatusFilter = '';
+    let activeViewMode = 'ALL';
+    let activeViewTarget = '';
+    let searchQuery = '';
+    let currentSchedules = [];
+    let activeWeek = 'NORMAL';
+    let holidaysList = [];
+
+    const HOLIDAY_WEEK_DEFINITIONS = {
+        NORMAL: {
+            title: 'สัปดาห์ปกติ',
+            desc: '',
+            days: {}
+        },
+        SONGKRAN: {
+            title: 'สัปดาห์เทศกาลสงกรานต์ (13 - 17 เม.ย. 2569)',
+            desc: 'วันจันทร์, อังคาร, พุธ เป็นวันหยุดราชการเทศกาลสงกรานต์ (งดการเรียนการสอนทุกคาบ)',
+            days: {
+                MONDAY: 'วันสงกรานต์ (Songkran)',
+                TUESDAY: 'วันสงกรานต์ (Songkran)',
+                WEDNESDAY: 'วันสงกรานต์ (Songkran)'
+            }
+        },
+        CHULALONGKORN: {
+            title: 'สัปดาห์วันปิยมหาราช (19 - 23 ต.ค. 2569)',
+            desc: 'วันศุกร์ เป็นวันหยุดราชการวันปิยมหาราช (งดการเรียนการสอนทุกคาบ)',
+            days: {
+                FRIDAY: 'วันปิยมหาราช (Chulalongkorn Day)'
+            }
+        },
+        FATHERS_DAY: {
+            title: 'สัปดาห์วันพ่อแห่งชาติ (1 - 5 ธ.ค. 2569)',
+            desc: 'วันเสาร์ เป็นวันคล้ายวันพระบรมราชสมภพ ร.9 / วันพ่อแห่งชาติ (งดการเรียนการสอน)',
+            days: {
+                SATURDAY: 'วันพ่อแห่งชาติ (Father\'s Day)'
+            }
+        },
+        NEW_YEAR: {
+            title: 'สัปดาห์ส่งท้ายปีเก่าต้อนรับปีใหม่ (28 ธ.ค. 2569 - 1 ม.ค. 2570)',
+            desc: 'วันพฤหัสบดี และวันศุกร์ เป็นวันหยุดราชการสิ้นปีและขึ้นปีใหม่ (งดการเรียนการสอนทุกคาบ)',
+            days: {
+                THURSDAY: 'วันสิ้นปี (New Year\'s Eve)',
+                FRIDAY: 'วันขึ้นปีใหม่ (New Year\'s Day)'
+            }
+        }
+    };
+
+    function getHolidayForDay(dayKey) {
+        const weekDef = HOLIDAY_WEEK_DEFINITIONS[activeWeek];
+        if (weekDef && weekDef.days && weekDef.days[dayKey]) {
+            return weekDef.days[dayKey];
+        }
+        return null;
+    }
+
+    function onWeekChange() {
+        activeWeek = document.getElementById('view-week').value;
+        updateHolidayBanner();
+        renderView();
+    }
+
+    function updateHolidayBanner() {
+        const banner = document.getElementById('holiday-alert-banner');
+        const title = document.getElementById('holiday-banner-title');
+        const desc = document.getElementById('holiday-banner-desc');
+        const weekDef = HOLIDAY_WEEK_DEFINITIONS[activeWeek];
+
+        if (activeWeek !== 'NORMAL' && weekDef && Object.keys(weekDef.days).length > 0) {
+            banner.classList.remove('hidden');
+            title.textContent = `🚩 สัปดาห์นี้มีวันหยุดราชการ: ${weekDef.title}`;
+            desc.textContent = weekDef.desc || 'คาบเรียนที่ตรงกับวันหยุดราชการจะถูกเน้นเป็นสีแดง และมีป้ายเตือนงดการเรียนการสอน';
+        } else {
+            banner.classList.add('hidden');
+        }
+    }
+
+    // Master lists for dropdown populating
+    let teacherMap = new Map();
+    let roomMap = new Map();
+    let sectionMap = new Map();
+
+    const DAYS_MAP = [
+        { key: 'MONDAY', label: 'จันทร์ (Mon)' },
+        { key: 'TUESDAY', label: 'อังคาร (Tue)' },
+        { key: 'WEDNESDAY', label: 'พุธ (Wed)' },
+        { key: 'THURSDAY', label: 'พฤหัส (Thu)' },
+        { key: 'FRIDAY', label: 'ศุกร์ (Fri)' },
+        { key: 'SATURDAY', label: 'เสาร์ (Sat)' },
+        { key: 'SUNDAY', label: 'อาทิตย์ (Sun)' }
+    ];
+
+    function setStatusFilter(status) {
+        activeStatusFilter = status;
+        document.querySelectorAll('#grid-status-ledger .status-pill').forEach(pill => {
+            pill.classList.toggle('is-active', pill.dataset.filter === status);
+        });
+        renderView();
+    }
+
+    let currentRole = sessionStorage.getItem('acadosRole') || '';
+    let currentTeacherId = null;
+    let studentRegisteredSectionIds = new Set();
+
+    function onViewModeChange() {
+        const mode = document.getElementById('view-mode').value;
+        activeViewMode = mode;
+        const targetContainer = document.getElementById('target-container');
+        const targetLabel = document.getElementById('target-label');
+        const targetSelect = document.getElementById('view-target');
+
+        targetSelect.innerHTML = '';
+
+        if (mode === 'ALL' || mode === 'MY_SCHEDULE') {
+            targetContainer.style.display = 'none';
+            activeViewTarget = '';
+        } else if (mode === 'TEACHER') {
+            targetContainer.style.display = 'flex';
+            targetLabel.textContent = 'เลือกอาจารย์:';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- เลือกอาจารย์ที่ต้องการดูตาราง --';
+            targetSelect.appendChild(defaultOpt);
+
+            Array.from(teacherMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                targetSelect.appendChild(opt);
+            });
+            activeViewTarget = '';
+        } else if (mode === 'ROOM') {
+            targetContainer.style.display = 'flex';
+            targetLabel.textContent = 'เลือกห้องเรียน:';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- เลือกห้องเรียนที่ต้องการดูตาราง --';
+            targetSelect.appendChild(defaultOpt);
+
+            Array.from(roomMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, name]) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = name;
+                targetSelect.appendChild(opt);
+            });
+            activeViewTarget = '';
+        } else if (mode === 'SECTION') {
+            targetContainer.style.display = 'flex';
+            targetLabel.textContent = 'เลือกรายวิชา/กลุ่ม:';
+            const defaultOpt = document.createElement('option');
+            defaultOpt.value = '';
+            defaultOpt.textContent = '-- เลือกรายวิชา/กลุ่มเรียน --';
+            targetSelect.appendChild(defaultOpt);
+
+            Array.from(sectionMap.entries()).sort((a, b) => a[1].localeCompare(b[1])).forEach(([id, label]) => {
+                const opt = document.createElement('option');
+                opt.value = id;
+                opt.textContent = label;
+                targetSelect.appendChild(opt);
+            });
+            activeViewTarget = '';
+        }
+
+        renderView();
+    }
+
+    function onViewTargetChange() {
+        activeViewTarget = document.getElementById('view-target').value;
+        renderView();
+    }
+
+    function onSearchInput() {
+        searchQuery = (document.getElementById('view-search').value || '').trim().toLowerCase();
+        renderView();
+    }
+
+    function resetFilters() {
+        const modeSelect = document.getElementById('view-mode');
+        if (modeSelect) {
+            modeSelect.value = (currentRole === 'TEACHER' || currentRole === 'STUDENT') ? 'MY_SCHEDULE' : 'ALL';
+            activeViewMode = modeSelect.value;
+        } else {
+            activeViewMode = 'ALL';
+        }
+        document.getElementById('view-search').value = '';
+        const weekSelect = document.getElementById('view-week');
+        if (weekSelect) weekSelect.value = 'NORMAL';
+        activeWeek = 'NORMAL';
+        activeViewTarget = '';
+        searchQuery = '';
+        document.getElementById('target-container').style.display = 'none';
+        updateHolidayBanner();
+        setStatusFilter('');
+    }
+
+    // Helper functions for entity normalization & crash-proof time parsing
+    function parseTime(val) {
+        if (!val) return { hour: 9, minute: 0, str: '09:00' };
+        let h = 9, m = 0;
+        if (typeof val === 'string') {
+            const clean = val.replace(/[^0-9:]/g, '');
+            const parts = clean.split(':');
+            h = parseInt(parts[0], 10) || 0;
+            m = parseInt(parts[1], 10) || 0;
+        } else if (Array.isArray(val)) {
+            h = Number(val[0]) || 0;
+            m = Number(val[1]) || 0;
+        } else if (typeof val === 'object') {
+            h = Number(val.hour !== undefined ? val.hour : val.hours) || 0;
+            m = Number(val.minute !== undefined ? val.minute : val.minutes) || 0;
+        }
+        const str = `${String(h).padStart(2, '0')}:${String(m).padStart(2, '0')}`;
+        return { hour: h, minute: m, str: str };
+    }
+
+    function getScheduleDay(s) {
+        if (!s) return '';
+        if (typeof s.dayOfWeek === 'string') return s.dayOfWeek.toUpperCase();
+        if (s.timeSlot && typeof s.timeSlot.dayOfWeek === 'string') return s.timeSlot.dayOfWeek.toUpperCase();
+        return '';
+    }
+
+    function getScheduleStartTime(s) {
+        if (!s) return '09:00:00';
+        if (s.startTime) return s.startTime;
+        if (s.timeSlot && s.timeSlot.startTime) return s.timeSlot.startTime;
+        return '09:00:00';
+    }
+
+    function getScheduleEndTime(s) {
+        if (!s) return '12:00:00';
+        if (s.endTime) return s.endTime;
+        if (s.timeSlot && s.timeSlot.endTime) return s.timeSlot.endTime;
+        return '12:00:00';
+    }
+
+    function parseHour(val) {
+        return parseTime(val).hour;
+    }
+
+    function getDurationHours(s) {
+        const start = parseTime(getScheduleStartTime(s));
+        const end = parseTime(getScheduleEndTime(s));
+        let diff = end.hour - start.hour;
+        if (diff <= 0) diff = 1;
+        return diff;
+    }
+
+    function getScheduleRoom(s) {
+        if (s.roomName) return s.roomName;
+        if (s.room) return (s.room.building + ' ' + s.room.roomNumber).trim();
+        return 'ยังไม่ระบุห้อง';
+    }
+
+    function getScheduleTeacher(s) {
+        if (s.teacherName) return s.teacherName;
+        if (s.teacher && s.teacher.fullName) return s.teacher.fullName;
+        return 'ยังไม่ระบุอาจารย์';
+    }
+
+    // Merge consecutive schedule periods (e.g. 10:00-11:00 and 11:00-12:00 for 2-hour classes) into a single unified block
+    function mergeConsecutiveSchedules(schedules) {
+        if (!schedules || schedules.length <= 1) return schedules || [];
+
+        const groups = new Map();
+        schedules.forEach(s => {
+            const day = getScheduleDay(s);
+            const sec = s.sectionId || ('sec-' + (s.courseCode || '') + '-' + (s.sectionNumber || ''));
+            const teacher = s.teacherId || getScheduleTeacher(s);
+            const room = s.roomId || getScheduleRoom(s);
+            const status = s.status || '';
+            const key = `${day}|${sec}|${teacher}|${room}|${status}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        });
+
+        const mergedResults = [];
+
+        groups.forEach(itemsInGroup => {
+            itemsInGroup.sort((a, b) => {
+                const aTime = parseTime(getScheduleStartTime(a));
+                const bTime = parseTime(getScheduleStartTime(b));
+                return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
+            });
+
+            let currentMerged = null;
+
+            itemsInGroup.forEach(item => {
+                if (!currentMerged) {
+                    currentMerged = { ...item };
+                    if (!currentMerged.mergedIds) {
+                        currentMerged.mergedIds = [currentMerged.id];
+                    }
+                } else {
+                    const currentEndTime = parseTime(getScheduleEndTime(currentMerged));
+                    const nextStartTime = parseTime(getScheduleStartTime(item));
+                    const currentEndMinutes = currentEndTime.hour * 60 + currentEndTime.minute;
+                    const nextStartMinutes = nextStartTime.hour * 60 + nextStartTime.minute;
+
+                    if (currentEndMinutes === nextStartMinutes) {
+                        currentMerged.endTime = getScheduleEndTime(item);
+                        if (currentMerged.timeSlot) {
+                            currentMerged.timeSlot = {
+                                ...currentMerged.timeSlot,
+                                endTime: getScheduleEndTime(item)
+                            };
+                        }
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                        currentMerged.mergedIds.push(item.id);
+                    } else {
+                        mergedResults.push(currentMerged);
+                        currentMerged = { ...item };
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                    }
+                }
+            });
+
+            if (currentMerged) {
+                mergedResults.push(currentMerged);
+            }
+        });
+
+        mergedResults.sort((a, b) => {
+            const dayA = DAYS_MAP.findIndex(d => d.key === getScheduleDay(a));
+            const dayB = DAYS_MAP.findIndex(d => d.key === getScheduleDay(b));
+            if (dayA !== dayB) return dayA - dayB;
+            const aTime = parseTime(getScheduleStartTime(a));
+            const bTime = parseTime(getScheduleStartTime(b));
+            return (aTime.hour * 60 + aTime.minute) - (bTime.hour * 60 + bTime.minute);
+        });
+
+        return mergedResults;
+    }
+
+    async function loadCurrentUserContext() {
+        try {
+            const meRes = await api.get('/api/v1/auth/me', { redirectOn401: false });
+            if (meRes.ok && meRes.data) {
+                currentRole = meRes.data.role || currentRole;
+                currentTeacherId = meRes.data.teacherId;
+            }
+            if (currentRole === 'STUDENT') {
+                const regRes = await api.get('/api/v1/registrations', { redirectOn401: false });
+                if (regRes.ok && Array.isArray(regRes.data)) {
+                    studentRegisteredSectionIds = new Set(regRes.data.map(r => r.sectionId));
+                }
+            }
+            setupViewModeOptions();
+        } catch(e) {}
+    }
+
+    function setupViewModeOptions() {
+        const select = document.getElementById('view-mode');
+        if (!select) return;
+
+        if (currentRole === 'TEACHER') {
+            if (!select.querySelector('option[value="MY_SCHEDULE"]')) {
+                const opt = document.createElement('option');
+                opt.value = 'MY_SCHEDULE';
+                opt.textContent = '👨‍🏫 ตารางสอนของฉัน (My Teaching Schedule)';
+                select.insertBefore(opt, select.firstChild);
+                select.value = 'MY_SCHEDULE';
+                activeViewMode = 'MY_SCHEDULE';
+            }
+        } else if (currentRole === 'STUDENT') {
+            if (!select.querySelector('option[value="MY_SCHEDULE"]')) {
+                const opt = document.createElement('option');
+                opt.value = 'MY_SCHEDULE';
+                opt.textContent = '🎓 ตารางเรียนของฉัน (My Enrolled Schedule)';
+                select.insertBefore(opt, select.firstChild);
+                select.value = 'MY_SCHEDULE';
+                activeViewMode = 'MY_SCHEDULE';
+            }
+        }
+    }
+
+    async function loadSchedules() {
+        await loadCurrentUserContext();
+
+        const res = await api.get('/api/v1/schedules');
+        if (!res.ok) {
+            ui.toast('error', res.error.message || 'ไม่สามารถโหลดตารางได้');
+            return;
+        }
+        currentSchedules = Array.isArray(res.data) ? res.data : (res.data.content || []);
+
+        // Also fetch drafts if admin
+        const draftRes = await api.get('/api/v1/schedules?status=DRAFT', { redirectOn401: false });
+        if (draftRes.ok && Array.isArray(draftRes.data)) {
+            const existingIds = new Set(currentSchedules.map(s => s.id));
+            draftRes.data.forEach(d => {
+                if (!existingIds.has(d.id)) currentSchedules.push(d);
+            });
+        }
+
+        // Also load rooms from API to ensure complete list in dropdown
+        const roomRes = await api.get('/api/v1/rooms', { redirectOn401: false });
+        if (roomRes.ok && Array.isArray(roomRes.data)) {
+            roomRes.data.forEach(r => {
+                const label = `${r.building || ''} ${r.roomNumber || ''} (จุ ${r.capacity || 0} ที่นั่ง)`.trim();
+                roomMap.set(String(r.id), label);
+            });
+        }
+
+        // Also fetch public holidays
+        const holRes = await api.get('/api/v1/holidays', { redirectOn401: false });
+        if (holRes.ok && Array.isArray(holRes.data)) {
+            holidaysList = holRes.data;
+        }
+
+        // Extract teachers, rooms, and sections from schedules
+        currentSchedules.forEach(s => {
+            if (s.teacherId && s.teacherName) {
+                teacherMap.set(String(s.teacherId), s.teacherName);
+            }
+            if (s.roomId) {
+                const roomLabel = getScheduleRoom(s);
+                if (!roomMap.has(String(s.roomId))) {
+                    roomMap.set(String(s.roomId), roomLabel);
+                }
+            }
+            if (s.sectionId) {
+                const secLabel = `${s.courseCode || 'วิชา'} · กลุ่ม ${s.sectionNumber || 1} (${s.courseTitle || ''})`;
+                sectionMap.set(String(s.sectionId), secLabel);
+            }
+        });
+
+        updateCounts();
+        renderView();
+    }
+
+    function updateCounts() {
+        const pub = currentSchedules.filter(s => s.status === 'PUBLISHED').length;
+        const draft = currentSchedules.filter(s => s.status === 'DRAFT').length;
+        document.getElementById('count-all').textContent = currentSchedules.length;
+        document.getElementById('count-pub').textContent = pub;
+        document.getElementById('count-draft').textContent = draft;
+    }
+
+    function getFilteredSchedules() {
+        return currentSchedules.filter(s => {
+            // 1. Status Filter
+            if (activeStatusFilter && s.status !== activeStatusFilter) {
+                return false;
+            }
+
+            // 2. View Mode & Target Filter
+            if (activeViewMode === 'MY_SCHEDULE') {
+                if (currentRole === 'TEACHER' && currentTeacherId) {
+                    if (String(s.teacherId) !== String(currentTeacherId)) return false;
+                } else if (currentRole === 'STUDENT') {
+                    if (!studentRegisteredSectionIds.has(s.sectionId)) return false;
+                }
+            } else if (activeViewMode === 'TEACHER' && activeViewTarget) {
+                if (String(s.teacherId) !== String(activeViewTarget)) return false;
+            } else if (activeViewMode === 'ROOM' && activeViewTarget) {
+                if (String(s.roomId) !== String(activeViewTarget)) return false;
+            } else if (activeViewMode === 'SECTION' && activeViewTarget) {
+                if (String(s.sectionId) !== String(activeViewTarget)) return false;
+            }
+
+            // 3. Search Query Filter
+            if (searchQuery) {
+                const text = `${s.courseCode || ''} ${s.courseTitle || ''} ${getScheduleTeacher(s)} ${getScheduleRoom(s)} กลุ่ม ${s.sectionNumber || ''}`.toLowerCase();
+                if (!text.includes(searchQuery)) return false;
+            }
+
+            return true;
+        });
+    }
+
+    function renderView() {
+        const filtered = getFilteredSchedules();
+        const merged = mergeConsecutiveSchedules(filtered);
+        updateHeaderAndBadge();
+        renderMatrix(merged);
+        renderRibbonList(merged);
+    }
+
+    function updateHeaderAndBadge() {
+        const titleEl = document.getElementById('matrix-title');
+        const badgeEl = document.getElementById('active-perspective-badge');
+
+        let weekSuffix = activeWeek !== 'NORMAL' ? ` · ${HOLIDAY_WEEK_DEFINITIONS[activeWeek].title}` : '';
+
+        if (activeViewMode === 'MY_SCHEDULE') {
+            if (currentRole === 'TEACHER') {
+                titleEl.textContent = `ผังตารางประจำสัปดาห์ — ตารางสอนของฉัน${weekSuffix}`;
+                badgeEl.textContent = '👨‍🏫 ตารางสอนของฉัน';
+            } else if (currentRole === 'STUDENT') {
+                titleEl.textContent = `ผังตารางประจำสัปดาห์ — ตารางเรียนของฉัน${weekSuffix}`;
+                badgeEl.textContent = '🎓 ตารางเรียนของฉัน';
+            }
+        } else if (activeViewMode === 'TEACHER' && activeViewTarget && teacherMap.has(activeViewTarget)) {
+            const name = teacherMap.get(activeViewTarget);
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — อาจารย์: ${name}${weekSuffix}`;
+            badgeEl.textContent = `👨‍🏫 ${name}`;
+        } else if (activeViewMode === 'ROOM' && activeViewTarget && roomMap.has(activeViewTarget)) {
+            const rName = roomMap.get(activeViewTarget);
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — ห้องเรียน: ${rName}${weekSuffix}`;
+            badgeEl.textContent = `🏢 ${rName}`;
+        } else if (activeViewMode === 'SECTION' && activeViewTarget && sectionMap.has(activeViewTarget)) {
+            const sName = sectionMap.get(activeViewTarget);
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — กลุ่มเรียน: ${sName}${weekSuffix}`;
+            badgeEl.textContent = `📚 ${sName}`;
+        } else {
+            titleEl.textContent = `ผังตารางประจำสัปดาห์ — ผังรวมทุกคนในระบบ${weekSuffix}`;
+            badgeEl.textContent = '🌐 ผังรวมทั้งหมด (Master)';
+        }
+    }
+
+    // Weekly Hourly Matrix (09:00 - 17:00, 8 time units)
+    function renderMatrix(items) {
+        const tbody = document.getElementById('timetable-matrix');
+        tbody.innerHTML = '';
+
+        DAYS_MAP.forEach(day => {
+            const holidayName = getHolidayForDay(day.key);
+            const isHoliday = !!holidayName;
+            const dayItems = items.filter(s => getScheduleDay(s) === day.key);
+
+            if (dayItems.length === 0) {
+                // Single empty row for the day
+                const tr = document.createElement('tr');
+                const th = document.createElement('th');
+                th.className = isHoliday ? 'day-header day-header--holiday' : 'day-header';
+                th.innerHTML = isHoliday ? `🚩 ${day.label}<br><span style="font-size:0.7rem; color:#DC2626; font-weight:700;">(${holidayName})</span>` : day.label;
+                tr.appendChild(th);
+
+                if (isHoliday) {
+                    const tdHoliday = document.createElement('td');
+                    tdHoliday.colSpan = 8;
+                    tdHoliday.className = 'timetable-holiday-cell';
+                    tdHoliday.textContent = `🚩 วันหยุดราชการ: ${holidayName} (ไม่มีการจัดการเรียนการสอน)`;
+                    tr.appendChild(tdHoliday);
+                } else {
+                    for (let h = 9; h <= 16; h++) {
+                        const td = document.createElement('td');
+                        if (h === 12) {
+                            td.className = 'timetable-lunch-cell';
+                            td.textContent = 'พักเที่ยง';
+                        } else {
+                            td.className = 'timetable-empty-cell';
+                        }
+                        tr.appendChild(td);
+                    }
+                }
+                tbody.appendChild(tr);
+                return;
+            }
+
+            // Assign day items to tracks so that overlapping items render on separate sub-rows cleanly
+            dayItems.sort((a, b) => parseHour(getScheduleStartTime(a)) - parseHour(getScheduleStartTime(b)));
+            const tracks = [];
+            dayItems.forEach(item => {
+                const start = parseHour(getScheduleStartTime(item));
+                let placed = false;
+                for (let t = 0; t < tracks.length; t++) {
+                    const lastInTrack = tracks[t][tracks[t].length - 1];
+                    const lastEnd = parseHour(getScheduleEndTime(lastInTrack));
+                    if (start >= lastEnd) {
+                        tracks[t].push(item);
+                        placed = true;
+                        break;
+                    }
+                }
+                if (!placed) {
+                    tracks.push([item]);
+                }
+            });
+
+            // Render each track row
+            tracks.forEach((trackItems, trackIndex) => {
+                const tr = document.createElement('tr');
+
+                // Day column on first track only with rowspan
+                if (trackIndex === 0) {
+                    const th = document.createElement('th');
+                    th.className = isHoliday ? 'day-header day-header--holiday' : 'day-header';
+                    th.rowSpan = tracks.length;
+                    th.innerHTML = isHoliday ? `🚩 ${day.label}<br><span style="font-size:0.7rem; color:#DC2626; font-weight:700;">(${holidayName})</span>` : day.label;
+                    tr.appendChild(th);
+                }
+
+                let h = 9;
+                while (h <= 16) {
+                    if (h === 12) {
+                        const tdLunch = document.createElement('td');
+                        tdLunch.className = 'timetable-lunch-cell';
+                        tdLunch.textContent = 'พักเที่ยง';
+                        tr.appendChild(tdLunch);
+                        h++;
+                        continue;
+                    }
+
+                    const currentItem = trackItems.find(s => parseHour(getScheduleStartTime(s)) === h);
+                    if (currentItem) {
+                        const duration = getDurationHours(currentItem);
+                        const tdCard = document.createElement('td');
+                        tdCard.colSpan = duration;
+
+                        const isDraft = currentItem.status === 'DRAFT';
+                        const card = document.createElement('div');
+                        if (isHoliday) {
+                            card.className = 'timetable-card timetable-card--holiday';
+                        } else {
+                            card.className = 'timetable-card ' + (isDraft ? 'timetable-card--draft' : 'timetable-card--published');
+                        }
+
+                        const startTimeInfo = parseTime(getScheduleStartTime(currentItem));
+                        const endTimeInfo = parseTime(getScheduleEndTime(currentItem));
+                        const startStr = startTimeInfo.str;
+                        const endStr = endTimeInfo.str;
+                        const durationLabel = `${duration} ชม.`;
+
+                        // Check if this section has multiple sessions
+                        const mergedAllSchedules = mergeConsecutiveSchedules(currentSchedules);
+                        const sectionSessions = mergedAllSchedules.filter(cs => cs.sectionId === currentItem.sectionId);
+                        const isMultiSession = sectionSessions.length > 1;
+                        const sessionIndex = sectionSessions.findIndex(cs => cs.id === currentItem.id || (currentItem.mergedIds && currentItem.mergedIds.includes(cs.id))) + 1;
+                        const sessionTag = isMultiSession ? ` · คาบ ${sessionIndex || 1}/${sectionSessions.length}` : '';
+
+                        const compact = duration === 1;
+                        const badgeText = compact ? `${duration} ชม.` : `${startStr} - ${endStr} (${durationLabel})`;
+
+                        card.innerHTML = `
+                            <div style="display:flex; justify-content:space-between; align-items:baseline; flex-wrap:wrap; gap:4px; margin-bottom:2px;">
+                                <strong style="color:var(--ink-navy); font-size:0.85rem;">${ui.escapeHtml(currentItem.courseCode || 'วิชา')}</strong>
+                                <span class="badge ${isHoliday ? 'badge--danger' : (isDraft ? 'badge--warning' : 'badge--primary')}" title="${startStr} - ${endStr}" style="font-size:0.7rem; padding:2px 6px; white-space:nowrap;">
+                                    ${badgeText}
+                                </span>
+                            </div>
+                            <div style="font-size:0.8rem; font-weight:500; color:var(--ink-text); line-height:1.25; margin-bottom:4px; overflow-wrap:anywhere;">
+                                ${ui.escapeHtml(currentItem.courseTitle || '')}
+                                <span class="muted" style="font-size:0.75rem;">(กลุ่ม ${currentItem.sectionNumber || 1}${sessionTag})</span>
+                            </div>
+                            <div style="font-size:0.75rem; color:var(--ink-muted); display:flex; flex-direction:column; gap:2px; overflow-wrap:anywhere;">
+                                <span>📍 ${ui.escapeHtml(getScheduleRoom(currentItem))}</span>
+                                <span>👤 ${ui.escapeHtml(getScheduleTeacher(currentItem))}</span>
+                            </div>
+                            ${isHoliday ? `
+                                <div style="margin-top:6px; padding:3px 6px; background:#FEE2E2; border-radius:4px; border:1px solid #FCA5A5; color:#991B1B; font-size:0.72rem; font-weight:700;">
+                                    ⚠️ งดการเรียนการสอน (ตรงกับ${holidayName})
+                                </div>
+                            ` : ''}
+                        `;
+
+                        tdCard.appendChild(card);
+tr.appendChild(tdCard);
+                        h += duration;
+                    } else {
+                        const tdEmpty = document.createElement('td');
+                        tdEmpty.className = 'timetable-empty-cell';
+                        tr.appendChild(tdEmpty);
+                        h++;
+                    }
+                }
+
+                tbody.appendChild(tr);
+            });
+        });
+    }
+
+    // Detailed Schedule Registry
+    function renderRibbonList(items) {
+        const container = document.getElementById('schedule-ribbon-list');
+        const summary = document.getElementById('registry-summary');
+        container.innerHTML = '';
+        summary.textContent = `แสดง ${items.length} คาบสอน`;
+
+        if (items.length === 0) {
+            ui.renderEmpty(container, 'ไม่มีคาบสอนที่ตรงกับเงื่อนไขการค้นหาหรือตัวกรองที่เลือก');
+            return;
+        }
+
+        // Group items by Section so multi-session sections are highlighted clearly
+        const sectionGroups = new Map();
+        items.forEach(s => {
+            const secKey = s.sectionId || ('sec-' + s.id);
+            if (!sectionGroups.has(secKey)) {
+                sectionGroups.set(secKey, []);
+            }
+            sectionGroups.get(secKey).push(s);
+        });
+
+        sectionGroups.forEach(secItems => {
+            const first = secItems[0];
+            const isMultiSession = secItems.length > 1;
+            const totalHours = secItems.reduce((acc, curr) => acc + getDurationHours(curr), 0);
+
+            const card = document.createElement('div');
+            card.className = 'card';
+            card.style.padding = '14px 16px';
+            card.style.border = '1px solid var(--border)';
+            card.style.borderRadius = 'var(--radius-md)';
+            card.style.display = 'flex';
+            card.style.flexDirection = 'column';
+            card.style.justifyContent = 'space-between';
+
+            let sessionsHtml = '';
+            secItems.forEach((session, idx) => {
+                const dayLabel = DAYS_MAP.find(d => d.key === getScheduleDay(session))?.label || getScheduleDay(session);
+                const startTimeInfo = parseTime(getScheduleStartTime(session));
+                const endTimeInfo = parseTime(getScheduleEndTime(session));
+                const startStr = startTimeInfo.str;
+                const endStr = endTimeInfo.str;
+                const dur = getDurationHours(session);
+                const isDraft = session.status === 'DRAFT';
+
+                sessionsHtml += `
+                    <div style="background:var(--surface-alt); padding:8px 10px; border-radius:var(--radius-sm); border:1px solid var(--border-subtle); margin-top:6px;">
+                        <div style="display:flex; justify-content:space-between; align-items:center;">
+                            <span style="font-weight:600; font-size:0.82rem; color:var(--ink-navy);">
+                                ${isMultiSession ? `คาบที่ ${idx + 1}: ` : ''}${dayLabel} ${startStr} - ${endStr}
+                            </span>
+                            <span class="badge ${isDraft ? 'badge--warning' : 'badge--primary'}" style="font-size:0.7rem;">
+                                ${dur} ชั่วโมง
+                            </span>
+                        </div>
+                        <div style="font-size:0.75rem; color:var(--ink-muted); margin-top:4px; display:flex; justify-content:space-between;">
+                            <span>📍 ${ui.escapeHtml(getScheduleRoom(session))}</span>
+                            <span>👤 ${ui.escapeHtml(getScheduleTeacher(session))}</span>
+                        </div>
+                    </div>
+                `;
+            });
+
+            card.innerHTML = `
+                <div>
+                    <div style="display:flex; justify-content:space-between; align-items:flex-start; gap:8px;">
+                        <div>
+                            <span style="font-family:var(--font-mono); font-weight:700; font-size:0.95rem; color:var(--ink-navy);">
+                                ${ui.escapeHtml(first.courseCode || '')} · กลุ่ม ${first.sectionNumber || 1}
+                            </span>
+                            <h4 style="margin:2px 0 0 0; font-size:0.9rem; color:var(--ink-text);">${ui.escapeHtml(first.courseTitle || '')}</h4>
+                        </div>
+                        <div>
+                            ${isMultiSession ? `
+                                <span class="badge badge--success" style="font-size:0.72rem; padding:3px 8px; font-weight:600;">
+                                    ⚡ สอน 2 คาบ/สัปดาห์ (รวม ${totalHours} ชม.)
+                                </span>
+                            ` : `
+                                <span class="badge badge--neutral" style="font-size:0.72rem; padding:3px 8px;">
+                                    สอน 1 คาบ/สัปดาห์ (${totalHours} ชม.)
+                                </span>
+                            `}
+                        </div>
+                    </div>
+                    <div style="margin-top:8px;">
+                        ${sessionsHtml}
+                    </div>
+                </div>
+                <div style="margin-top:10px; display:flex; justify-content:space-between; align-items:center; padding-top:6px; border-top:1px dashed var(--border-subtle);">
+                    ${ui.badge(first.status)}
+                    <span class="mono muted" style="font-size:0.72rem;">กลุ่มเรียน #${first.sectionId || first.id}</span>
+                </div>
+            `;
+
+            container.appendChild(card);
+        });
+    }
+
+    // ===== Generating Modal Controller (Requirement 1) =====
+    let genInterval = null;
+
+    function openGeneratingProgressModal() {
+        const backdrop = document.getElementById('gen-progress-backdrop');
+        const modal = document.getElementById('gen-progress-modal');
+        const progressBar = document.getElementById('gen-progress-bar');
+        const percentText = document.getElementById('gen-progress-percent');
+        const label = document.getElementById('gen-current-step-label');
+        const title = document.getElementById('gen-modal-title');
+
+        backdrop.classList.remove('hidden');
+        modal.classList.remove('hidden');
+        backdrop.classList.add('is-open');
+        modal.classList.add('is-open');
+
+        title.textContent = 'ระบบกำลังคำนวณและจัดตารางอัตโนมัติ';
+        title.style.color = 'var(--ink-navy)';
+        progressBar.style.width = '15%';
+        progressBar.style.background = 'linear-gradient(90deg, var(--teal-primary), #0D9488)';
+        percentText.textContent = '15%';
+        label.textContent = '1. กำลังคัดกรองกลุ่มเรียนที่เปิดสอน (Active Sections)...';
+
+        for (let i = 1; i <= 5; i++) {
+            const stepEl = document.getElementById('step-' + i);
+            if (stepEl) {
+                stepEl.style.color = 'var(--ink-muted)';
+                stepEl.style.fontWeight = 'normal';
+                const icon = stepEl.querySelector('.gen-step-icon');
+                if (icon) icon.textContent = '⏳';
+            }
+        }
+
+        const step1 = document.getElementById('step-1');
+        if (step1) {
+            step1.style.color = 'var(--teal-primary)';
+            step1.style.fontWeight = '600';
+            step1.querySelector('.gen-step-icon').textContent = '🔄';
+        }
+
+        let currentPercent = 15;
+        let currentStep = 1;
+
+        if (genInterval) clearInterval(genInterval);
+        genInterval = setInterval(() => {
+            if (currentStep === 1 && currentPercent < 35) {
+                currentPercent += 5;
+            } else if (currentStep === 1) {
+                currentStep = 2;
+                markStepDone('step-1');
+                setStepActive('step-2', '2. กำลังตรวจสอบคุณสมบัติและความพร้อมสอน (BR-06 & BR-07)...');
+            } else if (currentStep === 2 && currentPercent < 60) {
+                currentPercent += 4;
+            } else if (currentStep === 2) {
+                currentStep = 3;
+                markStepDone('step-2');
+                setStepActive('step-3', '3. กำลังตรวจสอบความจุห้องเรียนและสถานะห้อง (BR-05 & BR-08)...');
+            } else if (currentStep === 3 && currentPercent < 80) {
+                currentPercent += 3;
+            } else if (currentStep === 3) {
+                currentStep = 4;
+                markStepDone('step-3');
+                setStepActive('step-4', '4. กำลังคำนวณคะแนน Scoring Engine และจัดสรรตาราง...');
+            } else if (currentStep === 4 && currentPercent < 92) {
+                currentPercent += 2;
+            }
+            progressBar.style.width = currentPercent + '%';
+            percentText.textContent = currentPercent + '%';
+        }, 320);
+    }
+
+    function setStepActive(stepId, labelText) {
+        const el = document.getElementById(stepId);
+        if (el) {
+            el.style.color = 'var(--teal-primary)';
+            el.style.fontWeight = '600';
+            el.querySelector('.gen-step-icon').textContent = '🔄';
+        }
+        document.getElementById('gen-current-step-label').textContent = labelText;
+    }
+
+    function markStepDone(stepId) {
+        const el = document.getElementById(stepId);
+        if (el) {
+            el.style.color = '#166534';
+            el.style.fontWeight = 'normal';
+            el.querySelector('.gen-step-icon').textContent = '✅';
+        }
+    }
+
+    function completeGeneratingProgressModal(callback) {
+        if (genInterval) clearInterval(genInterval);
+        for (let i = 1; i <= 5; i++) {
+            markStepDone('step-' + i);
+        }
+        const progressBar = document.getElementById('gen-progress-bar');
+        const percentText = document.getElementById('gen-progress-percent');
+        const label = document.getElementById('gen-current-step-label');
+        const title = document.getElementById('gen-modal-title');
+
+        progressBar.style.width = '100%';
+        progressBar.style.background = '#10B981';
+        percentText.textContent = '100%';
+        label.textContent = 'ประมวลผลสำเร็จและบันทึกตารางร่าง (DRAFT) เรียบร้อย!';
+        title.textContent = '✔ จัดตารางสอนอัตโนมัติสำเร็จแล้ว';
+        title.style.color = '#166534';
+
+        setTimeout(() => {
+            document.getElementById('gen-progress-backdrop').classList.add('hidden');
+            document.getElementById('gen-progress-modal').classList.add('hidden');
+            if (callback) callback();
+        }, 700);
+    }
+
+    function failGeneratingProgressModal(errorMsg) {
+        if (genInterval) clearInterval(genInterval);
+        const progressBar = document.getElementById('gen-progress-bar');
+        const label = document.getElementById('gen-current-step-label');
+        const title = document.getElementById('gen-modal-title');
+
+        progressBar.style.background = '#EF4444';
+        label.textContent = 'เกิดข้อผิดพลาด: ' + errorMsg;
+        title.textContent = '✖ ไม่สามารถจัดตารางได้';
+        title.style.color = '#DC2626';
+
+        setTimeout(() => {
+            document.getElementById('gen-progress-backdrop').classList.add('hidden');
+            document.getElementById('gen-progress-modal').classList.add('hidden');
+            ui.toast('error', errorMsg);
+        }, 1600);
+    }
+
+    // ===== Decision Sheet Integrations for Impactful Actions =====
+
+    // 1. Generate Schedule
+    const btnGen = document.getElementById('btn-generate');
+    if (btnGen) {
+        btnGen.addEventListener('click', () => {
+            ui.openDecisionSheet({
+                title: 'คำนวณและจัดตารางสอนอัตโนมัติ (Generate Schedule)',
+                desc: 'ระบบจะนำกลุ่มเรียนที่เปิดสอนทั้งหมดมาคำนวณด้วย Constraint & Scoring Engine ตามระยะเวลาจริงของรายวิชา',
+                impacts: [
+                    'ตารางสอนร่าง (DRAFT) เดิมทั้งหมดจะถูกลบทิ้งและแทนที่ด้วยผลการคำนวณใหม่',
+                    'รองรับการจัดผังกำหนดเวลาเฉพาะ (เช่น 2 ชั่วโมง 09:00 - 11:00 น.) และรายวิชาที่สอน 2 คาบ/สัปดาห์',
+                    'ตารางผลลัพธ์จะถูกจัดเก็บเป็น DRAFT เพื่อให้ผู้ดูแลระบบตรวจสอบความถูกต้องก่อน',
+                    'ตารางที่เผยแพร่แล้ว (PUBLISHED) จะไม่ได้รับผลกระทบจนกว่าจะสั่ง Publish'
+                ],
+                confirmText: 'เริ่มคำนวณตารางอัตโนมัติ',
+                confirmClass: 'btn--primary',
+                onConfirm: async () => {
+                    openGeneratingProgressModal();
+                    try {
+                        const res = await api.post('/api/v1/schedules/generate');
+                        if (res.ok) {
+                            completeGeneratingProgressModal(async () => {
+                                ui.toast('success', 'คำนวณและสร้างตารางสอนร่าง (DRAFT) สำเร็จแล้ว!');
+                                await loadSchedules();
+                                setStatusFilter('DRAFT');
+                            });
+                        } else {
+                            failGeneratingProgressModal(res.error.message || 'ไม่สามารถจัดตารางได้');
+                        }
+                    } catch (e) {
+                        failGeneratingProgressModal('เกิดข้อผิดพลาดในการเชื่อมต่อ');
+                    }
+                }
+            });
+        });
+    }
+
+    // 2. Publish Schedule
+    const btnPub = document.getElementById('btn-publish');
+    if (btnPub) {
+        btnPub.addEventListener('click', () => {
+            ui.openDecisionSheet({
+                title: 'เผยแพร่ตารางสอนใช้งานจริง (Publish Schedules)',
+                desc: 'เปลี่ยนสถานะตารางสอน DRAFT ทั้งหมดให้เป็น PUBLISHED เพื่อเปิดใช้งานในระบบ',
+                impacts: [
+                    'ตารางสอนสถานะ DRAFT ทั้งหมดจะเปลี่ยนเป็น PUBLISHED ถาวร',
+                    'ระบบจะส่ง In-app Notification แจ้งเตือนไปยังอาจารย์และนักศึกษาที่เกี่ยวข้อง',
+                    'นักศึกษาจะสามารถค้นหาและลงทะเบียนเรียนในกลุ่มเรียนนี้ได้ทันที',
+                    'อาจารย์จะสามารถตรวจสอบตารางสอนและยื่นคำขอสลับสอน (Teacher Swap) ได้'
+                ],
+                confirmText: 'เผยแพร่ตารางทันที',
+                confirmClass: 'btn--success',
+                onConfirm: async () => {
+                    const res = await api.put('/api/v1/schedules/publish');
+                    if (res.ok) {
+                        ui.toast('success', 'เผยแพร่ตารางสอนเรียบร้อยแล้ว แจ้งเตือนส่งถึงผู้ใช้ทุกคน');
+                        await loadSchedules();
+                        setStatusFilter('PUBLISHED');
+                    } else {
+                        ui.toast('error', res.error.message || 'เกิดข้อผิดพลาดในการเผยแพร่');
+                    }
+                }
+            });
+        });
+    }
+
+    // 3. Discard Draft
+    const btnDiscard = document.getElementById('btn-discard');
+    if (btnDiscard) {
+        btnDiscard.addEventListener('click', () => {
+            ui.openDecisionSheet({
+                title: 'ลบทิ้งตารางร่างทั้งหมด (Discard Draft Schedules)',
+                desc: 'ยกเลิกผลการจัดตารางร่างทั้งหมดและลบออกจากระบบอย่างถาวร',
+                impacts: [
+                    'ตารางสอนสถานะ DRAFT ทั้งหมดจะถูกลบออกจากฐานข้อมูล',
+                    'ตารางสอนเดิมที่เผยแพร่แล้ว (PUBLISHED) จะยังคงอยู่ตามปกติ',
+                    'การกระทำนี้ไม่สามารถยกเลิกย้อนหลังได้ (Irreversible)'
+                ],
+                confirmText: 'ลบทิ้งตารางร่าง',
+                confirmClass: 'btn--danger',
+                onConfirm: async () => {
+                    const res = await api.delete('/api/v1/schedules/draft');
+                    if (res.ok) {
+                        ui.toast('info', 'ลบตารางร่างทั้งหมดเรียบร้อยแล้ว');
+                        await loadSchedules();
+                    } else {
+                        ui.toast('error', res.error.message || 'เกิดข้อผิดพลาด');
+                    }
+                }
+            });
+        });
+    }
+
+    loadSchedules();
+</script>
+</body>
+</html>

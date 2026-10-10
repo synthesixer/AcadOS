@@ -1,0 +1,306 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TeacherSwapServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">TeacherSwapServiceImpl.java</span></div><h1>TeacherSwapServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.Schedule;
+import com.project.acados.domain.entity.Teacher;
+import com.project.acados.domain.entity.TeacherAvailability;
+import com.project.acados.domain.entity.TeacherSwapRequest;
+import com.project.acados.domain.enums.ScheduleStatus;
+import com.project.acados.domain.enums.SwapStatus;
+import com.project.acados.pattern.observer.ScheduleChangePublisher;
+import com.project.acados.repository.ScheduleRepository;
+import com.project.acados.repository.TeacherAvailabilityRepository;
+import com.project.acados.repository.TeacherQualificationRepository;
+import com.project.acados.repository.TeacherRepository;
+import com.project.acados.repository.TeacherSwapRequestRepository;
+import com.project.acados.service.TeacherSwapService;
+import org.springframework.http.HttpStatus;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.time.LocalDateTime;
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Implements the documented teacher swap checks and state transitions.
+ */
+@Service
+@Transactional
+public class TeacherSwapServiceImpl implements TeacherSwapService {
+
+<span class="fc" id="L33">    private static final List&lt;SwapStatus&gt; OPEN_STATUSES = List.of(SwapStatus.PENDING, SwapStatus.ACCEPTED);</span>
+<span class="fc" id="L34">    private static final List&lt;ScheduleStatus&gt; ACTIVE_SCHEDULE_STATUSES =</span>
+<span class="fc" id="L35">            List.of(ScheduleStatus.DRAFT, ScheduleStatus.PUBLISHED);</span>
+
+    private final TeacherSwapRequestRepository swapRequestRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final TeacherRepository teacherRepository;
+    private final TeacherQualificationRepository qualificationRepository;
+    private final TeacherAvailabilityRepository availabilityRepository;
+    private final ScheduleChangePublisher scheduleChangePublisher;
+
+    public TeacherSwapServiceImpl(
+            TeacherSwapRequestRepository swapRequestRepository,
+            ScheduleRepository scheduleRepository,
+            TeacherRepository teacherRepository,
+            TeacherQualificationRepository qualificationRepository,
+            TeacherAvailabilityRepository availabilityRepository,
+            ScheduleChangePublisher scheduleChangePublisher
+<span class="fc" id="L51">    ) {</span>
+<span class="fc" id="L52">        this.swapRequestRepository = swapRequestRepository;</span>
+<span class="fc" id="L53">        this.scheduleRepository = scheduleRepository;</span>
+<span class="fc" id="L54">        this.teacherRepository = teacherRepository;</span>
+<span class="fc" id="L55">        this.qualificationRepository = qualificationRepository;</span>
+<span class="fc" id="L56">        this.availabilityRepository = availabilityRepository;</span>
+<span class="fc" id="L57">        this.scheduleChangePublisher = scheduleChangePublisher;</span>
+<span class="fc" id="L58">    }</span>
+
+    @Override
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public TeacherSwapRequest createSwapRequest(
+            Long requestingTeacherId,
+            Long requestingScheduleId,
+            Long targetTeacherId,
+            Long targetScheduleId
+    ) {
+<span class="fc bfc" id="L68" title="All 2 branches covered.">        if (Objects.equals(requestingTeacherId, targetTeacherId)) {</span>
+<span class="fc" id="L69">            throw conflict(&quot;A teacher cannot request a swap with themselves&quot;);</span>
+        }
+
+<span class="fc" id="L72">        Teacher requestingTeacher = findTeacher(requestingTeacherId);</span>
+<span class="fc" id="L73">        Teacher targetTeacher = findTeacher(targetTeacherId);</span>
+<span class="fc" id="L74">        Schedule requestingSchedule = findSchedule(requestingScheduleId);</span>
+<span class="fc" id="L75">        Schedule targetSchedule = findSchedule(targetScheduleId);</span>
+
+<span class="fc" id="L77">        ensureScheduleBelongsToTeacher(requestingSchedule, requestingTeacherId);</span>
+<span class="fc" id="L78">        ensureScheduleBelongsToTeacher(targetSchedule, targetTeacherId);</span>
+<span class="fc" id="L79">        ensurePublished(requestingSchedule, targetSchedule);</span>
+<span class="fc" id="L80">        ensureDifferentTimeSlots(requestingSchedule, targetSchedule);</span>
+<span class="fc" id="L81">        ensureNoOpenSwap(requestingScheduleId, targetScheduleId);</span>
+<span class="fc" id="L82">        validateSwapRules(requestingSchedule, targetSchedule, requestingScheduleId, targetScheduleId);</span>
+
+<span class="fc" id="L84">        TeacherSwapRequest request = TeacherSwapRequest.builder()</span>
+<span class="fc" id="L85">                .requestingTeacher(requestingTeacher)</span>
+<span class="fc" id="L86">                .requestingSchedule(requestingSchedule)</span>
+<span class="fc" id="L87">                .targetTeacher(targetTeacher)</span>
+<span class="fc" id="L88">                .targetSchedule(targetSchedule)</span>
+<span class="fc" id="L89">                .status(SwapStatus.PENDING)</span>
+<span class="fc" id="L90">                .createdAt(LocalDateTime.now())</span>
+<span class="fc" id="L91">                .build();</span>
+
+<span class="fc" id="L93">        return swapRequestRepository.save(request);</span>
+    }
+
+    @Override
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public void respondSwap(Long requestId, Long respondingTeacherId, boolean accept) {
+<span class="fc" id="L99">        TeacherSwapRequest request = findRequest(requestId);</span>
+<span class="fc" id="L100">        ensureStatus(request, SwapStatus.PENDING);</span>
+<span class="fc" id="L101">        ensureActor(request.getTargetTeacher(), respondingTeacherId, &quot;Only the target teacher can respond&quot;);</span>
+
+<span class="fc" id="L103">        Schedule requestingSchedule = requireSchedule(request.getRequestingSchedule());</span>
+<span class="fc" id="L104">        Schedule targetSchedule = requireSchedule(request.getTargetSchedule());</span>
+<span class="fc" id="L105">        ensureCurrentScheduleOwners(request, requestingSchedule, targetSchedule);</span>
+<span class="fc" id="L106">        ensurePublished(requestingSchedule, targetSchedule);</span>
+
+<span class="fc bfc" id="L108" title="All 2 branches covered.">        if (accept) {</span>
+<span class="fc" id="L109">            validateSwapRules(</span>
+                    requestingSchedule,
+                    targetSchedule,
+<span class="fc" id="L112">                    requestingSchedule.getId(),</span>
+<span class="fc" id="L113">                    targetSchedule.getId()</span>
+            );
+<span class="fc" id="L115">            request.accept();</span>
+        } else {
+<span class="fc" id="L117">            request.reject();</span>
+        }
+
+<span class="fc" id="L120">        swapRequestRepository.save(request);</span>
+<span class="fc" id="L121">    }</span>
+
+    @Override
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public void approveSwap(Long requestId) {
+<span class="fc" id="L126">        TeacherSwapRequest request = findRequest(requestId);</span>
+<span class="fc" id="L127">        ensureStatus(request, SwapStatus.ACCEPTED);</span>
+
+<span class="fc" id="L129">        Schedule requestingSchedule = requireSchedule(request.getRequestingSchedule());</span>
+<span class="fc" id="L130">        Schedule targetSchedule = requireSchedule(request.getTargetSchedule());</span>
+<span class="fc" id="L131">        ensureCurrentScheduleOwners(request, requestingSchedule, targetSchedule);</span>
+<span class="fc" id="L132">        ensurePublished(requestingSchedule, targetSchedule);</span>
+<span class="fc" id="L133">        validateSwapRules(</span>
+                requestingSchedule,
+                targetSchedule,
+<span class="fc" id="L136">                requestingSchedule.getId(),</span>
+<span class="fc" id="L137">                targetSchedule.getId()</span>
+        );
+
+<span class="fc" id="L140">        Teacher requestingTeacher = request.getRequestingTeacher();</span>
+<span class="fc" id="L141">        Teacher targetTeacher = request.getTargetTeacher();</span>
+<span class="fc" id="L142">        requestingSchedule.setTeacher(targetTeacher);</span>
+<span class="fc" id="L143">        targetSchedule.setTeacher(requestingTeacher);</span>
+<span class="fc" id="L144">        scheduleRepository.saveAll(List.of(requestingSchedule, targetSchedule));</span>
+
+<span class="fc" id="L146">        request.approve();</span>
+<span class="fc" id="L147">        swapRequestRepository.save(request);</span>
+<span class="fc" id="L148">        scheduleChangePublisher.notifyObservers(List.of(</span>
+<span class="fc" id="L149">                requestingSchedule.getSection(),</span>
+<span class="fc" id="L150">                targetSchedule.getSection()</span>
+        ));
+<span class="fc" id="L152">    }</span>
+
+    @Override
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public void rejectSwap(Long requestId) {
+<span class="fc" id="L157">        TeacherSwapRequest request = findRequest(requestId);</span>
+<span class="fc" id="L158">        ensureStatus(request, SwapStatus.ACCEPTED);</span>
+<span class="fc" id="L159">        request.setStatus(SwapStatus.REJECTED);</span>
+<span class="fc" id="L160">        request.setReviewedAt(LocalDateTime.now());</span>
+<span class="fc" id="L161">        swapRequestRepository.save(request);</span>
+<span class="fc" id="L162">    }</span>
+
+    @Override
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public void cancelSwap(Long requestId, Long requestingTeacherId) {
+<span class="fc" id="L167">        TeacherSwapRequest request = findRequest(requestId);</span>
+<span class="fc" id="L168">        ensureStatus(request, SwapStatus.PENDING);</span>
+<span class="fc" id="L169">        ensureActor(request.getRequestingTeacher(), requestingTeacherId, &quot;Only the requesting teacher can cancel&quot;);</span>
+
+<span class="fc" id="L171">        request.cancel();</span>
+<span class="fc" id="L172">        swapRequestRepository.save(request);</span>
+<span class="fc" id="L173">    }</span>
+
+    private void validateSwapRules(
+            Schedule requestingSchedule,
+            Schedule targetSchedule,
+            Long requestingScheduleId,
+            Long targetScheduleId
+    ) {
+<span class="fc" id="L181">        Teacher requestingTeacher = requestingSchedule.getTeacher();</span>
+<span class="fc" id="L182">        Teacher targetTeacher = targetSchedule.getTeacher();</span>
+
+<span class="fc" id="L184">        ensureQualified(requestingTeacher, targetSchedule);</span>
+<span class="fc" id="L185">        ensureQualified(targetTeacher, requestingSchedule);</span>
+<span class="fc" id="L186">        ensureAvailable(requestingTeacher, targetSchedule);</span>
+<span class="fc" id="L187">        ensureAvailable(targetTeacher, requestingSchedule);</span>
+<span class="fc" id="L188">        ensureNoScheduleConflict(requestingTeacher.getId(), targetSchedule, requestingScheduleId, targetScheduleId);</span>
+<span class="fc" id="L189">        ensureNoScheduleConflict(targetTeacher.getId(), requestingSchedule, requestingScheduleId, targetScheduleId);</span>
+<span class="fc" id="L190">    }</span>
+
+    private void ensureNoScheduleConflict(
+            Long teacherId,
+            Schedule proposedSchedule,
+            Long requestingScheduleId,
+            Long targetScheduleId
+    ) {
+<span class="fc bfc" id="L198" title="All 2 branches covered.">        for (ScheduleStatus status : ACTIVE_SCHEDULE_STATUSES) {</span>
+<span class="fc bfc" id="L199" title="All 2 branches covered.">            for (Schedule existing : scheduleRepository.findByTeacherIdAndStatus(teacherId, status)) {</span>
+<span class="fc bfc" id="L200" title="All 2 branches covered.">                if (Objects.equals(existing.getId(), requestingScheduleId)</span>
+<span class="pc bpc" id="L201" title="1 of 2 branches missed.">                        || Objects.equals(existing.getId(), targetScheduleId)) {</span>
+<span class="fc" id="L202">                    continue;</span>
+                }
+
+<span class="nc bnc" id="L205" title="All 2 branches missed.">                if (existing.getTimeSlot().overlapsWith(proposedSchedule.getTimeSlot())) {</span>
+<span class="nc bnc" id="L206" title="All 2 branches missed.">                    if (status == ScheduleStatus.DRAFT) {</span>
+<span class="nc" id="L207">                        throw conflict(&quot;DRAFT Timetable Conflict&quot;);</span>
+                    }
+<span class="nc" id="L209">                    throw conflict(&quot;Teacher schedule conflict&quot;);</span>
+                }
+<span class="nc" id="L211">            }</span>
+<span class="fc" id="L212">        }</span>
+<span class="fc" id="L213">    }</span>
+
+    private void ensureQualified(Teacher teacher, Schedule schedule) {
+<span class="fc" id="L216">        Long courseId = schedule.getSection().getCourse().getId();</span>
+<span class="fc bfc" id="L217" title="All 2 branches covered.">        if (!qualificationRepository.existsByTeacherIdAndCourseId(teacher.getId(), courseId)) {</span>
+<span class="fc" id="L218">            throw conflict(&quot;Teacher is not qualified for the course&quot;);</span>
+        }
+<span class="fc" id="L220">    }</span>
+
+    private void ensureAvailable(Teacher teacher, Schedule schedule) {
+<span class="fc" id="L223">        boolean unavailable = availabilityRepository.findByTeacherId(teacher.getId()).stream()</span>
+<span class="pc bnc" id="L224" title="All 2 branches missed.">                .filter(availability -&gt; !availability.isAvailable())</span>
+<span class="fc" id="L225">                .map(TeacherAvailability::getTimeSlot)</span>
+<span class="pc" id="L226">                .anyMatch(unavailableSlot -&gt; unavailableSlot.overlapsWith(schedule.getTimeSlot()));</span>
+
+<span class="pc bpc" id="L228" title="1 of 2 branches missed.">        if (unavailable) {</span>
+<span class="nc" id="L229">            throw conflict(&quot;Teacher is unavailable during the requested time slot&quot;);</span>
+        }
+<span class="fc" id="L231">    }</span>
+
+    private void ensureNoOpenSwap(Long requestingScheduleId, Long targetScheduleId) {
+<span class="pc bpc" id="L234" title="1 of 2 branches missed.">        if (swapRequestRepository.existsOpenSwapForSchedule(requestingScheduleId, OPEN_STATUSES)</span>
+<span class="pc bpc" id="L235" title="1 of 2 branches missed.">                || swapRequestRepository.existsOpenSwapForSchedule(targetScheduleId, OPEN_STATUSES)) {</span>
+<span class="nc" id="L236">            throw conflict(&quot;An open swap request already exists for one of these schedules&quot;);</span>
+        }
+<span class="fc" id="L238">    }</span>
+
+    private void ensurePublished(Schedule requestingSchedule, Schedule targetSchedule) {
+<span class="fc bfc" id="L241" title="All 2 branches covered.">        if (requestingSchedule.getStatus() != ScheduleStatus.PUBLISHED</span>
+<span class="pc bpc" id="L242" title="1 of 2 branches missed.">                || targetSchedule.getStatus() != ScheduleStatus.PUBLISHED) {</span>
+<span class="fc" id="L243">            throw conflict(&quot;Both schedules must be PUBLISHED&quot;);</span>
+        }
+<span class="fc" id="L245">    }</span>
+
+    private void ensureDifferentTimeSlots(Schedule requestingSchedule, Schedule targetSchedule) {
+<span class="pc bpc" id="L248" title="1 of 2 branches missed.">        if (Objects.equals(requestingSchedule.getTimeSlot().getId(), targetSchedule.getTimeSlot().getId())) {</span>
+<span class="nc" id="L249">            throw conflict(&quot;Schedules must be in different time slots&quot;);</span>
+        }
+<span class="fc" id="L251">    }</span>
+
+    private void ensureScheduleBelongsToTeacher(Schedule schedule, Long teacherId) {
+<span class="pc bpc" id="L254" title="1 of 2 branches missed.">        if (!Objects.equals(schedule.getTeacher().getId(), teacherId)) {</span>
+<span class="nc" id="L255">            throw conflict(&quot;Schedule is not assigned to the expected teacher&quot;);</span>
+        }
+<span class="fc" id="L257">    }</span>
+
+    private void ensureCurrentScheduleOwners(
+            TeacherSwapRequest request,
+            Schedule requestingSchedule,
+            Schedule targetSchedule
+    ) {
+<span class="fc" id="L264">        ensureScheduleBelongsToTeacher(requestingSchedule, request.getRequestingTeacher().getId());</span>
+<span class="fc" id="L265">        ensureScheduleBelongsToTeacher(targetSchedule, request.getTargetTeacher().getId());</span>
+<span class="fc" id="L266">    }</span>
+
+    private void ensureActor(Teacher expectedTeacher, Long actorTeacherId, String message) {
+<span class="pc bpc" id="L269" title="1 of 2 branches missed.">        if (!Objects.equals(expectedTeacher.getId(), actorTeacherId)) {</span>
+<span class="nc" id="L270">            throw conflict(message);</span>
+        }
+<span class="fc" id="L272">    }</span>
+
+    private void ensureStatus(TeacherSwapRequest request, SwapStatus expectedStatus) {
+<span class="pc bpc" id="L275" title="1 of 2 branches missed.">        if (request.getStatus() != expectedStatus) {</span>
+<span class="nc" id="L276">            throw conflict(&quot;Swap request must be in &quot; + expectedStatus + &quot; state&quot;);</span>
+        }
+<span class="fc" id="L278">    }</span>
+
+    private Teacher findTeacher(Long teacherId) {
+<span class="fc" id="L281">        return teacherRepository.findById(teacherId)</span>
+<span class="pc" id="L282">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;Teacher not found&quot;));</span>
+    }
+
+    private Schedule findSchedule(Long scheduleId) {
+<span class="fc" id="L286">        return scheduleRepository.findById(scheduleId)</span>
+<span class="pc" id="L287">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;Schedule not found&quot;));</span>
+    }
+
+    private TeacherSwapRequest findRequest(Long requestId) {
+<span class="fc" id="L291">        return swapRequestRepository.findById(requestId)</span>
+<span class="pc" id="L292">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;Swap request not found&quot;));</span>
+    }
+
+    private Schedule requireSchedule(Schedule schedule) {
+<span class="pc bpc" id="L296" title="1 of 2 branches missed.">        if (schedule == null) {</span>
+<span class="nc" id="L297">            throw conflict(&quot;A schedule was deleted after the swap request was created&quot;);</span>
+        }
+<span class="fc" id="L299">        return schedule;</span>
+    }
+
+    private ResponseStatusException conflict(String message) {
+<span class="fc" id="L303">        return new ResponseStatusException(HttpStatus.CONFLICT, message);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

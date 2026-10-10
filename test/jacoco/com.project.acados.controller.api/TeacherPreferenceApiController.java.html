@@ -1,0 +1,79 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TeacherPreferenceApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">TeacherPreferenceApiController.java</span></div><h1>TeacherPreferenceApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.dto.request.TeacherAvailabilityToggleRequest;
+import com.project.acados.dto.request.TeacherPreferenceRequest;
+import com.project.acados.dto.response.CourseResponse;
+import com.project.acados.dto.response.TeacherAvailabilityResponse;
+import com.project.acados.dto.response.TeacherPreferenceResponse;
+import com.project.acados.service.TeacherPreferenceService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+@RestController
+@RequestMapping({&quot;/api/v1/teacher&quot;, &quot;/api/v1&quot;})
+@RequiredArgsConstructor
+public class TeacherPreferenceApiController {
+
+    private final TeacherPreferenceService teacherPreferenceService;
+
+    // ==========================================
+    // Teacher Course Preferences (D21)
+    // ==========================================
+
+    @GetMapping(&quot;/preferences&quot;)
+    @PreAuthorize(&quot;hasAnyRole('TEACHER', 'ADMIN')&quot;)
+    public List&lt;TeacherPreferenceResponse&gt; getPreferences(Authentication auth) {
+<span class="pc bpc" id="L32" title="1 of 2 branches missed.">        return teacherPreferenceService.getPreferences(auth != null ? auth.getName() : null);</span>
+    }
+
+    @GetMapping(&quot;/qualifications&quot;)
+    @PreAuthorize(&quot;hasAnyRole('TEACHER', 'ADMIN')&quot;)
+    public List&lt;CourseResponse&gt; getQualifiedCourses(Authentication auth) {
+<span class="pc bpc" id="L38" title="1 of 2 branches missed.">        return teacherPreferenceService.getQualifiedCourses(auth != null ? auth.getName() : null);</span>
+    }
+
+    @PostMapping(&quot;/preferences&quot;)
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public ResponseEntity&lt;TeacherPreferenceResponse&gt; savePreference(
+            @Valid @RequestBody TeacherPreferenceRequest request,
+            Authentication auth
+    ) {
+<span class="pc bpc" id="L47" title="1 of 2 branches missed.">        TeacherPreferenceResponse response = teacherPreferenceService.savePreference(request, auth != null ? auth.getName() : null);</span>
+<span class="fc" id="L48">        return ResponseEntity.ok(response);</span>
+    }
+
+    @DeleteMapping(&quot;/preferences/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public ResponseEntity&lt;Void&gt; deletePreference(@PathVariable Long id, Authentication auth) {
+<span class="pc bpc" id="L54" title="1 of 2 branches missed.">        teacherPreferenceService.deletePreference(id, auth != null ? auth.getName() : null);</span>
+<span class="fc" id="L55">        return ResponseEntity.noContent().build();</span>
+    }
+
+    // ==========================================
+    // Teacher Availability (D22, BR-07)
+    // Records unavailable time slots (is_available = false)
+    // ==========================================
+
+    @GetMapping(&quot;/availabilities&quot;)
+    @PreAuthorize(&quot;hasAnyRole('TEACHER', 'ADMIN')&quot;)
+    public List&lt;TeacherAvailabilityResponse&gt; getAvailabilities(Authentication auth) {
+<span class="pc bpc" id="L66" title="1 of 2 branches missed.">        return teacherPreferenceService.getAvailabilities(auth != null ? auth.getName() : null);</span>
+    }
+
+    @PutMapping(&quot;/availabilities&quot;)
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public ResponseEntity&lt;TeacherAvailabilityResponse&gt; updateAvailability(
+            @Valid @RequestBody TeacherAvailabilityToggleRequest request,
+            Authentication auth
+    ) {
+<span class="pc bpc" id="L75" title="1 of 2 branches missed.">        TeacherAvailabilityResponse response = teacherPreferenceService.updateAvailability(request, auth != null ? auth.getName() : null);</span>
+<span class="fc" id="L76">        return ResponseEntity.ok(response);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

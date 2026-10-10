@@ -7,9 +7,12 @@ start
 :Admin opens Section Management UI;
 :Admin selects a Section to cancel and clicks "Cancel";
 partition "Security Filter" {
-    :Validate JWT, role = ADMIN;
-    if (JWT invalid?) then (yes)
-        :Return 401 Unauthorized;
+    :Validate JWT and Role;
+    if (Not authenticated / JWT invalid?) then (yes)
+        :Return 401 Unauthorized (Redirect to Login);
+        stop
+    elseif (Role != ADMIN?) then (yes)
+        :Return 403 Forbidden (Neutral Error Page);
         stop
     endif
 }

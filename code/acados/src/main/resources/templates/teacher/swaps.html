@@ -1,0 +1,478 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>แลกคาบสอน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Teacher Operations · Scenario 3</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">คำขอแลกคาบสอน (Teacher Swaps)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">สร้างคำขอแลกเปลี่ยนคาบสอนกับอาจารย์ท่านอื่น ตอบรับคำขอ และติดตามสถานะการอนุมัติ</p>
+        </div>
+    </div>
+
+    <!-- Create Swap Request Card with Dropdowns -->
+    <div class="card" id="create-swap-section" style="padding:22px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px; flex-wrap:wrap; gap:10px;">
+            <div>
+                <h3 style="margin:0 0 4px; font-size:1.15rem; color:var(--ink-navy);">ส่งคำขอแลกคาบสอนใหม่</h3>
+                <p class="muted" style="margin:0; font-size:0.88rem;">เลือกคาบสอนของท่าน และคาบสอนของอาจารย์คู่แลกจากรายการตัวเลือกด้านล่าง</p>
+            </div>
+            <span class="badge badge--primary">Scenario 3 Form</span>
+        </div>
+
+        <form id="create-swap-form" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(260px, 1fr)); gap:16px; align-items:flex-end;">
+            <div>
+                <label for="requesting-schedule" style="display:block; font-size:0.88rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">
+                    1. เลือกคาบสอนของฉัน (My Schedule) *
+                </label>
+                <select id="requesting-schedule" required
+                        style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                    <option value="">-- กำลังโหลดคาบสอนของท่าน... --</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="target-teacher" style="display:block; font-size:0.88rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">
+                    2. เลือกอาจารย์คู่แลก (Target Teacher) *
+                </label>
+                <select id="target-teacher" required onchange="onTargetTeacherChange()"
+                        style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                    <option value="">-- เลือกอาจารย์คู่แลก --</option>
+                </select>
+            </div>
+
+            <div>
+                <label for="target-schedule" style="display:block; font-size:0.88rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">
+                    3. เลือกคาบสอนที่ต้องการแลก (Target Schedule) *
+                </label>
+                <select id="target-schedule" required onchange="onTargetScheduleChange()"
+                        style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                    <option value="">-- กรุณาเลือกอาจารย์คู่แลกก่อน --</option>
+                </select>
+            </div>
+
+            <div>
+                <button type="submit" class="btn btn--primary" id="btn-submit-swap" style="width:100%; height:40px; font-weight:600;">
+                    ✓ ส่งคำขอแลกคาบ
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Available Schedules for Swap (Readable Table/List) -->
+    <div class="card" style="padding:22px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div>
+                <h3 style="margin:0 0 4px; font-size:1.15rem; color:var(--ink-navy);">ตารางคาบสอนที่เปิดสอนในระบบ (Available Teaching Periods)</h3>
+                <p class="muted" style="margin:0; font-size:0.88rem;">คลิก "ขอแลกคาบนี้" เพื่อนำข้อมูลไปใส่ในแบบฟอร์มคำขอโดยอัตโนมัติ</p>
+            </div>
+            <div>
+                <input type="text" id="available-filter" placeholder="ค้นหารหัสวิชา, ชื่อวิชา, หรืออาจารย์..."
+                       style="padding:7px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; width:260px;"
+                       oninput="renderAvailableSchedules()">
+            </div>
+        </div>
+
+        <div class="table-container">
+            <table class="data-table" style="width:100%; border-collapse:collapse;">
+                <thead>
+                    <tr style="background:var(--bg-canvas); text-align:left; border-bottom:2px solid var(--border-subtle);">
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy); width:70px;">ID</th>
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy);">รหัสวิชา / ชื่อวิชา</th>
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy); width:70px;">กลุ่ม</th>
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy);">อาจารย์ผู้สอน</th>
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy);">วันและเวลา</th>
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy);">ห้องเรียน</th>
+                        <th style="padding:10px 14px; font-size:0.82rem; font-weight:600; color:var(--ink-navy); text-align:center; width:120px;">การกระทำ</th>
+                    </tr>
+                </thead>
+                <tbody id="available-schedules-body">
+                    <tr><td colspan="7" style="padding:24px; text-align:center;" class="muted">กำลังโหลดตารางคาบสอน...</td></tr>
+                </tbody>
+            </table>
+        </div>
+    </div>
+
+    <!-- Swap Requests Ledger Workbench -->
+    <div class="card" style="padding:22px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; gap:8px;">
+                <button type="button" class="btn btn--primary btn--sm" id="sent-tab" onclick="switchTab('sent')">
+                    คำขอที่ฉันส่ง (<span class="num" id="count-sent">0</span>)
+                </button>
+                <button type="button" class="btn btn--secondary btn--sm" id="received-tab" onclick="switchTab('received')">
+                    คำขอที่ส่งถึงฉัน (<span class="num" id="count-received">0</span>)
+                </button>
+            </div>
+            <div>
+                <button type="button" class="btn btn--secondary btn--sm" onclick="loadInbox()">
+                    🔄 รีเฟรชรายการ
+                </button>
+            </div>
+        </div>
+
+        <div id="request-list" style="display:grid; gap:12px;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+</main>
+
+<script>
+    let activeTab = 'sent';
+    let inboxData = { sent: [], received: [] };
+    let mySchedules = [];
+    let allPublishedSchedules = [];
+    let teachersMap = new Map(); // teacherId -> teacherName
+
+    function switchTab(tab) {
+        activeTab = tab;
+        const btnSent = document.getElementById('sent-tab');
+        const btnReceived = document.getElementById('received-tab');
+        if (tab === 'sent') {
+            btnSent.className = 'btn btn--primary btn--sm';
+            btnReceived.className = 'btn btn--secondary btn--sm';
+        } else {
+            btnSent.className = 'btn btn--secondary btn--sm';
+            btnReceived.className = 'btn btn--primary btn--sm';
+        }
+        renderList();
+    }
+
+    function formatTimeSlot(s) {
+        if (!s) return '-';
+        const day = s.dayOfWeek || '';
+        const start = s.startTime ? s.startTime.substring(0, 5) : '';
+        const end = s.endTime ? s.endTime.substring(0, 5) : '';
+        return `${day} ${start}-${end}`;
+    }
+
+    async function loadFormOptions() {
+        try {
+            // 1. Load my schedules
+            const myRes = await api.get('/api/v1/teacher-swaps/my-schedules');
+            const mySelect = document.getElementById('requesting-schedule');
+            mySelect.innerHTML = '<option value="">-- เลือกคาบสอนของท่านที่ต้องการแลก --</option>';
+
+            if (myRes.ok && Array.isArray(myRes.data)) {
+                mySchedules = myRes.data;
+                mySchedules.forEach(s => {
+                    const opt = document.createElement('option');
+                    opt.value = s.id;
+                    const code = s.courseCode || '';
+                    const title = s.courseTitle || '';
+                    const sec = s.sectionNumber ? `(กลุ่ม ${s.sectionNumber})` : '';
+                    const time = formatTimeSlot(s);
+                    const room = s.roomName ? `[${s.roomName}]` : '';
+                    opt.textContent = `[#${s.id}] ${code} ${title} ${sec} · ${time} ${room}`;
+                    mySelect.appendChild(opt);
+                });
+            }
+
+            // 2. Load all published schedules to extract other teachers and their schedules
+            const allRes = await api.get('/api/v1/schedules');
+            if (allRes.ok && Array.isArray(allRes.data)) {
+                allPublishedSchedules = allRes.data;
+
+                // Identify my teacher ID from mySchedules
+                const myTeacherId = mySchedules.length > 0 ? mySchedules[0].teacherId : null;
+
+                teachersMap.clear();
+                allPublishedSchedules.forEach(s => {
+                    if (s.teacherId && (!myTeacherId || s.teacherId !== myTeacherId)) {
+                        teachersMap.set(s.teacherId, s.teacherName || `อาจารย์ ID ${s.teacherId}`);
+                    }
+                });
+
+                // Populate Target Teacher Dropdown
+                const teacherSelect = document.getElementById('target-teacher');
+                teacherSelect.innerHTML = '<option value="">-- เลือกอาจารย์คู่แลก --</option>';
+                teachersMap.forEach((name, id) => {
+                    const opt = document.createElement('option');
+                    opt.value = id;
+                    opt.textContent = `${name} (ID: ${id})`;
+                    teacherSelect.appendChild(opt);
+                });
+
+                renderAvailableSchedules();
+            }
+        } catch (e) {
+            console.error('Failed to load form options:', e);
+        }
+    }
+
+    function onTargetTeacherChange() {
+        const teacherId = Number(document.getElementById('target-teacher').value);
+        const schedSelect = document.getElementById('target-schedule');
+        schedSelect.innerHTML = '<option value="">-- เลือกคาบสอนที่ต้องการแลก --</option>';
+
+        if (!teacherId) {
+            schedSelect.innerHTML = '<option value="">-- กรุณาเลือกอาจารย์คู่แลกก่อน --</option>';
+            return;
+        }
+
+        const filtered = allPublishedSchedules.filter(s => s.teacherId === teacherId);
+        if (filtered.length === 0) {
+            schedSelect.innerHTML = '<option value="">-- ไม่พบคาบสอนของอาจารย์ท่านนี้ --</option>';
+            return;
+        }
+
+        filtered.forEach(s => {
+            const opt = document.createElement('option');
+            opt.value = s.id;
+            const code = s.courseCode || '';
+            const title = s.courseTitle || '';
+            const sec = s.sectionNumber ? `(กลุ่ม ${s.sectionNumber})` : '';
+            const time = formatTimeSlot(s);
+            const room = s.roomName ? `[${s.roomName}]` : '';
+            opt.textContent = `[#${s.id}] ${code} ${title} ${sec} · ${time} ${room}`;
+            schedSelect.appendChild(opt);
+        });
+    }
+
+    function onTargetScheduleChange() {
+        const schedId = Number(document.getElementById('target-schedule').value);
+        if (!schedId) return;
+        const found = allPublishedSchedules.find(s => s.id === schedId);
+        if (found && found.teacherId) {
+            const teacherSelect = document.getElementById('target-teacher');
+            if (Number(teacherSelect.value) !== found.teacherId) {
+                teacherSelect.value = found.teacherId;
+            }
+        }
+    }
+
+    function selectScheduleForSwap(scheduleId, teacherId) {
+        // Pre-populate target teacher & schedule
+        const teacherSelect = document.getElementById('target-teacher');
+        teacherSelect.value = teacherId;
+        onTargetTeacherChange();
+
+        const schedSelect = document.getElementById('target-schedule');
+        schedSelect.value = scheduleId;
+
+        // Smooth scroll to form
+        const section = document.getElementById('create-swap-section');
+        section.scrollIntoView({ behavior: 'smooth' });
+        ui.toast('info', `เลือกคาบ #${scheduleId} เรียบร้อย กรุณาเลือกคาบสอนของท่านแล้วกดยืนยัน`);
+    }
+
+    function renderAvailableSchedules() {
+        const tbody = document.getElementById('available-schedules-body');
+        const query = (document.getElementById('available-filter').value || '').trim().toLowerCase();
+
+        const myTeacherId = mySchedules.length > 0 ? mySchedules[0].teacherId : null;
+        let others = allPublishedSchedules.filter(s => !myTeacherId || s.teacherId !== myTeacherId);
+
+        if (query) {
+            others = others.filter(s => {
+                const code = (s.courseCode || '').toLowerCase();
+                const title = (s.courseTitle || '').toLowerCase();
+                const tName = (s.teacherName || '').toLowerCase();
+                const room = (s.roomName || '').toLowerCase();
+                return code.includes(query) || title.includes(query) || tName.includes(query) || room.includes(query);
+            });
+        }
+
+        if (others.length === 0) {
+            tbody.innerHTML = '<tr><td colspan="7" style="padding:24px; text-align:center;" class="muted">ไม่พบคาบสอนที่ตรงกับคำค้นหา</td></tr>';
+            return;
+        }
+
+        tbody.innerHTML = '';
+        others.forEach(s => {
+            const tr = document.createElement('tr');
+            tr.style.borderBottom = '1px solid var(--border-subtle)';
+
+            tr.innerHTML = `
+                <td style="padding:12px 14px; font-weight:700;" class="mono">#${s.id}</td>
+                <td style="padding:12px 14px;">
+                    <div style="font-weight:600; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || '-')}</div>
+                    <div class="muted" style="font-size:0.84rem;">${ui.escapeHtml(s.courseTitle || '-')}</div>
+                </td>
+                <td style="padding:12px 14px;"><span class="mono">${s.sectionNumber || 1}</span></td>
+                <td style="padding:12px 14px;">
+                    <span style="font-weight:600; color:var(--teal-primary);">${ui.escapeHtml(s.teacherName || ('ID ' + s.teacherId))}</span>
+                </td>
+                <td style="padding:12px 14px;">
+                    <span class="mono" style="font-size:0.86rem; background:var(--bg-canvas); padding:3px 8px; border-radius:4px; border:1px solid var(--border-subtle);">
+                        ${formatTimeSlot(s)}
+                    </span>
+                </td>
+                <td style="padding:12px 14px;">
+                    <span style="font-size:0.86rem;">${ui.escapeHtml(s.roomName || 'TBA')}</span>
+                </td>
+                <td style="padding:12px 14px; text-align:center;">
+                    <button type="button" class="btn btn--primary btn--sm" onclick="selectScheduleForSwap(${s.id}, ${s.teacherId})">
+                        ⇄ ขอแลกคาบนี้
+                    </button>
+                </td>
+            `;
+            tbody.appendChild(tr);
+        });
+    }
+
+    function cancelSwap(id) {
+        ui.openDecisionSheet({
+            title: `ยกเลิกคำขอแลกคาบ #${id}`,
+            desc: 'ยืนยันยกเลิกคำขอแลกคาบสอนนี้ใช่หรือไม่?',
+            impacts: ['คำขอจะถูกเปลี่ยนสถานะเป็น CANCELLED ทันที'],
+            confirmText: 'ยืนยันยกเลิกคำขอ',
+            confirmClass: 'btn--danger',
+            onConfirm: async () => {
+                const res = await api.put(`/api/v1/teacher-swaps/${id}/cancel`);
+                if (res.ok) {
+                    ui.toast('success', 'ยกเลิกคำขอแลกคาบเรียบร้อยแล้ว');
+                    await loadInbox();
+                } else {
+                    ui.toast('error', res.error.message || 'ดำเนินการไม่สำเร็จ');
+                }
+            }
+        });
+    }
+
+    function respondSwap(id, accept) {
+        ui.openDecisionSheet({
+            title: accept ? `ตอบรับคำขอแลกคาบ #${id}` : `ปฏิเสธคำขอแลกคาบ #${id}`,
+            desc: accept ? 'เมื่อตอบรับแล้ว คำขอจะถูกส่งต่อไปยังผู้ดูแลระบบ (Admin) เพื่ออนุมัติในขั้นตอนสุดท้าย' : 'การปฏิเสธจะทำให้คำขอสิ้นสุดลงทันที',
+            impacts: accept ? 
+                ['สถานะคำขอจะเปลี่ยนเป็น ACCEPTED', 'รอการอนุมัติขั้นสุดท้ายจากผู้ดูแลระบบก่อนที่ตารางสอนจะสลับจริง'] :
+                ['สถานะคำขอจะเปลี่ยนเป็น REJECTED', 'ตารางสอนของทั้งสองฝ่ายจะคงเดิมไม่มีการเปลี่ยนแปลง'],
+            confirmText: accept ? 'ยืนยันตอบรับคำขอ' : 'ยืนยันปฏิเสธคำขอ',
+            confirmClass: accept ? 'btn--primary' : 'btn--secondary',
+            onConfirm: async () => {
+                const res = await api.put(`/api/v1/teacher-swaps/${id}/respond`, { accept: accept });
+                if (res.ok) {
+                    ui.toast('success', accept ? 'ตอบรับคำขอแล้ว (รอ Admin อนุมัติ)' : 'ปฏิเสธคำขอแล้ว');
+                    await loadInbox();
+                } else {
+                    ui.toast('error', res.error.message || 'ดำเนินการไม่สำเร็จ');
+                }
+            }
+        });
+    }
+
+    function renderList() {
+        const list = document.getElementById('request-list');
+        const items = inboxData[activeTab] || [];
+
+        if (items.length === 0) {
+            ui.renderEmpty(list, activeTab === 'sent' ? 'ไม่มีคำขอแลกคาบที่คุณส่งไว้' : 'ไม่มีคำขอแลกคาบที่ส่งถึงคุณ');
+            return;
+        }
+
+        list.innerHTML = '';
+        items.forEach(item => {
+            const card = document.createElement('div');
+            card.style.padding = '18px 22px';
+            card.style.background = 'var(--surface)';
+            card.style.border = '1px solid var(--border-subtle)';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'center';
+            card.style.flexWrap = 'wrap';
+            card.style.gap = '16px';
+
+            const statusColor = item.status === 'PENDING' ? 'var(--amber-draft)' : 
+                               (item.status === 'ACCEPTED' ? 'var(--primary)' : 
+                               (item.status === 'APPROVED' ? 'var(--ok-green)' : 'var(--slate-neutral)'));
+            card.style.borderLeft = `4px solid ${statusColor}`;
+
+            let actionsHtml = '';
+            if (activeTab === 'sent' && item.status === 'PENDING') {
+                actionsHtml = `<button type="button" class="btn btn--danger btn--sm" onclick="cancelSwap(${item.id})">ยกเลิกคำขอ</button>`;
+            } else if (activeTab === 'received' && item.status === 'PENDING') {
+                actionsHtml = `
+                    <button type="button" class="btn btn--primary btn--sm" onclick="respondSwap(${item.id}, true)">✓ ตอบรับคำขอ</button>
+                    <button type="button" class="btn btn--secondary btn--sm" onclick="respondSwap(${item.id}, false)">✕ ปฏิเสธ</button>
+                `;
+            }
+
+            const reqTeacher = item.requestingTeacherName ? item.requestingTeacherName : `อาจารย์ ID ${item.requestingTeacherId}`;
+            const targetTeacher = item.targetTeacherName ? item.targetTeacherName : `อาจารย์ ID ${item.targetTeacherId}`;
+            const reqSched = item.requestingScheduleDetails ? item.requestingScheduleDetails : `คาบ ID #${item.requestingScheduleId || '—'}`;
+            const targetSched = item.targetScheduleDetails ? item.targetScheduleDetails : `คาบ ID #${item.targetScheduleId || '—'}`;
+
+            card.innerHTML = `
+                <div style="flex:1; min-width:280px;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:8px;">
+                        <span style="font-weight:700; color:var(--ink-navy); font-size:1.05rem;">คำขอ #${item.id}</span>
+                        ${ui.badge(item.status)}
+                    </div>
+                    
+                    <div style="background:var(--bg-canvas); padding:10px 14px; border-radius:6px; border:1px solid var(--border-subtle); margin-bottom:8px;">
+                        <div style="font-size:0.88rem; color:var(--ink-navy); margin-bottom:4px;">
+                            <strong>อาจารย์ผู้ขอ:</strong> ${ui.escapeHtml(reqTeacher)} 
+                            <span class="muted" style="margin-left:6px;">[${ui.escapeHtml(reqSched)}]</span>
+                        </div>
+                        <div style="font-size:0.88rem; color:var(--ink-navy);">
+                            <strong>อาจารย์คู่แลก:</strong> ${ui.escapeHtml(targetTeacher)}
+                            <span class="muted" style="margin-left:6px;">[${ui.escapeHtml(targetSched)}]</span>
+                        </div>
+                    </div>
+
+                    <div class="muted" style="font-size:0.82rem;">
+                        ส่งเมื่อ: <span class="mono">${item.createdAt ? item.createdAt.replace('T', ' ').substring(0, 16) : '-'}</span>
+                        ${item.respondedAt ? ` · ตอบรับเมื่อ: <span class="mono">${item.respondedAt.replace('T', ' ').substring(0, 16)}</span>` : ''}
+                        ${item.reviewedAt ? ` · อนุมัติเมื่อ: <span class="mono">${item.reviewedAt.replace('T', ' ').substring(0, 16)}</span>` : ''}
+                    </div>
+                </div>
+                <div style="display:flex; gap:8px; align-items:center;">
+                    ${actionsHtml}
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    async function loadInbox() {
+        const list = document.getElementById('request-list');
+        ui.renderLoading(list, 2);
+        const res = await api.get('/api/v1/teacher-swaps');
+        if (!res.ok) {
+            ui.renderError(list, res.error);
+            return;
+        }
+
+        inboxData = res.data || { sent: [], received: [] };
+        document.getElementById('count-sent').textContent = (inboxData.sent || []).length;
+        document.getElementById('count-received').textContent = (inboxData.received || []).length;
+
+        renderList();
+    }
+
+    document.getElementById('create-swap-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-swap');
+        ui.setBusy(btn, true);
+
+        const payload = {
+            requestingScheduleId: Number(document.getElementById('requesting-schedule').value),
+            targetTeacherId: Number(document.getElementById('target-teacher').value),
+            targetScheduleId: Number(document.getElementById('target-schedule').value)
+        };
+
+        const res = await api.post('/api/v1/teacher-swaps', payload);
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', 'ส่งคำขอแลกคาบสอนสำเร็จแล้ว');
+            document.getElementById('create-swap-form').reset();
+            document.getElementById('target-schedule').innerHTML = '<option value="">-- กรุณาเลือกอาจารย์คู่แลกก่อน --</option>';
+            await loadInbox();
+        } else {
+            ui.toast('error', res.error.message || 'ส่งคำขอไม่สำเร็จ');
+        }
+    });
+
+    loadFormOptions();
+    loadInbox();
+</script>
+</body>
+</html>

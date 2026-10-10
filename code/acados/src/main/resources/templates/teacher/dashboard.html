@@ -1,0 +1,417 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>ศูนย์อาจารย์ผู้สอน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Faculty Portal · ภาค 1/2569</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">ศูนย์อาจารย์ผู้สอน (Faculty Command Center)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">จัดการตารางสอน การขอแลกเปลี่ยนคาบสอน และติดตามประกาศทางวิชาการ</p>
+        </div>
+        <div>
+            <a th:href="@{/teacher/swaps}" class="btn btn--primary" style="font-size:0.88rem;">
+                ⇄ จัดการคำขอแลกคาบ
+            </a>
+        </div>
+    </div>
+
+    <!-- Upcoming Next Class Hero Card -->
+    <div id="upcoming-class-container" style="margin-bottom:24px;">
+        <!-- Rendered by JS -->
+    </div>
+
+    <!-- Quick Status Signals -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:16px; margin-bottom:24px;">
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--teal-primary);">
+            <div class="muted" style="font-size:0.85rem; font-weight:600;">ตารางสอนที่เผยแพร่แล้ว</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+                <span class="num" id="stat-schedule-count" style="font-size:1.8rem; font-weight:700; color:var(--ink-navy);">-</span>
+                <a th:href="@{/teacher/timetable}" class="muted" style="font-size:0.82rem; text-decoration:none;">ดูตารางสอน →</a>
+            </div>
+        </div>
+
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--amber-draft);">
+            <div class="muted" style="font-size:0.85rem; font-weight:600;">คำขอแลกคาบที่รอดำเนินการ</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+                <span class="num" id="stat-swap-count" style="font-size:1.8rem; font-weight:700; color:var(--ink-navy);">-</span>
+                <a th:href="@{/teacher/swaps}" class="muted" style="font-size:0.82rem; text-decoration:none;">เปิดรายการคำขอ →</a>
+            </div>
+        </div>
+
+        <div class="card" style="padding:18px 20px; border-left:4px solid var(--ok-green);">
+            <div class="muted" style="font-size:0.85rem; font-weight:600;">การแจ้งเตือนทางวิชาการ</div>
+            <div style="display:flex; justify-content:space-between; align-items:baseline; margin-top:8px;">
+                <span class="num" id="stat-unread-count" style="font-size:1.8rem; font-weight:700; color:var(--ink-navy);">-</span>
+                <a th:href="@{/notifications}" class="muted" style="font-size:0.82rem; text-decoration:none;">ดูกล่องข้อความ →</a>
+            </div>
+        </div>
+    </div>
+
+    <!-- Published Teaching Schedule Ledger Card -->
+    <div class="card" style="padding:20px; margin-bottom:24px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px;">
+            <div>
+                <h3 style="margin:0; font-size:1.1rem; color:var(--ink-navy);">ตารางสอนที่ได้รับมอบหมาย</h3>
+                <span class="muted" style="font-size:0.85rem;">คาบสอนและกลุ่มเรียนที่เผยแพร่แล้ว (PUBLISHED)</span>
+            </div>
+            <div>
+                <a th:href="@{/teacher/timetable}" class="btn btn--secondary btn--sm">
+                    เปิดผังตารางเต็ม (Grid View) ↗
+                </a>
+            </div>
+        </div>
+
+        <div id="schedule-list" style="display:grid; gap:10px;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+</main>
+
+<script>
+    const token = sessionStorage.getItem('acadosToken');
+    const role = sessionStorage.getItem('acadosRole');
+    if (!token || role !== 'TEACHER') {
+        window.location.replace('/login');
+    }
+
+    const DAY_ORDER = {
+        'MONDAY': 1, 'TUESDAY': 2, 'WEDNESDAY': 3, 'THURSDAY': 4, 'FRIDAY': 5, 'SATURDAY': 6, 'SUNDAY': 7,
+        'MON': 1, 'TUE': 2, 'WED': 3, 'THU': 4, 'FRI': 5, 'SAT': 6, 'SUN': 7,
+        'จันทร์': 1, 'อังคาร': 2, 'พุธ': 3, 'พฤหัสบดี': 4, 'ศุกร์': 5, 'เสาร์': 6, 'อาทิตย์': 7
+    };
+
+    const DAY_THAI = {
+        1: 'วันจันทร์', 2: 'วันอังคาร', 3: 'วันพุธ', 4: 'วันพฤหัสบดี', 5: 'วันศุกร์', 6: 'วันเสาร์', 7: 'วันอาทิตย์'
+    };
+
+    function parseMinutes(timeVal) {
+        if (!timeVal) return 0;
+        if (typeof timeVal === 'string') {
+            const parts = timeVal.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || '0', 10);
+        }
+        if (Array.isArray(timeVal)) {
+            return (timeVal[0] || 0) * 60 + (timeVal[1] || 0);
+        }
+        if (typeof timeVal === 'object') {
+            return (timeVal.hour || 0) * 60 + (timeVal.minute || 0);
+        }
+        return 0;
+    }
+
+    function formatTimeStr(timeVal) {
+        if (!timeVal) return '--:--';
+        if (typeof timeVal === 'string') return timeVal.substring(0, 5);
+        if (Array.isArray(timeVal)) {
+            const h = String(timeVal[0] || 0).padStart(2, '0');
+            const m = String(timeVal[1] || 0).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+        if (typeof timeVal === 'object') {
+            const h = String(timeVal.hour || 0).padStart(2, '0');
+            const m = String(timeVal.minute || 0).padStart(2, '0');
+            return `${h}:${m}`;
+        }
+        return '--:--';
+    }
+
+    function mergeConsecutiveSchedules(schedules) {
+        if (!schedules || schedules.length <= 1) return schedules || [];
+
+        const groups = new Map();
+        schedules.forEach(s => {
+            const day = (s.dayOfWeek || '').toUpperCase().trim();
+            const sec = s.sectionId || ('sec-' + (s.courseCode || '') + '-' + (s.sectionNumber || ''));
+            const room = s.roomId || s.roomName || '';
+            const status = s.status || '';
+            const key = `${day}|${sec}|${room}|${status}`;
+
+            if (!groups.has(key)) {
+                groups.set(key, []);
+            }
+            groups.get(key).push(s);
+        });
+
+        const mergedResults = [];
+
+        groups.forEach(itemsInGroup => {
+            itemsInGroup.sort((a, b) => parseMinutes(a.startTime) - parseMinutes(b.startTime));
+
+            let currentMerged = null;
+
+            itemsInGroup.forEach(item => {
+                if (!currentMerged) {
+                    currentMerged = { ...item };
+                    if (!currentMerged.mergedIds) {
+                        currentMerged.mergedIds = [currentMerged.id];
+                    }
+                } else {
+                    const currentEndMinutes = parseMinutes(currentMerged.endTime);
+                    const nextStartMinutes = parseMinutes(item.startTime);
+
+                    if (currentEndMinutes === nextStartMinutes) {
+                        currentMerged.endTime = item.endTime;
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                        currentMerged.mergedIds.push(item.id);
+                    } else {
+                        mergedResults.push(currentMerged);
+                        currentMerged = { ...item };
+                        if (!currentMerged.mergedIds) {
+                            currentMerged.mergedIds = [currentMerged.id];
+                        }
+                    }
+                }
+            });
+
+            if (currentMerged) {
+                mergedResults.push(currentMerged);
+            }
+        });
+
+        mergedResults.sort((a, b) => {
+            const dayKeyA = String(a.dayOfWeek || '').toUpperCase();
+            const dayKeyB = String(b.dayOfWeek || '').toUpperCase();
+            const dayA = DAY_ORDER[dayKeyA] || 1;
+            const dayB = DAY_ORDER[dayKeyB] || 1;
+            if (dayA !== dayB) return dayA - dayB;
+            return parseMinutes(a.startTime) - parseMinutes(b.startTime);
+        });
+
+        return mergedResults;
+    }
+
+    function findUpcomingClass(schedules) {
+        if (!schedules || schedules.length === 0) return null;
+
+        const now = new Date();
+        const currentDayNum = now.getDay() === 0 ? 7 : now.getDay();
+        const currentMinutes = now.getHours() * 60 + now.getMinutes();
+
+        const candidates = schedules.map(s => {
+            const dStr = (s.dayOfWeek || '').toUpperCase().trim();
+            const dayNum = DAY_ORDER[dStr] || 1;
+            const startMin = parseMinutes(s.startTime);
+            const endMin = parseMinutes(s.endTime) || (startMin + 180);
+
+            let diffMinutes;
+            let isToday = (dayNum === currentDayNum);
+            let isOngoing = false;
+
+            if (isToday) {
+                if (currentMinutes >= startMin && currentMinutes < endMin) {
+                    diffMinutes = 0;
+                    isOngoing = true;
+                } else if (startMin > currentMinutes) {
+                    diffMinutes = startMin - currentMinutes;
+                } else {
+                    diffMinutes = (7 * 24 * 60) + (startMin - currentMinutes);
+                }
+            } else if (dayNum > currentDayNum) {
+                diffMinutes = ((dayNum - currentDayNum) * 24 * 60) + (startMin - currentMinutes);
+            } else {
+                diffMinutes = ((7 + dayNum - currentDayNum) * 24 * 60) + (startMin - currentMinutes);
+            }
+
+            return {
+                schedule: s,
+                dayNum,
+                startMin,
+                endMin,
+                diffMinutes,
+                isToday,
+                isOngoing
+            };
+        });
+
+        candidates.sort((a, b) => a.diffMinutes - b.diffMinutes);
+        return candidates[0];
+    }
+
+    function renderUpcomingClass(schedules) {
+        const container = document.getElementById('upcoming-class-container');
+        if (!container) return;
+
+        const cand = findUpcomingClass(schedules);
+        if (!cand) {
+            container.innerHTML = `
+                <div class="card" style="padding:18px 22px; background:var(--surface); border:1px solid var(--border-subtle); border-left:5px solid var(--slate-neutral); border-radius:8px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:14px;">
+                    <div>
+                        <div style="font-size:0.8rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--slate-neutral); margin-bottom:4px;">
+                            🎯 คาบเรียนถัดไปที่กำลังจะมาถึง (Next Upcoming Class)
+                        </div>
+                        <div style="font-size:1.02rem; font-weight:600; color:var(--ink-navy);">
+                            ยังไม่มีคาบสอนที่มอบหมายในภาคการศึกษานี้
+                        </div>
+                        <div class="muted" style="font-size:0.85rem; margin-top:2px;">
+                            เมื่อฝ่ายวิชาการทำการเผยแพร่ตารางสอน (PUBLISHED) ตารางคาบสอนถัดไปของท่านจะปรากฏที่นี่ทันที
+                        </div>
+                    </div>
+                    <div>
+                        <a href="/teacher/timetable" class="btn btn--secondary btn--sm">เปิดดูผังตารางรวม →</a>
+                    </div>
+                </div>
+            `;
+            return;
+        }
+
+        const s = cand.schedule;
+        const now = new Date();
+        const currentDayNum = now.getDay() === 0 ? 7 : now.getDay();
+        const dayLabel = DAY_THAI[cand.dayNum] || s.dayOfWeek;
+        const timeStr = `${formatTimeStr(s.startTime)} - ${formatTimeStr(s.endTime)} น.`;
+
+        let timingBadge = '';
+        if (cand.isOngoing) {
+            timingBadge = '<span class="badge badge--ok" style="font-weight:700; background:#dcfce7; color:#15803d; border:1px solid #86efac;">🟢 กำลังทำการเรียนการสอนในขณะนี้</span>';
+        } else if (cand.isToday) {
+            const h = Math.floor(cand.diffMinutes / 60);
+            const m = cand.diffMinutes % 60;
+            const untilText = h > 0 ? `อีก ${h} ชม. ${m} นาที` : `อีก ${m} นาที`;
+            timingBadge = `<span class="badge" style="background:#fef3c7; color:#b45309; border:1px solid #fde68a; font-weight:700;">⚡ วันนี้ (${untilText})</span>`;
+        } else {
+            const days = (cand.dayNum >= currentDayNum) ? (cand.dayNum - currentDayNum) : (7 + cand.dayNum - currentDayNum);
+            const relativeDay = days === 1 ? 'พรุ่งนี้' : `อีก ${days} วัน`;
+            timingBadge = `<span class="badge badge--neutral" style="font-weight:600;">📅 ${relativeDay}</span>`;
+        }
+
+        container.innerHTML = `
+            <div class="card" style="padding:22px 24px; background:linear-gradient(135deg, rgba(11,118,110,0.06) 0%, rgba(248,250,252,0.95) 100%); border:1px solid #ccfbf1; border-left:6px solid var(--teal-primary); border-radius:10px; display:flex; justify-content:space-between; align-items:center; flex-wrap:wrap; gap:18px;">
+                <div>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+                        <span style="font-size:0.82rem; font-weight:700; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary); display:flex; align-items:center; gap:5px;">
+                            🎯 คาบเรียนถัดไปที่กำลังจะมาถึง (Next Upcoming Class)
+                        </span>
+                        ${timingBadge}
+                    </div>
+                    <div style="display:flex; align-items:center; gap:10px; margin-bottom:6px; flex-wrap:wrap;">
+                        <span class="mono" style="font-size:1.35rem; font-weight:700; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || 'วิชา')}</span>
+                        <span style="font-size:1.15rem; font-weight:600; color:var(--ink-navy);">${ui.escapeHtml(s.courseTitle || '')}</span>
+                        <span style="font-size:0.82rem; font-weight:600; color:var(--teal-primary); background:#e6fffa; border:1px solid #b2f5ea; padding:2px 8px; border-radius:4px;">
+                            กลุ่ม ${s.sectionNumber || 1}
+                        </span>
+                    </div>
+                    <div style="display:flex; align-items:center; flex-wrap:wrap; gap:18px; margin-top:8px; font-size:0.92rem; color:var(--slate-neutral);">
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>🕒</span>
+                            <strong style="color:var(--ink-navy);">${dayLabel} เวลา ${timeStr}</strong>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>📍</span>
+                            <span>ห้องเรียน: <strong style="color:var(--ink-navy);">${ui.escapeHtml(s.roomName || 'TBA')}</strong></span>
+                        </div>
+                        <div style="display:flex; align-items:center; gap:6px;">
+                            <span>🏷️</span>
+                            <span class="mono muted" style="font-size:0.8rem;">ID: #${s.id}</span>
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; gap:10px; align-items:center;">
+                    <a href="/teacher/swaps" class="btn btn--secondary btn--sm">
+                        ⇄ ขอแลกคาบนี้
+                    </a>
+                    <a href="/teacher/timetable" class="btn btn--primary" style="font-size:0.88rem;">
+                        เปิดผังตารางสอน ↗
+                    </a>
+                </div>
+            </div>
+        `;
+    }
+
+    async function loadDashboardData() {
+        const list = document.getElementById('schedule-list');
+        ui.renderLoading(list, 2);
+
+        try {
+            // Load my teaching schedules
+            const schedRes = await api.get('/api/v1/teacher-swaps/my-schedules');
+            if (schedRes.ok) {
+                const rawSchedules = Array.isArray(schedRes.data) ? schedRes.data : (schedRes.data.content || []);
+                const schedules = mergeConsecutiveSchedules(rawSchedules);
+                document.getElementById('stat-schedule-count').textContent = schedules.length;
+
+                renderUpcomingClass(schedules);
+
+                if (schedules.length === 0) {
+                    ui.renderEmpty(list, 'ยังไม่มีคาบสอนที่มอบหมายให้ท่านในภาคการศึกษานี้');
+                } else {
+                    list.innerHTML = '';
+                    schedules.forEach(s => {
+                        const card = document.createElement('div');
+                        card.style.padding = '16px 20px';
+                        card.style.background = 'var(--surface)';
+                        card.style.border = '1px solid var(--border-subtle)';
+                        card.style.borderLeft = '4px solid var(--teal-primary)';
+                        card.style.borderRadius = '8px';
+                        card.style.display = 'flex';
+                        card.style.justifyContent = 'space-between';
+                        card.style.alignItems = 'center';
+                        card.style.flexWrap = 'wrap';
+                        card.style.gap = '14px';
+
+                        const timeStr = `${s.dayOfWeek || ''} ${formatTimeStr(s.startTime)}-${formatTimeStr(s.endTime)}`;
+
+                        card.innerHTML = `
+                            <div>
+                                <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                                    <span class="mono" style="font-weight:700; font-size:1.05rem; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || 'วิชา')}</span>
+                                    <span style="font-size:0.85rem; font-weight:600; color:var(--slate-neutral); background:var(--bg-canvas); padding:2px 8px; border-radius:4px; border:1px solid var(--border-subtle);">
+                                        กลุ่ม ${s.sectionNumber || 1}
+                                    </span>
+                                    ${ui.badge(s.status || 'PUBLISHED')}
+                                    <span class="muted mono" style="font-size:0.75rem;">ID: #${s.id}</span>
+                                </div>
+                                <div style="font-size:0.95rem; font-weight:500; color:var(--ink-navy); margin-bottom:4px;">
+                                    ${ui.escapeHtml(s.courseTitle || '')}
+                                </div>
+                                <div class="muted" style="font-size:0.85rem;">
+                                    <span>🕒 ${timeStr}</span>
+                                    <span style="margin-left:12px;">📍 ${ui.escapeHtml(s.roomName || 'TBA')}</span>
+                                </div>
+                            </div>
+                            <div>
+                                <a href="/teacher/swaps" class="btn btn--secondary btn--sm">
+                                    ⇄ ขอแลกคาบนี้
+                                </a>
+                            </div>
+                        `;
+                        list.appendChild(card);
+                    });
+                }
+            } else {
+                ui.renderError(list, schedRes.error);
+                renderUpcomingClass([]);
+            }
+
+            // Load swap counts
+            const swapRes = await api.get('/api/v1/teacher-swaps');
+            if (swapRes.ok) {
+                const inbox = swapRes.data || { sent: [], received: [] };
+                const pendingCount = (inbox.received || []).filter(r => r.status === 'PENDING').length;
+                document.getElementById('stat-swap-count').textContent = pendingCount;
+            }
+
+            // Load unread notifs
+            const notifRes = await api.get('/api/v1/notifications');
+            if (notifRes.ok) {
+                const notifs = Array.isArray(notifRes.data) ? notifRes.data : (notifRes.data.content || []);
+                const unread = notifs.filter(n => !n.isRead).length;
+                document.getElementById('stat-unread-count').textContent = unread;
+            }
+        } catch (e) {
+            ui.renderEmpty(list, 'ไม่สามารถเชื่อมต่อข้อมูลได้ในขณะนี้');
+            renderUpcomingClass([]);
+        }
+    }
+
+    loadDashboardData();
+</script>
+</body>
+</html>

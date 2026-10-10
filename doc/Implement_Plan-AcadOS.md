@@ -6,7 +6,7 @@
 
 > “ทำระบบที่มี Core Feature จริง + โครงสร้าง Software Design ครบตาม Rubric + Test + Git + Deploy”
 
-เอกสารฉบับนี้เป็นการจัดเรียงและปรับปรุงข้อกำหนดทางเทคนิคและสถาปัตยกรรมระบบสำหรับ **AcadOS Version 4 (v4)** โดยผสานรวมเนื้อหาเดิมทั้งหมด รักษาข้อมูลที่ถูกต้องครบถ้วน 100% (No Information Loss) แก้ไขจุดขัดแย้งตามมติที่ได้รับการยืนยันอย่างเป็นทางการ ปรับให้สอดคล้องกับเกณฑ์ข้อกำหนดของรายวิชา CP353002 (Spring Boot) และระบุส่วนที่ยังรอการกำหนดรายละเอียดในอนาคตเป็น **TBA** อย่างเคร่งครัด (ห้ามแต่งข้อมูลขึ้นเอง)
+เอกสารฉบับนี้เป็นการจัดเรียงและปรับปรุงข้อกำหนดทางเทคนิคและสถาปัตยกรรมระบบสำหรับ **AcadOS** โดยผสานรวมเนื้อหาเดิมทั้งหมด รักษาข้อมูลที่ถูกต้องครบถ้วน 100% (No Information Loss) แก้ไขจุดขัดแย้งตามมติที่ได้รับการยืนยันอย่างเป็นทางการ ปรับให้สอดคล้องกับเกณฑ์ข้อกำหนดของรายวิชา CP353002 (Spring Boot) และระบุส่วนที่ยังรอการกำหนดรายละเอียดในอนาคตเป็น **TBA** อย่างเคร่งครัด (ห้ามแต่งข้อมูลขึ้นเอง)
 
 ---
 
@@ -27,12 +27,12 @@
   - [สารบัญ (Table of Contents)](#สารบัญ-table-of-contents)
   - [1. Project Overview \& Identity](#1-project-overview--identity)
     - [1.1 Project Identity](#11-project-identity)
-    - [1.2 Version 4 Objective](#12-version-4-objective)
+    - [1.2 Project Objectives](#12-project-objectives)
     - [1.3 Core Architecture Direction](#13-core-architecture-direction)
   - [2. Development Principles](#2-development-principles)
     - [2.1 Feature Complete, Complexity Limited](#21-feature-complete-complexity-limited)
     - [2.2 Core First](#22-core-first)
-  - [3. Frozen Implementation Scope (v4)](#3-frozen-implementation-scope-v4)
+  - [3. Frozen Implementation Scope](#3-frozen-implementation-scope)
   - [4. Technology Stack](#4-technology-stack)
   - [5. System Architecture \& Layering Rules](#5-system-architecture--layering-rules)
     - [5.1 Layering Rules (กฎเหล็กห้ามละเมิด)](#51-layering-rules-กฎเหล็กห้ามละเมิด)
@@ -63,8 +63,9 @@
   - [15. Authentication, Authorization \& Security](#15-authentication-authorization--security)
     - [15.1 Architecture Decisions (Security)](#151-architecture-decisions-security)
     - [15.2 Role Matrix](#152-role-matrix)
-    - [15.3 สิ่งที่ไม่ทำใน v4 (Out of Scope for Rapid Delivery)](#153-สิ่งที่ไม่ทำใน-v4-out-of-scope-for-rapid-delivery)
-  - [16. RESTful API Specification ยังไม่เสร็จสามารถเพิ่มเติมได้](#16-restful-api-specification-ยังไม่เสร็จสามารถเพิ่มเติมได้)
+    - [15.3 สิ่งที่ไม่ทำใน Scope ปัจจุบัน (Out of Scope for Rapid Delivery)](#153-สิ่งที่ไม่ทำใน-scope-ปัจจุบัน-out-of-scope-for-rapid-delivery)
+  - [16. RESTful API Specification](#16-restful-api-specification)
+    - [16.1 Standard Error Response Contract (ErrorResponse)](#161-standard-error-response-contract-errorresponse)
   - [17. Software Design Patterns](#17-software-design-patterns)
     - [17.1 Enterprise \& Architectural Patterns](#171-enterprise--architectural-patterns)
     - [17.2 Gang of Four (GoF) Patterns ที่ใช้งานจริง](#172-gang-of-four-gof-patterns-ที่ใช้งานจริง)
@@ -72,6 +73,8 @@
   - [19. Testing Plan \& Quality Assurance](#19-testing-plan--quality-assurance)
     - [19.1 Unit Testing](#191-unit-testing)
     - [19.2 Integration Testing](#192-integration-testing)
+    - [19.3 Code Coverage Measurement \& Verification (JaCoCo)](#193-code-coverage-measurement--verification-jacoco)
+      - [1. เหตุผลทางวิศวกรรมซอฟต์แวร์ที่ต้องใช้ JaCoCo (Rationale for Choosing JaCoCo)](#1-เหตุผลทางวิศวกรรมซอฟต์แวร์ที่ต้องใช้-jacoco-rationale-for-choosing-jacoco)
   - [20. Required Diagrams Specification](#20-required-diagrams-specification)
   - [21. Repository Structure \& Git Workflow](#21-repository-structure--git-workflow)
     - [21.1 โครงสร้างโฟลเดอร์ของ Repository](#211-โครงสร้างโฟลเดอร์ของ-repository)
@@ -79,8 +82,15 @@
   - [22. Commit Plan \& Four-Day Execution Plan](#22-commit-plan--four-day-execution-plan)
     - [22.1 Commit Breakdown สำหรับสมาชิกทั้ง 3 คน](#221-commit-breakdown-สำหรับสมาชิกทั้ง-3-คน)
     - [22.2 แผนการดำเนินงาน 4 วัน (Four-Day Execution Plan)](#222-แผนการดำเนินงาน-4-วัน-four-day-execution-plan)
-  - [23. Deployment Checklist \& Demo Scenarios](#23-deployment-checklist--demo-scenarios)
-    - [23.1 Deployment Checklist](#231-deployment-checklist)
+  - [23. Deployment Architecture, Checklist \& Demo Scenarios](#23-deployment-architecture-checklist--demo-scenarios)
+    - [23.1 Cloud Production Deployment Environment \& Container Architecture (ตรงตาม Implementation จริง)](#231-cloud-production-deployment-environment--container-architecture-ตรงตาม-implementation-จริง)
+      - [1. ข้อกำหนดสภาพแวดล้อม Cloud Server (Host Specifications)](#1-ข้อกำหนดสภาพแวดล้อม-cloud-server-host-specifications)
+      - [2. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)](#2-โครงสร้างคอนเทนเนอร์ใน-docker-compose-3-services-architecture)
+      - [3. รายละเอียด Multi-Stage Dockerfile (`code/acados/Dockerfile`)](#3-รายละเอียด-multi-stage-dockerfile-codeacadosdockerfile)
+      - [4. กลไกความทนทานและการคงอยู่ของข้อมูล (Data Persistence \& Healthcheck)](#4-กลไกความทนทานและการคงอยู่ของข้อมูล-data-persistence--healthcheck)
+      - [5. สรุป Service Endpoints บน Cloud Production Host (`http://<SERVER_PUBLIC_IP>`)](#5-สรุป-service-endpoints-บน-cloud-production-host-httpserver_public_ip)
+      - [6. คำสั่งในการ Deploy และจัดการบน Production Server](#6-คำสั่งในการ-deploy-และจัดการบน-production-server)
+    - [23.2 Deployment Checklist](#232-deployment-checklist)
     - [23.2 Final Demo Scenarios](#232-final-demo-scenarios)
   - [24. Final Project Definition \& Definition of Done](#24-final-project-definition--definition-of-done)
     - [24.1 Definition of Done (DoD)](#241-definition-of-done-dod)
@@ -100,13 +110,13 @@
 | :--- | :--- |
 | **ชื่อระบบ** | AcadOS |
 | **ชื่อเต็ม** | Automated Proctor Scheduling and Academic Operations System |
-| **Version** | v4 |
+| **Version** | 1.0.0 (Production) |
 | **Project Status** | Implementation / Rapid Development |
 | **Development Time** | 4 Days |
 | **Team Size** | 3 คน |
 
-### 1.2 Version 4 Objective
-AcadOS v4 เป็นเวอร์ชันสำหรับการพัฒนาและส่งมอบระบบที่สามารถใช้งานได้จริงภายในระยะเวลาจำกัด โดยเน้นให้ Core System ทำงานครบวงจรตั้งแต่ Authentication จนถึง Deployment:
+### 1.2 Project Objectives
+AcadOS เป็นระบบสำหรับการพัฒนาและส่งมอบระบบที่สามารถใช้งานได้จริงภายในระยะเวลาจำกัด โดยเน้นให้ Core System ทำงานครบวงจรตั้งแต่ Authentication จนถึง Deployment:
 
 $$\text{Login} \longrightarrow \text{Database} \longrightarrow \text{REST API} \longrightarrow \text{Business Logic} \longrightarrow \text{Scheduling} \longrightarrow \text{Frontend} \longrightarrow \text{Testing} \longrightarrow \text{Deployment}$$
 
@@ -133,9 +143,9 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 
 ---
 
-## 3. Frozen Implementation Scope (v4)
+## 3. Frozen Implementation Scope
 
-| Feature | v4 Scope | ระดับความสำคัญ |
+| Feature | Implementation Scope | ระดับความสำคัญ |
 | :--- | :--- | :---: |
 | **Student Registration** | ลงทะเบียน / ถอน + ตรวจสอบ Registration Period + Schedule Conflict + Room/Section Capacity | **MUST** |
 | **Notification** | In-app Notification แจ้งเตือนสถานะต่างๆ ภายในระบบ | **MUST** |
@@ -163,17 +173,17 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 | **Backend Framework**| Spring Boot 3.3.4 (หรือ 3.3.x) | Web, Data JPA, Security, Validation, Actuator, DevTools |
 | **Build Tool** | Apache Maven 3.9+ | จัดการ Dependency, Plugins และ Lifecycle การ Build |
 | **Database** | MySQL 8.x | ฐานข้อมูลเชิงสัมพันธ์หลักสำหรับระบบ |
-| **Database Migration**| JPA `ddl-auto=update` + SQL Scripts | ควบคู่กับ `schema.sql` และ `data.sql` ในไดเรกทอรี `code/` (รายละเอียด script = TBA) |
+| **Database Migration**| JPA `ddl-auto=update` + SQL Scripts | ควบคู่กับ `data.sql` (Initial Mock/Demo Data) จัดเรียงตาม Topological Order และ Hash รหัสผ่านด้วย BCrypt ครบทั้ง 4 Demo Scenarios |
 | **ORM / Persistence** | Spring Data JPA / Hibernate | เชื่อมต่อฐานข้อมูลผ่าน Repository Pattern |
 | **Security** | Spring Security + JWT | จัดการ Stateless Authentication และ Role-based Access Control |
 | **Validation** | Jakarta Bean Validation | Hibernate Validator (`@NotNull`, `@Size`, `@Email` ฯลฯ) |
 | **API Documentation** | Springdoc OpenAPI (Swagger UI) | สเปก OpenAPI v3 เข้าถึงผ่าน `/swagger-ui.html` |
 | **Frontend** | Thymeleaf + HTML5 / CSS3 / JS | เรนเดอร์ฝั่ง Server เรียกใช้งานผ่าน Web Controller และ REST API |
-| **Testing** | JUnit 5 + Mockito + Spring Boot Test | ทดสอบ Unit Test, Service Mocking, Integration Testing และ Testcontainers |
-| **Containerization** | Docker & Docker Compose | ทำ Container สำหรับแอปพลิเคชันและฐานข้อมูล MySQL พร้อม Persistent Volume |
-| **Deployment** | Cloud / Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose (acados-app Port 8080, acados-db Port 3306), เข้าถึงตรง Port 8080 (No Nginx), กำหนด Persistent Volume สำหรับ MySQL |
+| **Testing & Code Coverage** | JUnit 5 + Mockito + Spring Boot Test + JaCoCo | ทดสอบ Unit Test, Service Mocking, Integration Testing และวัดผล Code Coverage (Line & Branch) ด้วย JaCoCo 0.8.12 |
+| **Containerization** | Docker & Docker Compose (Multi-Container) | รองรับ 3 คอนเทนเนอร์: `acados-app` (Spring Boot 3.3.4 บน Eclipse Temurin 21 JRE), `acados-db` (MySQL 8.4 LTS), และ `acados-phpmyadmin` พร้อม Docker Persistent Volume `mysql_data` |
+| **Deployment** | Cloud Host Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose บน Linux VPS เข้าถึงโดยตรง Port 8080 (No Nginx), phpMyAdmin Port 8081, ฐานข้อมูลภายใน Port 3306 พร้อม Healthcheck `mysqladmin ping` และ Auto-restart policy |
 | **Email Service** | Mailtrap (mailtrap.io) Sandbox SMTP | บริการ Sandbox SMTP ทดสอบส่งอีเมลผ่าน `spring-boot-starter-mail` (Host: `sandbox.smtp.mailtrap.io`, Port 587) ตรวจสอบผลบน Web Inbox ตอน Demo ได้ทันที |
-| **External Holiday API** | Nager.Date Public Holiday API | บริการดึงข้อมูลวันหยุดราชการไทยฟรีแบบไม่ต้องมี API Key ผ่าน `https://date.nager.at/api/v3/publicholidays/{year}/TH` |
+| **External Holiday API** | ThailandFormats Public Holiday API | บริการดึงข้อมูลวันหยุดราชการไทยฟรีแบบไม่ต้องมี API Key ผ่าน `https://thailandformats.com/api/v1/holidays/{year}` |
 
 ---
 
@@ -306,8 +316,9 @@ Course ──── Section ──── Schedule ──┬── Teacher
 │   ├── NotificationService.java
 │   ├── HolidayService.java
 │   ├── UserService.java                          # ใหม่: Account
-│   ├── SectionService.java                       # ใหม่: Section CRUD
-│   ├── TeacherAssignmentService.java             # ใหม่: Assign Teacher
+│   ├── SectionService.java                       # ใหม่: Section CRUD & Assign Teacher (A13)
+│   ├── TeacherPreferenceService.java             # ใหม่: Teacher Preferences & Availabilities (D21, D22)
+│   ├── TeacherSwapQueryService.java              # ใหม่: Swap Query CQRS
 │   └── AcademicEventService.java                 # ใหม่
 ├── repository/                   # Spring Data JPA Repositories
 │   ├── UserRepository.java
@@ -467,7 +478,7 @@ contain in doc/diagram
 | **`NotificationStrategy`** | `send()` | อินเทอร์เฟซสำหรับช่องทางการส่งการแจ้งเตือน (In-App และ Email) |
 | **`HolidayProvider`** | `fetchHolidays()` | อินเทอร์เฟซรับข้อมูลวันหยุดจากแหล่งข้อมูลภายนอก |
 | **`ExternalHolidayAdapter`** | `fetchHolidays()` | อะแดปเตอร์เชื่อมต่อไปยัง External Public Holiday API |
-| **`GlobalExceptionHandler`** | `handleException()` | ดักจับ Exception ส่วนกลางและแปลงเป็น HTTP Response ตามมาตรฐาน |
+| **`GlobalExceptionHandler`** | `handleBusinessRuleException()`, `handleResourceNotFoundException()`, `handleResponseStatusException()`, `handleValidationException()`, `handleAccessDeniedException()`, `handleBadCredentialsException()`, `handleIllegalArgumentException()`, `handleGenericException()` | ดักจับ Exception ส่วนกลางของ REST API Controllers และแปลงเป็น `ErrorResponse` DTO ตามมาตรฐาน HTTP Status Codes |
 
 ---
 
@@ -585,9 +596,9 @@ $$\text{Admin Cancel Section} \longrightarrow \text{Update Section State (ACTIVE
 ### 14.7 Academic Calendar & Public Holiday Integration
 - **Academic Calendar:** รองรับ CRUD ผ่าน REST API (Semester Start, Semester End, Registration Period, Midterm Exam, Final Exam)
 - **Public Holiday API Flow:**
-$$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
+$$\text{External Holiday API (ThailandFormats)} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
 *(ระบบไม่เรียก External API ทุกครั้งที่เปิดหน้า Timetable เพื่อป้องกัน Latency และปัญหา API Limit)*
-- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **Nager.Date Public Holiday API** (`https://date.nager.at/api/v3/publicholidays/{year}/TH`) ซึ่งเป็น Open REST API ฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token และได้ผลลัพธ์เป็น JSON วันหยุดประจำปีของไทยทันที ดึงข้อมูลผ่าน Spring `RestClient` / `RestTemplate` ภายใน Adapter
+- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **ThailandFormats Public Holiday API** (`https://thailandformats.com/api/v1/holidays/{year}`) ซึ่งเป็น Open REST API สำหรับข้อมูลมาตรฐานวันหยุดราชการไทยและวันสำคัญทางพระพุทธศาสนาโดยเฉพาะ ให้บริการฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token ดึงข้อมูลผ่าน Spring `RestClient` ภายใน `ExternalHolidayAdapter` พร้อมระบบขยายช่วงวันหยุดหลายวัน (Multi-day Range Expansion เช่น วันสงกรานต์ 13-15 เม.ย.) โดยดึงข้อมูลสดจาก API ทั้งหมด หากการเชื่อมต่อล้มเหลวหรือไม่สามารถดึงข้อมูลได้ ระบบจะส่งข้อผิดพลาด (502 Bad Gateway) ทันทีโดยไม่มีการใช้ข้อมูล Hardcoded Fallback
 
 ---
 
@@ -609,7 +620,7 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 | **`TEACHER`** | `SCHEDULE_VIEW`, `SWAP_REQUEST`, `SWAP_RESPOND`, `AVAILABILITY_MANAGE` , `SWAP_CANCEL`|
 | **`STUDENT`** | `COURSE_VIEW`, `REGISTRATION_MANAGE`, `SCHEDULE_VIEW` |
 
-### 15.3 สิ่งที่ไม่ทำใน v4 (Out of Scope for Rapid Delivery)
+### 15.3 สิ่งที่ไม่ทำใน Scope ปัจจุบัน (Out of Scope for Rapid Delivery)
 - Refresh Token Rotation
 - OAuth2 / Social Login (Google, Microsoft)
 - Two-Factor Authentication (2FA)
@@ -619,7 +630,7 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 
 ---
 
-## 16. RESTful API Specification ยังไม่เสร็จสามารถเพิ่มเติมได้
+## 16. RESTful API Specification
 
 ทุก Endpoint สื่อสารด้วย JSON และแยก **DTO 100%** (Request / Response) ออกจาก Entity:
 
@@ -704,14 +715,54 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 | Method | Endpoint | คำอธิบาย | สิทธิ์ผู้ใช้ |
 | :---: | :--- | :--- | :---: |
 | `GET` | `/api/v1/holidays` | ดึงวันหยุดที่บันทึกไว้ในฐานข้อมูล | Authenticated |
+| `POST` | `/api/v1/holidays/sync` | สั่ง Sync วันหยุดราชการจาก ThailandFormats API ลงฐานข้อมูล (Admin Extension เพื่อการทดสอบและการ Demo สด) | ADMIN |
 
-*(ไม่มี Endpoint สั่ง Sync: ระบบดึงจาก External API เองเดือนละครั้ง)*
+*(ระบบรองรับ `POST /api/v1/holidays/sync` สำหรับ ADMIN ในการ Trigger ทดสอบ และสามารถดึงจาก External API อัตโนมัติในเบื้องหลังได้)*
 
 **Registration (ดูรายการ)**
 
 | Method | Endpoint | คำอธิบาย | สิทธิ์ผู้ใช้ |
 | :---: | :--- | :--- | :---: |
 | `GET` | `/api/v1/registrations` | STUDENT: ดูการลงทะเบียนของตนเอง / ADMIN: ดูทั้งหมด (กรองด้วย `?sectionId=`) | STUDENT, ADMIN |
+
+### 16.1 Standard Error Response Contract (ErrorResponse)
+
+ทุก REST API Endpoint ในกรณีที่เกิดข้อผิดพลาด จะส่งกลับข้อมูลรูปแบบ JSON โดยใช้ DTO `ErrorResponse` จัดการผ่าน `GlobalExceptionHandler` (`@RestControllerAdvice`):
+
+```json
+{
+  "timestamp": "2026-10-10T12:00:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "BR-03: เวลาเรียนชนกับ Section ที่ลงทะเบียนไว้แล้ว",
+  "path": "/api/v1/registrations",
+  "details": ["courseCode: must not be blank"]
+}
+```
+
+**ตารางแจกแจงโครงสร้างฟิลด์ของ ErrorResponse:**
+
+| Field | ชนิดข้อมูล | คำอธิบาย | เงื่อนไขการแสดงผล |
+| :--- | :--- | :--- | :--- |
+| `timestamp` | `LocalDateTime` (ISO-8601) | วันและเวลาที่เกิดข้อผิดพลาด | มีเสมอ |
+| `status` | `int` | รหัสสถานะ HTTP Status Code (เช่น 400, 401, 403, 404, 409, 500) | มีเสมอ |
+| `error` | `String` | ข้อความมาตรฐานของ HTTP Status (เช่น "Bad Request", "Not Found") | มีเสมอ |
+| `message` | `String` | ข้อความอธิบายสาเหตุของข้อผิดพลาด หรือระบุข้อบังคับทางธุรกิจ (BR-xx) | มีเสมอ |
+| `path` | `String` | Request URI ที่ส่งคำขอเข้ามา (เช่น `/api/v1/registrations`) | มีเสมอ |
+| `details` | `List<String>` | รายการข้อผิดพลาดระดับ Field (สำหรับการตรวจทาน `@Valid` ล้มเหลว) | แสดงเฉพาะกรณีเกิด Field Validation Error |
+
+**ตารางการจับคู่ Exception กับ HTTP Status:**
+
+| Exception Type | HTTP Status | คำอธิบาย |
+| :--- | :---: | :--- |
+| `BusinessRuleException` | **400 Bad Request** | ละเมิดกฎธุรกิจ (BR-01 ถึง BR-11) เช่น ตารางชน, ซ้ำซ้อน, ความจุเกิน |
+| `ResourceNotFoundException` | **404 Not Found** | ไม่พบข้อมูลที่ต้องการในระบบ |
+| `ResponseStatusException` | **Dynamic Status** | ข้อผิดพลาดที่กำหนด HttpStatus ชัดเจนจาก Spring Web |
+| `MethodArgumentNotValidException` | **400 Bad Request** | ข้อมูล Input ไม่ผ่าน Jakarta Bean Validation (`@Valid`) มีฟิลด์ `details` |
+| `AccessDeniedException` | **403 Forbidden** | ผู้ใช้ไม่มีสิทธิ์เข้าถึง Endpoint ตาม `@PreAuthorize` |
+| `BadCredentialsException` | **401 Unauthorized** | ล็อกอินไม่สำเร็จ รหัสผ่านหรือ University ID ไม่ถูกต้อง |
+| `IllegalArgumentException` | **400 Bad Request** | พารามิเตอร์ที่ส่งเข้ามาไม่ถูกต้องตามเงื่อนไข |
+| `Exception` (Fallback) | **500 Internal Server Error** | ข้อผิดพลาดภายในระบบที่ไม่คาดคิด (บันทึก Log และซ่อน Stack trace) |
 
 ---
 
@@ -727,14 +778,19 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 
 ### 17.2 Gang of Four (GoF) Patterns ที่ใช้งานจริง
 1. **Strategy Pattern:**
-   - **Scheduling Scoring:** คำนวณคะแนนตาราง (`PreferenceScoreStrategy`, `WorkloadScoreStrategy`)
+   - **Scheduling Scoring:** คำนวณคะแนนตาราง (`PreferenceScoreStrategy`, `WorkloadScoreStrategy`, `RoomSuitabilityScoreStrategy`)
    - **Notification Channels:** แยกช่องทางแจ้งเตือน (`InAppNotificationStrategy`, `EmailNotificationStrategy`)
 2. **Observer Pattern:**
-   - เมื่อตาราง Schedule มีการเปลี่ยนแปลง `ScheduleChangePublisher` จะแจ้งเตือนไปยัง `NotificationService`
+   - เมื่อตาราง Schedule มีการเปลี่ยนแปลง `ScheduleChangePublisher` จะแจ้งเตือนไปยัง Observer (`NotificationService`)
 3. **State Pattern:**
    - ควบคุมพฤติกรรมและการยกเลิกของ Section ผ่าน `ActiveSectionState` และ `CancelledSectionState`
 4. **Adapter Pattern:**
    - เชื่อมต่อและแปลงสเปกของ External Public Holiday API ผ่าน `ExternalHolidayAdapter` เพื่อให้อยู่ในโครงสร้าง `HolidayProvider`
+5. **Creational Patterns (Builder, Singleton, Factory Method):**
+   - Lombok `@Builder` บน Entity, Spring IoC Beans Singleton, และ Static Factory / MapStruct DTO Mappers
+
+> [!NOTE]
+> รายละเอียดเชิงลึก ตารางแค็ตตาล็อก ปัญหาที่แก้ ซอร์สโค้ด Class Diagrams และชุด Unit Tests ตรวจสอบของ GoF Patterns ทั้ง 8 รูปแบบ ถูกจัดทำไว้ในเอกสาร [`doc/design-patterns.md`](design-patterns.md) ตามข้อกำหนดใน [`doc/prof_ruleset.md`](prof_ruleset.md) §5.2 เรียบร้อยแล้ว
 
 ---
 
@@ -776,6 +832,110 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 - `POST /api/v1/schedules/generate`: ตรวจสอบการบันทึก Schedule ชุดใหม่ลงใน MySQL
 - `POST /api/v1/teacher-swaps`: ตรวจสอบการสร้างสถานะคำขอ
 
+### 19.3 Code Coverage Measurement & Verification (JaCoCo)
+
+ระบบ AcadOS กำหนดใช้ **JaCoCo (Java Code Coverage Library)** ผ่านปลั๊กอิน `jacoco-maven-plugin` ในการตรวจสอบ วัดผล และประเมินความครอบคลุมของชุดทดสอบทั้งโปรเจกต์แบบอัตโนมัติ
+
+#### 1. ข้อกำหนดเวอร์ชันและสภาพแวดล้อมทางเทคนิค (Version & Technical Requirements)
+| องค์ประกอบ | เวอร์ชัน / ข้อกำหนดที่รองรับ | รายละเอียดและความเข้ากันได้ทางเทคนิค |
+| :--- | :--- | :--- |
+| **JaCoCo Plugin** | `0.8.12` *(ขั้นต่ำ $\ge$ 0.8.11)* | เวอร์ชันทางการที่ปรับปรุงเอนจิน **ASM 9.6+** เพื่อรองรับ Bytecode Class File Major Version 65 ของ Java 21 |
+| **Java SDK Runtime** | Java 21 LTS (Eclipse Temurin 21) | รองรับ Virtual Threads, Records, Sealed Classes และ Pattern Matching อย่างสมบูรณ์ |
+| **Build Tool** | Apache Maven 3.9+ | ผสานการทำงานผ่าน Maven Standard Lifecycle (`test` และ `verify` phase) |
+| **Testing Framework**| JUnit 5 (Jupiter 5.10+) + Mockito 5+ | รองรับ Mockito Inline ByteBuddy Mock Maker โดยไม่เกิดความขัดแย้งกับ Bytecode Instrumentation |
+| **Backend Framework**| Spring Boot 3.3.4 | รองรับ CGLIB / Spring Data JPA Dynamic Proxies ได้อย่างไร้รอยต่อ |
+
+#### 2. สถาปัตยกรรมการทำงานของ JaCoCo (JaCoCo Architecture & Instrumentation Flow)
+JaCoCo ทำงานโดยใช้กลไก **On-the-fly Bytecode Instrumentation** ซึ่งแทรกโพรบ (Execution Probes) เข้าไปใน Bytecode ในหน่วยความจำขณะคลาสกำลังถูกโหลดเข้าสู่ JVM โดยไม่แตะต้อง Source Code หรือไฟล์ `.class` บนดิสก์:
+
+```mermaid
+flowchart TD
+    subgraph Phase1["1. JVM Launch & Agent Attachment"]
+        A["Maven Test Execution"] --> B["JaCoCo Java Agent (-javaagent)"]
+    end
+
+    subgraph Phase2["2. On-the-Fly Bytecode Instrumentation"]
+        B --> C["JVM ClassLoader Loads Classes"]
+        C --> D["JaCoCo Agent Injects Execution Probes"]
+        D --> E["Instrumented Bytecode in JVM Memory"]
+    end
+
+    subgraph Phase3["3. Test Execution & Probe Triggering"]
+        E --> F["Run 247+ JUnit Tests"]
+        F --> G["Execution Probes Record Hits (Line & Branch)"]
+        G --> H["Dump Execution Data to target/jacoco.exec"]
+    end
+
+    subgraph Phase4["4. Report Synthesis"]
+        H --> I["JaCoCo Report Goal"]
+        J["Compiled .class Files"] --> I
+        K["Java Source Files (src/main/java)"] --> I
+        I --> L["target/site/jacoco/index.html (HTML Report)"]
+        I --> M["target/site/jacoco/jacoco.csv (Data Metrics)"]
+        I --> N["target/site/jacoco/jacoco.xml (CI/CD Pipeline)"]
+    end
+```
+
+- **Execution Probe:** อาร์เรย์ของ Boolean Flags ขนาดเล็กที่แทรกอยู่ระหว่าง Bytecode Instructions ทุกจุดที่เป็น Branch/Decision ทำให้การตรวจสอบกิ่งเงื่อนไขมีความเร็วสูงมาก ($O(1)$ ต่อการกระทำ)
+- **Data Collector:** เมื่อ JVM สิ้นสุดกระบวนการทดสอบ ข้อมูลโพรบทั้งหมดจะถูกบันทึกเป็นไฟล์ไบนารี `target/jacoco.exec`
+- **Report Generator:** ปลั๊กอินอ่านไฟล์ `jacoco.exec` เทียบกับ Source Code และ Compiled Bytecode เพื่อคำนวณสถิติ Line, Branch, Method, และ Class Coverage ออกมาเป็นรายงาน
+
+#### 3. เหตุผลทางวิศวกรรมซอฟต์แวร์ที่ต้องใช้ JaCoCo (Rationale for Choosing JaCoCo)
+1. **รองรับ Java 21 LTS Bytecode อย่างสมบูรณ์ (Full Java 21 Compatibility):**
+   JaCoCo เวอร์ชัน 0.8.12 ขึ้นไปเป็นเครื่องมือวัด Coverage ชั้นนำใน Java Ecosystem ที่ปรับปรุงเอนจิน ASM ให้รองรับสเปก Bytecode ของ Java 21 LTS อย่างสมบูรณ์ ไม่เกิดปัญหา `Unsupported class file major version 65` หรือข้อผิดพลาดกับ Pattern Matching, Records และ Virtual Threads
+2. **วัดผลลึกถึงระดับกิ่งเงื่อนไข (Branch & Decision Coverage):**
+   การวัดเพียง Line Coverage อย่างเดียวอาจสร้างความเข้าใจผิด (False Sense of Security) เนื่องจากโค้ดอาจรันผ่านบรรทัดนั้น แต่ไม่ได้ทดสอบกิ่งเงื่อนไขที่ซับซ้อน เช่น ใน `ConstraintEvaluator` และ `ScheduleSelector` ซึ่งมี Hard Constraints (BR-01 ถึง BR-08) หลากหลายทิศทาง JaCoCo สามารถรายงานผล **Branch Coverage (Decision Coverage)** ช่วยให้ระบุกิ่ง `if-else` หรือเงื่อนไขตรรกะที่ยังไม่ถูกทดสอบได้อย่างแม่นยำ
+3. **ผสานเข้ากับวงจรการ Build ของ Maven ได้อย่างไร้รอยต่อ (Seamless Maven Lifecycle Integration):**
+   JaCoCo ทำงานผสานเข้ากับ Lifecycle ปกติของ Maven ผ่าน Goal:
+   - `prepare-agent`: ติดตั้ง Java Agent เบื้องหลังอัตโนมัติก่อนเริ่มรัน Unit/Integration Tests
+   - `report`: สังเคราะห์รายงาน Coverage ทันทีที่การทดสอบในเฟส `test` หรือ `verify` สิ้นสุดลง โดยทีมงานไม่ต้องเปลี่ยนพฤติกรรมการพัฒนาหรือจำคำสั่งพิเศษเพิ่มเติม (เพียงรัน `mvn test` รายงานก็ถูกสร้างทันที)
+4. **ความแม่นยำสูงและมี Runtime Overhead ต่ำ (On-the-fly Bytecode Instrumentation):**
+   JaCoCo ใช้วิธีแทรก Instrumentation Code บน Bytecode ในหน่วยความจำขณะที่ ClassLoader กำลังโหลดคลาส (On-the-fly) ไม่ต้องแก้ไขไฟล์ Source Code หรือแปลงไฟล์ `.class` ล่วงหน้า (Offline) ส่งผลให้การรันชุดทดสอบ 247+ ข้อรวดเร็วและใช้เวลาเพียงไม่กี่นาที
+5. **ไม่ขัดแย้งกับ Spring Boot 3.3.4, Hibernate และ Mockito (Zero Interference):**
+   JaCoCo ทำงานเข้ากันได้อย่างสมบูรณ์กับ Dynamic Proxies ของ Spring Boot, ByteBuddy Subclasses ของ Hibernate JPA, และ Mockito Inline Mock Maker โดยไม่ก่อให้เกิดปัญหา ClassLoader Leak หรือ Bytecode Mutation Conflict
+6. **รายงานผลรอบด้านหลายรูปแบบ (Multi-Format Reporting):**
+   - **HTML Report (`target/site/jacoco/index.html`):** รายงานแบบ Interactive แสดงแถบสีเขียว/เหลือง/แดง แยกรายละเอียดระดับบรรทัดและกิ่งเงื่อนไข สำหรับนักพัฒนาใช้ตรวจสอบจุดบกพร่อง
+   - **CSV Report (`target/site/jacoco/jacoco.csv`):** สำหรับสกัดข้อมูลตัวเลข สรุปแนวโน้ม และวิเคราะห์ทางสถิติของแต่ละโมดูล
+   - **XML Report (`target/site/jacoco/jacoco.xml`):** รองรับการส่งต่อข้อมูลเข้าสู่ระบบ CI/CD Pipeline และ Quality Gate ของ SonarQube
+
+#### 4. วิธีการรันและการตรวจสอบรายงาน (Execution & Verification Guide)
+
+คำสั่งทั้งหมดให้รันจากโฟลเดอร์ของแอปพลิเคชัน (`code/acados`):
+
+##### 4.1 คำสั่งการรันผ่าน Maven
+1. **รันการทดสอบทั้งหมดพร้อมสร้างรายงาน Coverage อัตโนมัติ:**
+   ```bash
+   mvn test
+   ```
+   *(ปลั๊กอินจะดักจับ `prepare-agent` ตอนเริ่มต้น และสร้างรายงานใน `target/site/jacoco/` ทันทีที่ Test จบ)*
+
+2. **รัน Clean และทดสอบใหม่ทั้งหมดแบบสมบูรณ์:**
+   ```bash
+   mvn clean test
+   ```
+   *(แนะนำใช้ก่อน Commit งาน เพื่อล้างไฟล์ชั่วคราวและสร้างรายงานจากโค้ดล่าสุดจริง)*
+
+3. **รันเฉพาะการสังเคราะห์รายงานซ้ำ (โดยไม่รัน Test ซ้ำ):**
+   ```bash
+   mvn jacoco:report
+   ```
+   *(กรณีที่มีไฟล์ `target/jacoco.exec` อยู่แล้วและต้องการเรนเดอร์ HTML ใหม่)*
+
+##### 4.2 แหล่งที่อยู่ของไฟล์รายงานผลลัพธ์ (Output Artifact Locations)
+| ไฟล์ผลลัพธ์ | ที่อยู่ของไฟล์ (Relative Path) | คำอธิบาย |
+| :--- | :--- | :--- |
+| **Execution Binary Data** | `target/jacoco.exec` | ข้อมูลบันทึกการแตะโพรบระดับไบนารีจาก Java Agent |
+| **Interactive HTML Dashboard** | `target/site/jacoco/index.html` | แดชบอร์ดสรุปผลภาพรวม และสามารถคลิกเจาะลึกดูโค้ดรายบรรทัดได้ |
+| **CSV Raw Metrics** | `target/site/jacoco/jacoco.csv` | สรุปตัวเลข Missed/Covered Instructions, Branches, Lines, Methods, Classes |
+| **XML Machine-Readable** | `target/site/jacoco/jacoco.xml` | สำหรับผูกต่อเข้ากับเครื่องมือตรวจสอบคุณภาพโค้ดอัตโนมัติ (เช่น SonarQube / GitHub Actions) |
+
+##### 4.3 วิธีการเปิดดูรายงานบน Web Browser
+เปิดดูผลลัพธ์ผ่าน Terminal / PowerShell:
+```powershell
+Start-Process code/acados/target/site/jacoco/index.html
+```
+หรือเปิดไฟล์ `index.html` ในโฟลเดอร์ `code/acados/target/site/jacoco/` ด้วยเบราว์เซอร์ใดก็ได้ (Chrome, Edge, Firefox)
+
 ---
 
 ## 20. Required Diagrams Specification
@@ -801,15 +961,16 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 ```
 AcadOS/
 ├── code/                         # ซอร์สโค้ด Spring Boot + Maven POM
-│   ├── src/
-│   ├── pom.xml
-│   ├── Dockerfile
-│   ├── docker-compose.yml
-│   ├── schema.sql                # DDL Database Schema (TBA รายละเอียด)
-│   └── data.sql                  # Initial Mock Data (TBA รายละเอียด)
+│   └── acados/
+│       ├── src/
+│       ├── pom.xml
+│       ├── Dockerfile            # Multi-stage build (Temurin 21 SDK -> JRE)
+│       ├── docker-compose.yml    # Multi-container orchestration (App, DB, phpMyAdmin)
+│       ├── schema.sql            # DDL Database Schema
+│       └── data.sql              # Initial Mock Data
 ├── test/                         # เอกสารและรายงานการทดสอบ
 ├── doc/                          # เอกสารข้อกำหนดและสถาปัตยกรรมระบบ
-│   ├── AcadOS-v4.md              # เอกสารสเปกหลักฉบับนี้
+│   ├── Implement_Plan-AcadOS.md  # เอกสารสเปกหลักฉบับนี้
 │   ├── business-rules.md
 │   ├── scheduling-model.md
 │   ├── api-specification.md
@@ -905,9 +1066,78 @@ AcadOS/
 
 ---
 
-## 23. Deployment Checklist & Demo Scenarios
+## 23. Deployment Architecture, Checklist & Demo Scenarios
 
-### 23.1 Deployment Checklist
+### 23.1 Cloud Production Deployment Environment & Container Architecture (ตรงตาม Implementation จริง)
+
+สถาปัตยกรรมและสภาพแวดล้อมสำหรับการ Deploy ระบบบน Cloud Production Server อ้างอิงตามโค้ดจริงใน `code/acados/Dockerfile`, `code/acados/docker-compose.yml`, `application.properties`, และ `.github/workflows/ci-cd.yml`:
+
+ระบบออกแบบและรองรับสถาปัตยกรรมคลาวด์ 2 ทางเลือก (Dual Cloud Deployment Architecture):
+- **ทางเลือกที่ 1 (Primary / Recommended):** **Cloud PaaS (Render Web Service / Railway) + Managed Cloud MySQL (TiDB Cloud Serverless / Aiven for MySQL)** — ทางเลือกฟรี 100% มีใบรับรอง SSL/HTTPS อัตโนมัติ ปลอดภัย และเหมาะสำหรับการส่งตรวจประเมิน
+- **ทางเลือกที่ 2 (Alternative / Self-Hosted):** **Cloud VPS (Ubuntu 22.04 LTS บน AWS EC2, DigitalOcean, Linode) + Docker Compose** — รันครบ 3 Services ในโฮสต์เดียวตาม `docker-compose.yml`
+
+#### 1. สถาปัตยกรรมทางเลือกที่ 1: Cloud PaaS + Managed Cloud DB (Primary)
+- **Web Application Host:** Render Web Service (รันผ่าน Dockerfile จากโฟลเดอร์ `code/acados`)
+- **Database Host:** TiDB Cloud Serverless หรือ Aiven for MySQL (MySQL 8.0 Protocol Compatible พร้อม SSL)
+- **Security & Domain:** Public HTTPS URL อัตโนมัติ (`https://acados.onrender.com`) พร้อมใบรับรอง SSL ฟรี
+- **Dynamic Port Binding:** กำหนด `server.port=${PORT:8080}` ใน `application.properties` รองรับตัวแปร `$PORT` จาก Cloud Platform อัตโนมัติ
+- **JVM Memory Optimization:** กำหนด `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0` ใน `Dockerfile` ป้องกันปัญหา Out-of-Memory (OOM Killer) บน Free Tier 512MB RAM
+- **Automated CI/CD Pipeline:** ติดตั้ง GitHub Actions ([`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)) เพื่อทดสอบอัตโนมัติ `mvn clean test` และตรวจสอบการแพ็กเกจทุกครั้งที่มีการ Push/PR (รับคะแนนพิเศษตามเกณฑ์อาจารย์ §11)
+
+#### 2. สถาปัตยกรรมทางเลือกที่ 2: Cloud VPS Host Specifications (Docker Compose 3 Services)
+- **Host Machine:** Cloud Host Server (VPS / Cloud VM เช่น DigitalOcean Droplet, AWS EC2, Linode หรือ Cloud VPS ที่มี Public IPv4)
+- **Operating System:** Linux OS (Ubuntu 22.04 LTS / Ubuntu 24.04 LTS หรือ Debian 12)
+- **Hardware Sizing (Recommended):** $\ge$ 2 vCPU, $\ge$ 2-4 GB RAM, $\ge$ 20 GB SSD Storage
+- **Host Runtime:** Docker Engine 24.x+ และ Docker Compose v2.x+ (`docker compose`)
+- **Network & Firewall (Security Group Rules):**
+  - **Inbound TCP 8080:** อนุญาตเข้าถึง Application Web UI (Thymeleaf), REST APIs, Swagger UI (`/swagger-ui.html`), และ Spring Actuator (`/actuator/health`) โดยตรงแบบ Direct Port Access (No Nginx Reverse Proxy ตาม Decision FL-05 / 2A)
+  - **Inbound TCP 8081:** อนุญาตเข้าถึง phpMyAdmin Web Console สำหรับผู้ดูแลระบบจัดการฐานข้อมูล
+  - **Inbound TCP 22:** สำหรับการเชื่อมต่อรีโมตเซิร์ฟเวอร์ผ่าน SSH
+  - **Outbound TCP 443 (HTTPS):** สำหรับเชื่อมต่อไปยัง External ThailandFormats Public Holiday API (`https://thailandformats.com/api/v1/holidays/{year}`)
+  - **Outbound TCP 587 (SMTP / STARTTLS):** สำหรับเชื่อมต่อไปยัง Mailtrap Sandbox SMTP (`sandbox.smtp.mailtrap.io:587`) เพื่อทดสอบการส่งอีเมล
+
+#### 3. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)
+ระบบรันด้วย Multi-Container Architecture ควบคุมผ่าน `code/acados/docker-compose.yml`:
+
+| Service Name | Container Name | Image / Base | Internal Port | Host Port | รายละเอียดการทำงานและคอนฟิกูเรชัน |
+| :--- | :--- | :--- | :---: | :---: | :--- |
+| **`app`** | `acados-app` | Multi-stage Build (`eclipse-temurin:21-jre`) | 8080 | **8080** | **Spring Boot 3.3.4 Application**<br>• ติดต่อ DB ผ่าน `jdbc:mysql://db:3306/acados_db`<br>• กำหนด `depends_on: db: condition: service_healthy`<br>• รองรับตัวแปร `ACADOS_JWT_SECRET` ผ่าน Environment Variable<br>• รองรับ Dynamic Port `${PORT:8080}` |
+| **`db`** | `acados-db` | `mysql:8.4` (LTS) | 3306 | **3306** | **MySQL Database System**<br>• สร้างฐานข้อมูล `acados_db`<br>• รหัสผ่าน Root ควบคุมผ่าน `${MYSQL_ROOT_PASSWORD:-root}`<br>• Healthcheck ผ่าน `mysqladmin ping` ทุก 5 วินาที<br>• แมปพื้นที่จัดเก็บถาวรผ่าน Persistent Volume `mysql_data` |
+| **`phpmyadmin`** | `acados-phpmyadmin` | `phpmyadmin/phpmyadmin:latest` | 80 | **8081** | **Database Management GUI**<br>• เชื่อมต่อไปยังโฮสต์ `db` พอร์ต 3306 อัตโนมัติ (`PMA_HOST: db`)<br>• เข้าใช้งานผ่าน Web Browser ที่พอร์ต 8081 สำหรับ Audit และตรวจสอบข้อมูล |
+
+#### 4. รายละเอียด Multi-Stage Dockerfile (`code/acados/Dockerfile`)
+- **Stage 1 (Build Stage):** Base Image `maven:3.9.9-eclipse-temurin-21` ทำการคอมไพล์ซอร์สโค้ดและแพ็กเกจเป็น JAR ไฟล์ด้วยคำสั่ง `mvn -B -DskipTests package` ใน Working Directory `/workspace`
+- **Stage 2 (Runtime Stage):** Lightweight JRE Image `eclipse-temurin:21-jre` คัดลอกเฉพาะ `/workspace/target/acados-1.0-SNAPSHOT.jar` ไปไว้ที่ `/app/app.jar` เพื่อความปลอดภัยและลดขนาด Image (Zero Maven/Build SDK footprint in production)
+- **Execution:** รันด้วย `ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]` พร้อมเปิด `EXPOSE 8080`
+
+#### 5. กลไกความทนทานและการคงอยู่ของข้อมูล (Data Persistence & Healthcheck)
+- **Data Persistence (D11):** กำหนด Docker Named Volume `mysql_data` แมปเข้ากับ `/var/lib/mysql` ของคอนเทนเนอร์ `acados-db` ป้องกันข้อมูลสูญหายเมื่อคอนเทนเนอร์หยุดทำงานหรือ Re-deploy (สำหรับ Managed Cloud DB ข้อมูลจะถูกจัดเก็บบน Cloud Storage อัตโนมัติ)
+- **Startup Dependency & Healthcheck:** คอนเทนเนอร์ `app` มีเงื่อนไข `condition: service_healthy` รอจนกว่า MySQL จะพร้อมรับการเชื่อมต่อจริงจากผลตรวจ `mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent` (Retries: 20 ครั้ง, Interval: 5 วินาที) แก้ไขปัญหา Application Crash จาก DB Connection Timeout
+- **Restart Policy:** คอนเทนเนอร์ `db` และ `phpmyadmin` กำหนด `restart: always` กู้คืนการทำงานอัตโนมัติหากเซอร์วิสขัดข้อง
+
+#### 6. สรุป Service Endpoints บน Cloud Production Host
+- **Web Application & UI (Thymeleaf):** `https://<APP_NAME>.onrender.com/` (หรือ `http://<SERVER_PUBLIC_IP>:8080/`)
+- **API Documentation (Swagger UI):** `https://<APP_NAME>.onrender.com/swagger-ui.html` (หรือ `http://<SERVER_PUBLIC_IP>:8080/swagger-ui.html`)
+- **OpenAPI Schema (JSON):** `https://<APP_NAME>.onrender.com/api-docs` (หรือ `http://<SERVER_PUBLIC_IP>:8080/api-docs`)
+- **Health & Liveness Check (Spring Actuator):** `https://<APP_NAME>.onrender.com/actuator/health` (หรือ `http://<SERVER_PUBLIC_IP>:8080/actuator/health`)
+- **System Metrics (Spring Actuator):** `https://<APP_NAME>.onrender.com/actuator/metrics` (หรือ `http://<SERVER_PUBLIC_IP>:8080/actuator/metrics`)
+- **Database Administration (phpMyAdmin - สำหรับ VPS):** `http://<SERVER_PUBLIC_IP>:8081/`
+
+#### 7. คำสั่งในการ Deploy และจัดการบน Production Server
+```bash
+# กรณีที่ 1: Deploy ผ่าน Render / Railway
+# เชื่อมต่อ GitHub Repo ตั้งค่า Root Directory = code/acados และกำหนด Environment Variables ตามคู่มือ walkthrough.md
+
+# กรณีที่ 2: Deploy ผ่าน Linux VPS ด้วย Docker Compose
+git clone <REPOSITORY_URL>
+cd AcadOS/code/acados
+docker compose up -d --build
+docker compose ps
+docker compose logs -f app
+docker compose down
+```
+
+### 23.2 Deployment Checklist
 - [ ] แอปพลิเคชัน Start ผ่าน `mvn spring-boot:run` ได้โดยไม่มี Error
 - [ ] เชื่อมต่อ MySQL และสร้างโครงสร้างตารางได้ครบถ้วน
 - [ ] เข้าสู่ระบบได้ทุก Role (`ADMIN`, `TEACHER`, `STUDENT`)
@@ -961,9 +1191,9 @@ AcadOS/
 - **D07:** Frontend ใช้ Thymeleaf เรียกใช้งานร่วมกับ REST API
 - **D08:** UI เรียก Controller $\to$ Service ไม่เรียก Repository โดยตรง
 - **D09:** ใช้ DTO 100% สำหรับทุก REST API Endpoint (ยกเลิก Mixed DTO)
-- **D10:** ใช้ Hibernate `ddl-auto=update` สำหรับ Dev ควบคู่กับการมีไฟล์ `schema.sql` และ `data.sql`
+- **D10:** ใช้ Hibernate `ddl-auto=update` ควบคู่กับ `data.sql` ที่จัดเรียง Topological FK Order และ Hash รหัสผ่านด้วย BCrypt เพื่อรองรับ Demo 4 Scenarios และรัน `docker compose up -d --build` ได้ทันที (Implemented & Verified 100%)
 - **D11:** Deploy ด้วย Docker และกำหนด Persistent Volume สำหรับ MySQL
-- **D12:** จัดการข้อผิดพลาดส่วนกลางผ่าน `GlobalExceptionHandler`
+- **D12:** จัดการข้อผิดพลาดส่วนกลางผ่าน `GlobalExceptionHandler` (`@RestControllerAdvice`) ร่วมกับ `ErrorResponse` DTO (Implemented & Verified 100%)
 - **D13:** ควบคุม Permission ภายในซอร์สโค้ด ไม่สร้างตารางในฐานข้อมูล
 - **D15:** Entity ใช้ `Long id` เป็น PK และจัดเก็บ `universityId` แยก
 - **D16:** Course 1 รายวิชา มีได้หลาย Section (1 : N)
@@ -999,7 +1229,7 @@ AcadOS/
 
 ตารางตรวจสอบความสอดคล้องกับข้อกำหนดรายวิชา CP353002 (PDF B):
 
-| ข้อกำหนดรายวิชา (PDF B) | รายละเอียดเกณฑ์ | สถานะในเอกสาร v4 | บันทึกการตรวจสอบ |
+| ข้อกำหนดรายวิชา (PDF B) | รายละเอียดเกณฑ์ | สถานะในเอกสาร | บันทึกการตรวจสอบ |
 | :--- | :--- | :---: | :--- |
 | **Backend Framework** | Spring Boot 3.x+ (Java 17+) | **Complete** | ระบุใช้ Java 21 LTS และ Spring Boot 3.3.4 |
 | **Build Tool** | Maven หรือ Gradle | **Complete** | ระบุใช้ Apache Maven พร้อมแจกแจง `pom.xml` |
@@ -1012,21 +1242,21 @@ AcadOS/
 | **SOLID Principles** | แสดงให้เห็นในโค้ดครบทุกข้อ S, O, L, I, D | **Complete** | มีการแจกแจงหลักการทั้ง 5 ข้อพร้อมตัวอย่างในระบบ |
 | **Design Patterns** | Enterprise ครบ + GoF อย่างน้อย 3 แบบ | **Complete** | Enterprise ครบ 6 แบบ, GoF 4 แบบ (Strategy, Observer, State, Adapter) |
 | **Database Constraints**| อย่างน้อย 6 ตาราง, One-to-One, One-to-Many | **Complete** | มี 16 Entities, ความสัมพันธ์ One-to-One และ One-to-Many ครบถ้วน |
-| **Migration Scripts** | Flyway/Liquibase หรือ schema.sql + data.sql | **TBA** | กำหนดให้มี `schema.sql` และ `data.sql` ใน `code/` (รายละเอียด Script = TBA) |
+| **Migration Scripts** | Flyway/Liquibase หรือ schema.sql + data.sql | **Complete** | จัดทำ `data.sql` สมบูรณ์ใน `code/acados/data.sql` และ `src/main/resources/data.sql` จัดเรียง Foreign Key Topology และรหัสผ่าน BCrypt ครอบคลุมทั้ง 4 Demo Scenarios พร้อมคอนฟิก `spring.sql.init.mode=always` |
 | **REST API Standards** | ครบ CRUD 2 Resources, Status Codes, Validation | **Complete** | Courses และ Rooms ทำ CRUD ครบ, มี DTO, Bean Validation |
 | **Git Workflow** | Branch `ชื่อ_รหัสนักศึกษา_section`, $\ge$ 15 commits/คน | **Complete** | กำหนดชื่อ Branch ของทั้ง 3 คนถูกต้องตามฟอร์แมต |
-| **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **Complete** | สถาปัตยกรรมยืนยัน: Cloud Host (VPS / Cloud VM + Docker Compose) รัน acados-app (Port 8080) และ acados-db พร้อม Persistent Volume `mysql_data` |
+| **Deployment** | Deploy ขึ้น Cloud/Server ได้จริงผ่าน Public URL | **Complete** | สถาปัตยกรรมยืนยันและรองรับด้วยโค้ดจริง 100%: Linux Cloud Host (VPS / Cloud VM + Docker Compose) รัน Multi-container (`acados-app` Port 8080, `acados-db` MySQL 8.4 Port 3306 พร้อม Healthcheck ping, `acados-phpmyadmin` Port 8081, Persistent Volume `mysql_data`, และ Spring Actuator `/actuator/health`) |
 
 ---
 
 ## 28. Notes / TBA Summary
 
 ส่วนสรุปรายการที่ยังต้องระบุหรือตัดสินใจเพิ่มเติมในขั้นตอนการพัฒนา (Implementation Phase):
-1. **Database Migration Scripts (TBA):** เนื้อหารายละเอียดของไฟล์ DDL `schema.sql` และ Initial Data `data.sql` ในโฟลเดอร์ `code/` จะถูกจัดทำขึ้นตาม Entity จริง
-2. **Cloud Provider & Public URL (Confirmed):** กำหนดใช้ Cloud Host Server (VPS / Cloud VM) พร้อม Docker Compose โดยเข้าถึงแอปพลิเคชันโดยตรงผ่าน Port 8080 (No Nginx Reverse Proxy) และเชื่อมต่อฐานข้อมูล MySQL ผ่าน Docker Internal Network (Port 3306) พร้อม Persistent Volume `mysql_data` (โดเมน Public URL จะผูกกับ IP ของโฮสต์ในวันนำเสนอ)
+1. **Database Seed Scripts (Complete):** จัดทำ Initial Mock Data ใน `data.sql` เรียบร้อยแล้ว จัดเรียงตามลำดับ Foreign Key Topology 16 ตาราง พร้อมรหัสผ่าน BCrypt (`password123`) รองรับการทดสอบและการซักซ้อม Demo ทั้ง 4 Scenarios แบบ Idempotent (`INSERT IGNORE`) และคอนฟิก `spring.jpa.defer-datasource-initialization=true` ใน Spring Boot 3
+2. **Cloud Provider & Public URL (Confirmed):** ยืนยันสถาปัตยกรรมคลาวด์ 2 ทางเลือก: ทางเลือกที่ 1 (Render Web Service + Managed Cloud MySQL บน TiDB Cloud/Aiven พร้อม HTTPS และ CI/CD GitHub Actions รับคะแนนพิเศษ §11) และทางเลือกที่ 2 (Linux VPS Host + Docker Compose 3 คอนเทนเนอร์ `acados-app`, `acados-db`, `acados-phpmyadmin` พร้อม Persistent Volume `mysql_data`) รองรับ Public URL จริงสำหรับวันนำเสนอตามเกณฑ์ `prof_ruleset.md` §11 และ §14
 3. **Data Dictionary & ER Diagram (TBA):** รายละเอียดพจนานุกรมข้อมูล (ชนิดข้อมูล, ความยาว, Constraints) และไฟล์รูปภาพ ER Diagram ฉบับสมบูรณ์จะจัดทำในโฟลเดอร์ `doc/`
 4. **Use Case Descriptions (TBA):** เอกสารอธิบาย Use Case แต่ละตัวแบบละเอียด (Main Flow, Alternative Flow, Pre/Post-condition) จะถูกจัดทำเพิ่มเติมใน `doc/`
 5. **Teacher B Respond Endpoint & State (TBA):** รูปแบบ Request Body และ Endpoint ย่อยสำหรับการตอบรับคำขอสลับสอนของ Teacher B จะถูกกำหนดในขั้นตอน Implement
-6. **Room Suitability Scoring Algorithm (TBA):** สูตรคำนวณความเหมาะสมของห้องเรียน (+20 คะแนน) จะถูกกำหนดเกณฑ์ความเข้ากันได้เพิ่มเติมใน `RoomSuitabilityScoreStrategy`
-7. **SOLID Analysis Evidence (TBA):** หมายเลขบรรทัดและชื่อไฟล์ที่ระบุใน `doc/solid-analysis.md` จะต้องอ้างอิงจากโค้ดจริงหลังการเขียนเสร็จสิ้น
+6. **Room Suitability Scoring Algorithm (Complete):** พัฒนาคลาส `RoomSuitabilityScoreStrategy` (+20 คะแนน) เสร็จสิ้นและมี Unit Test รองรับเรียบร้อยแล้ว
+7. **SOLID Analysis Evidence (Complete):** จัดทำเอกสาร [`doc/solid-analysis.md`](solid-analysis.md) วิเคราะห์หลักการ SOLID Principles ครบทั้ง 5 ข้อ (S, O, L, I, D) พร้อมระบุชื่อคลาส ตำแหน่งไฟล์ และหมายเลขบรรทัดจริงจากซอร์สโค้ดเรียบร้อยแล้ว
 8. **Slide Presentation (TBA):** สไลด์นำเสนอจะถูกจัดทำเป็นไฟล์ PDF/PPTX และบันทึกไว้ในโฟลเดอร์ `doc/slide/` ก่อนวันนำเสนอโครงงาน

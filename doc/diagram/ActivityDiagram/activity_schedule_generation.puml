@@ -7,9 +7,12 @@ start
 :Admin opens Scheduling UI;
 :Admin clicks "Generate Schedule";
 partition "Security Filter" {
-    :Validate JWT, role = ADMIN;
-    if (JWT invalid?) then (yes)
-        :Return 401 Unauthorized;
+    :Validate JWT and Role;
+    if (Not authenticated / JWT invalid?) then (yes)
+        :Return 401 Unauthorized (Redirect to Login);
+        stop
+    elseif (Role != ADMIN?) then (yes)
+        :Return 403 Forbidden (Neutral Error Page);
         stop
     endif
 }
@@ -54,7 +57,14 @@ start
 partition "Publish Flow" {
     :Admin clicks "Publish";
     partition "Security Filter" {
-        :Validate JWT, role = ADMIN;
+        :Validate JWT and Role;
+        if (Not authenticated / JWT invalid?) then (yes)
+            :Return 401 Unauthorized (Redirect to Login);
+            stop
+        elseif (Role != ADMIN?) then (yes)
+            :Return 403 Forbidden;
+            stop
+        endif
     }
     partition "Scheduling Service" {
         :publishSchedule();
@@ -72,7 +82,14 @@ start
 partition "Discard Flow" {
     :Admin clicks "Discard Draft";
     partition "Security Filter" {
-        :Validate JWT, role = ADMIN;
+        :Validate JWT and Role;
+        if (Not authenticated / JWT invalid?) then (yes)
+            :Return 401 Unauthorized (Redirect to Login);
+            stop
+        elseif (Role != ADMIN?) then (yes)
+            :Return 403 Forbidden;
+            stop
+        endif
     }
     partition "Scheduling Service" {
         :discardDraft();

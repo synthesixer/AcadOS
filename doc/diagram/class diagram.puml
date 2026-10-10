@@ -238,15 +238,20 @@ package "service" {
     + getSection(id: Long): Section
     + createSection(req: SectionRequest): Section
     + updateSection(id: Long, req: SectionRequest): Section
+    + assignTeacher(sectionId: Long, teacherId: Long): Section
+    + getTeacherOptions(sectionId: Long): TeacherAssignmentOptionsResponse
   }
-  interface TeacherAssignmentService {
-    + assignTeacher(sectionId: Long, teacherId: Long): void
+  interface TeacherPreferenceService {
+    + getPreferences(userIdentifier: String): List<TeacherPreferenceResponse>
+    + getQualifiedCourses(userIdentifier: String): List<CourseResponse>
+    + savePreference(req: TeacherPreferenceRequest, userIdentifier: String): TeacherPreferenceResponse
+    + deletePreference(id: Long, userIdentifier: String): void
+    + getAvailabilities(userIdentifier: String): List<TeacherAvailabilityResponse>
+    + updateAvailability(req: TeacherAvailabilityToggleRequest, userIdentifier: String): TeacherAvailabilityResponse
   }
-  interface TeacherAvailabilityService {
-    + getMyAvailabilities(): List<TeacherAvailability>
-    + saveAvailability(req: AvailabilityRequest): TeacherAvailability
-    + deleteAvailability(id: Long): void
-    + getMyQualifications(): List<TeacherQualification>
+  interface TeacherSwapQueryService {
+    + getRequestsForTeacher(teacherId: Long): SwapInboxResponse
+    + getRequestById(id: Long): SwapResponse
   }
   interface AcademicEventService {
     + getEvents(): List<AcademicEvent>
@@ -255,8 +260,8 @@ package "service" {
     + deleteEvent(id: Long): void
   }
   note bottom of UserService
-    method ของ Course, Room, User, Section, TeacherAssignment,
-    TeacherAvailability, AcademicEvent Service
+    method ของ Course, Room, User, Section (รวม Assign Teacher),
+    TeacherPreference, TeacherSwapQuery, AcademicEvent Service
     ดึงจาก §16 และ Userflow A01, A02, A09, A11-A13, T02-T04
     (§10.2 ยังไม่ระบุ)
   end note
@@ -302,14 +307,25 @@ package "repository" <<Repository>> {
 ' =====================================================================
 package "exception" {
   class GlobalExceptionHandler <<@RestControllerAdvice>> {
-    + handleException(ex: Exception): ResponseEntity<ErrorResponse>
+    + handleBusinessRuleException(ex: BusinessRuleException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleResourceNotFoundException(ex: ResourceNotFoundException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleResponseStatusException(ex: ResponseStatusException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleValidationException(ex: MethodArgumentNotValidException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleAccessDeniedException(ex: AccessDeniedException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleBadCredentialsException(ex: BadCredentialsException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleIllegalArgumentException(ex: IllegalArgumentException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleGenericException(ex: Exception, req: HttpServletRequest): ResponseEntity<ErrorResponse>
   }
   class BusinessRuleException
   class ResourceNotFoundException
-  class ErrorResponse
-  note bottom of ErrorResponse
-    field ของ ErrorResponse ยังไม่ระบุในเอกสาร
-  end note
+  class ErrorResponse {
+    - timestamp: LocalDateTime
+    - status: int
+    - error: String
+    - message: String
+    - path: String
+    - details: List<String>
+  }
 }
 class RuntimeException <<java.lang>>
 
@@ -515,8 +531,9 @@ SectionCancellationService --> NotificationService
 RegistrationService --> NotificationService
 TeacherSwapService --> NotificationService
 TeacherSwapService --> ScheduleChangePublisher : notify on Approve (Sequence 06)
-TeacherAssignmentService --> NotificationService : A13 แจ้งอาจารย์คนใหม่ + คนเดิม
-TeacherAssignmentService --> ScheduleChangePublisher : A13 นักศึกษาใน Section (Schedule Changed)
+SectionService --> NotificationService : A13 แจ้งอาจารย์คนใหม่ + คนเดิม
+SectionService --> ScheduleChangePublisher : A13 นักศึกษาใน Section (Schedule Changed)
+TeacherSwapQueryService --> TeacherSwapRequestRepository : CQRS Read Query
 TeacherSwapService ..> TeacherSwapRequest
 RegistrationService ..> Registration
 SchedulingService ..> Schedule
@@ -559,12 +576,10 @@ UserService --> ScheduleRepository : A11-4 ตรวจข้อมูลผู�
 SectionService --> SectionRepository
 SectionService --> CourseRepository
 SectionService --> RegistrationRepository : A12-3 Capacity >= ผู้ลงทะเบียน
-
-TeacherAssignmentService --> SectionRepository
-TeacherAssignmentService --> ScheduleRepository
-TeacherAssignmentService --> TeacherRepository
-TeacherAssignmentService --> TeacherQualificationRepository
-TeacherAssignmentService --> TeacherAvailabilityRepository
+SectionService --> ScheduleRepository : A13 ผูก Schedule กับอาจารย์
+SectionService --> TeacherRepository : A13 ค้นหาข้อมูลอาจารย์
+SectionService --> TeacherQualificationRepository : A13 ตรวจคุณสมบัติ (BR-06)
+SectionService --> TeacherAvailabilityRepository : A13 ตรวจความพร้อมเวลา (BR-07)
 
 AcademicEventService --> AcademicEventRepository
 
@@ -574,10 +589,13 @@ CourseService --> SectionRepository : A01-4 ลบไม่ได้ถ้าย
 RoomService --> RoomRepository
 RoomService --> ScheduleRepository : A02-3 / A02-4 ตรวจคาบที่ใช้ห้อง
 
-TeacherAvailabilityService --> TeacherAvailabilityRepository
-TeacherAvailabilityService --> TeacherQualificationRepository
-TeacherAvailabilityService --> TimeSlotRepository
-TeacherAvailabilityService --> TeacherRepository
+TeacherPreferenceService --> TeacherPreferenceRepository
+TeacherPreferenceService --> TeacherQualificationRepository
+TeacherPreferenceService --> TeacherAvailabilityRepository
+TeacherPreferenceService --> TimeSlotRepository
+TeacherPreferenceService --> CourseRepository
+TeacherPreferenceService --> TeacherRepository
+TeacherPreferenceService --> UserRepository
 
 ' =====================================================================
 ' Notes

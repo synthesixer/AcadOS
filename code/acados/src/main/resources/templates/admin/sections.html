@@ -1,0 +1,376 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>จัดการกลุ่มเรียน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Operations · Scenario 4</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">จัดการกลุ่มเรียน (Section Workbench)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">ตรวจสอบกลุ่มเรียน ตารางเวลา ความจุที่นั่ง และจัดการการยกเลิกกลุ่มเรียนตามนโยบายสถาบัน</p>
+        </div>
+    </div>
+
+    <!-- Create Section Card -->
+    <div class="card" style="padding:22px; margin-bottom:24px;">
+        <h3 style="margin:0 0 4px; font-size:1.15rem; color:var(--ink-navy);">เปิดกลุ่มเรียนใหม่ (Open New Section)</h3>
+        <p class="muted" style="margin:0 0 16px; font-size:0.88rem;">เลือกรายวิชาในหลักสูตร กำหนดหมายเลขกลุ่มเรียน และความจุที่นั่ง</p>
+
+        <form id="create-section-form" style="display:grid; grid-template-columns:repeat(auto-fit, minmax(220px, 1fr)); gap:14px; align-items:flex-end;">
+            <div>
+                <label for="section-course" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">รายวิชา (Course) *</label>
+                <select id="section-course" required
+                        style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                    <option value="">-- กำลังโหลดรายวิชา... --</option>
+                </select>
+            </div>
+            <div>
+                <label for="section-number" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">หมายเลขกลุ่ม (Section No.) *</label>
+                <input id="section-number" type="number" min="1" max="99" value="1" required
+                       style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+            </div>
+            <div>
+                <label for="section-capacity" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">ความจุที่นั่ง (Capacity) *</label>
+                <input id="section-capacity" type="number" min="1" max="500" value="40" required
+                       style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.9rem;">
+            </div>
+            <div>
+                <button class="btn btn--primary" type="submit" id="btn-create-section" style="width:100%; height:40px;">
+                    + เปิดกลุ่มเรียน
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <!-- Status Ledger Pills -->
+    <div class="status-ledger" style="margin-bottom:20px;">
+        <button type="button" class="status-ledger__item is-active" id="filter-all" onclick="setFilter('ALL')">
+            <span class="status-ledger__dot" style="background:var(--ink-navy);"></span>
+            <span>ทั้งหมด</span>
+            <span class="status-ledger__count num" id="count-all">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-active" onclick="setFilter('ACTIVE')">
+            <span class="status-ledger__dot" style="background:var(--ok-green);"></span>
+            <span>เปิดสอน (ACTIVE)</span>
+            <span class="status-ledger__count num" id="count-active">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-cancelled" onclick="setFilter('CANCELLED')">
+            <span class="status-ledger__dot" style="background:var(--danger-red);"></span>
+            <span>ยกเลิกแล้ว (CANCELLED)</span>
+            <span class="status-ledger__count num" id="count-cancelled">0</span>
+        </button>
+    </div>
+
+    <!-- Workbench Card -->
+    <div class="card" style="padding:20px;">
+        <div style="display:flex; justify-content:space-between; align-items:center; margin-bottom:16px; flex-wrap:wrap; gap:12px;">
+            <div style="display:flex; align-items:center; gap:8px;">
+                <h3 style="margin:0; font-size:1.1rem; color:var(--ink-navy);">บัญชีรายชื่อกลุ่มเรียน</h3>
+                <span class="muted" style="font-size:0.85rem;" id="filter-label">แสดงทุกกลุ่มเรียน</span>
+            </div>
+            <div style="display:flex; gap:10px; align-items:center;">
+                <input type="text" id="search-box" placeholder="ค้นหารหัสวิชา หรือกลุ่ม..." 
+                       style="padding:7px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; width:220px;"
+                       oninput="renderFilteredSections()">
+            </div>
+        </div>
+
+        <div id="section-list" style="display:grid; gap:10px;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+
+    <!-- Assign Teacher Modal -->
+    <div class="modal-backdrop" id="assign-teacher-backdrop" onclick="closeAssignTeacherModal()"></div>
+    <div class="modal-dialog" id="assign-teacher-modal" role="dialog" aria-modal="true" style="max-width:520px;">
+        <div class="modal-dialog__header">
+            <h3 style="margin:0; font-size:1.15rem; color:var(--ink-navy);">มอบหมายผู้สอน (Assign Teacher · A13)</h3>
+            <button type="button" class="btn btn--secondary btn--sm" onclick="closeAssignTeacherModal()">✕</button>
+        </div>
+        <form id="assign-teacher-form">
+            <div class="modal-dialog__body" style="display:flex; flex-direction:column; gap:14px;">
+                <input type="hidden" id="assign-section-id">
+                <div style="background:var(--surface-alt); padding:12px; border-radius:6px; border:1px solid var(--border-subtle); font-size:0.88rem;">
+                    <div><strong>รายวิชา:</strong> <span id="assign-course-info">-</span></div>
+                    <div style="margin-top:4px;"><strong>กลุ่มเรียน:</strong> <span id="assign-section-num">-</span></div>
+                </div>
+                <div>
+                    <label for="assign-teacher-select" style="display:block; font-size:0.85rem; font-weight:600; color:var(--ink-navy); margin-bottom:6px;">
+                        เลือกอาจารย์ผู้สอน (Teacher) *
+                    </label>
+                    <select id="assign-teacher-select" required
+                            style="width:100%; padding:9px 12px; border:1px solid var(--border-subtle); border-radius:6px; font-size:0.88rem; background:var(--surface);">
+                        <option value="">-- กำลังโหลดรายชื่ออาจารย์... --</option>
+                    </select>
+                    <p class="muted" style="margin:6px 0 0; font-size:0.8rem;">
+                        * อาจารย์ที่เลือกต้องมีคุณสมบัติตรงตามรายวิชา (BR-06) และไม่มีตารางสอนชนกัน (BR-01, BR-07)
+                    </p>
+                </div>
+            </div>
+            <div class="modal-dialog__footer" style="display:flex; gap:10px; justify-content:flex-end;">
+                <button type="button" class="btn btn--secondary" onclick="closeAssignTeacherModal()">ยกเลิก</button>
+                <button type="submit" class="btn btn--primary" id="btn-submit-assign-teacher">บันทึกการมอบหมาย</button>
+            </div>
+        </form>
+    </div>
+</main>
+
+<script>
+    let allSections = [];
+    let currentFilter = 'ALL';
+
+    function setFilter(filter) {
+        currentFilter = filter;
+        document.querySelectorAll('.status-ledger__item').forEach(el => el.classList.remove('is-active'));
+        if (filter === 'ALL') document.getElementById('filter-all').classList.add('is-active');
+        if (filter === 'ACTIVE') document.getElementById('filter-active').classList.add('is-active');
+        if (filter === 'CANCELLED') document.getElementById('filter-cancelled').classList.add('is-active');
+        renderFilteredSections();
+    }
+
+    async function openAssignTeacherModal(s) {
+        document.getElementById('assign-section-id').value = s.id;
+        document.getElementById('assign-course-info').textContent = `${s.courseCode || ''} - ${s.courseTitle || ''}`;
+        document.getElementById('assign-section-num').textContent = `กลุ่ม ${s.sectionNumber} (ID: #${s.id})`;
+
+        const select = document.getElementById('assign-teacher-select');
+        select.innerHTML = '<option value="">-- กำลังโหลดรายชื่ออาจารย์... --</option>';
+
+        document.getElementById('assign-teacher-backdrop').classList.add('is-open');
+        document.getElementById('assign-teacher-modal').classList.add('is-open');
+
+        try {
+            const res = await api.get(`/api/v1/sections/${s.id}/teachers`);
+            if (res.ok && Array.isArray(res.data)) {
+                select.innerHTML = '<option value="">-- เลือกอาจารย์ผู้สอน --</option>';
+                res.data.forEach(t => {
+                    const opt = document.createElement('option');
+                    opt.value = t.teacherId;
+                    const qualLabel = t.qualified ? '✓ [Qualified]' : '✕ [ไม่มี Qualification]';
+                    opt.textContent = `${qualLabel} ${t.fullName} (${t.universityId})`;
+                    select.appendChild(opt);
+                });
+            } else {
+                select.innerHTML = '<option value="">ไม่สามารถโหลดรายชื่ออาจารย์ได้</option>';
+            }
+        } catch (e) {
+            select.innerHTML = '<option value="">เกิดข้อผิดพลาดในการโหลด</option>';
+        }
+    }
+
+    function closeAssignTeacherModal() {
+        document.getElementById('assign-teacher-backdrop').classList.remove('is-open');
+        document.getElementById('assign-teacher-modal').classList.remove('is-open');
+    }
+
+    function confirmCancelSection(s) {
+        ui.openDecisionSheet({
+            title: `ยืนยันยกเลิกกลุ่มเรียน ${s.courseCode || 'วิชา'} (กลุ่ม ${s.sectionNumber})`,
+            desc: 'การยกเลิกกลุ่มเรียน (Scenario 4) เป็นการกระทำที่มีผลกระทบเชื่อมโยงหลายส่วน กรุณาตรวจสอบผลกระทบก่อนยืนยัน',
+            impacts: [
+                'การลงทะเบียนของนักศึกษาทั้งหมดในกลุ่มนี้จะถูกเปลี่ยนสถานะเป็น CANCELLED',
+                'คาบเรียนทั้งหมดในตารางสอนที่เชื่อมโยงกับกลุ่มเรียนนี้จะถูกปลดออก',
+                'ระบบจะสร้างการแจ้งเตือนอัตโนมัติแจ้งนักศึกษาและผู้สอนที่ได้รับผลกระทบ'
+            ],
+            confirmText: 'ยืนยันยกเลิกกลุ่มเรียนนี้',
+            confirmClass: 'btn--danger',
+            onConfirm: async () => {
+                const res = await api.put(`/api/v1/sections/${s.id}/cancel`);
+                if (res.ok) {
+                    ui.toast('success', `ยกเลิกกลุ่มเรียน ${s.courseCode} กลุ่ม ${s.sectionNumber} สำเร็จ`);
+                    await loadSections();
+                } else {
+                    ui.toast('error', res.error.message || 'เกิดข้อผิดพลาดในการยกเลิกกลุ่มเรียน');
+                }
+            }
+        });
+    }
+
+    async function editSectionCapacity(s) {
+        const newCapStr = prompt(`กำหนดความจุที่นั่งใหม่สำหรับกลุ่ม ${s.sectionNumber} (ปัจจุบัน: ${s.capacity} ที่นั่ง):`, s.capacity);
+        if (!newCapStr) return;
+        const newCap = parseInt(newCapStr, 10);
+        if (isNaN(newCap) || newCap < 1) {
+            ui.toast('error', 'กรุณาระบุความจุที่นั่งเป็นตัวเลขมากกว่า 0');
+            return;
+        }
+
+        const res = await api.put(`/api/v1/sections/${s.id}`, {
+            courseId: s.courseId,
+            sectionNumber: s.sectionNumber,
+            capacity: newCap
+        });
+
+        if (res.ok) {
+            ui.toast('success', `ปรับความจุกลุ่มเรียน ${s.courseCode} เป็น ${newCap} ที่นั่งเรียบร้อย`);
+            await loadSections();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถปรับความจุได้');
+        }
+    }
+
+    function renderFilteredSections() {
+        const list = document.getElementById('section-list');
+        const query = (document.getElementById('search-box').value || '').trim().toLowerCase();
+
+        let filtered = allSections.filter(s => {
+            if (currentFilter !== 'ALL' && s.status !== currentFilter) return false;
+            if (query) {
+                const code = (s.courseCode || '').toLowerCase();
+                const sec = String(s.sectionNumber || '').toLowerCase();
+                const title = (s.courseTitle || '').toLowerCase();
+                if (!code.includes(query) && !sec.includes(query) && !title.includes(query)) return false;
+            }
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            ui.renderEmpty(list, 'ไม่พบกลุ่มเรียนที่ตรงกับเงื่อนไขการค้นหา');
+            return;
+        }
+
+        list.innerHTML = '';
+        filtered.forEach(s => {
+            const item = document.createElement('div');
+            item.style.padding = '14px 18px';
+            item.style.background = 'var(--surface)';
+            item.style.border = '1px solid var(--border-subtle)';
+            item.style.borderLeft = s.status === 'ACTIVE' ? '4px solid var(--ok-green)' : '4px solid var(--danger-red)';
+            item.style.borderRadius = '8px';
+            item.style.display = 'flex';
+            item.style.justifyContent = 'space-between';
+            item.style.alignItems = 'center';
+            item.style.flexWrap = 'wrap';
+            item.style.gap = '12px';
+
+            const isActive = s.status === 'ACTIVE';
+
+            item.innerHTML = `
+                <div style="display:flex; align-items:center; gap:16px;">
+                    <div>
+                        <div style="display:flex; align-items:center; gap:8px;">
+                            <span class="mono" style="font-weight:700; font-size:1.05rem; color:var(--ink-navy);">${ui.escapeHtml(s.courseCode || 'วิชา')}</span>
+                            <span style="font-size:0.9rem; font-weight:600; color:var(--slate-neutral); background:var(--bg-canvas); padding:2px 8px; border-radius:4px; border:1px solid var(--border-subtle);">
+                                กลุ่ม ${s.sectionNumber}
+                            </span>
+                            ${ui.badge(s.status)}
+                            <span class="muted mono" style="font-size:0.75rem;">ID: #${s.id}</span>
+                        </div>
+                        <div class="muted" style="font-size:0.88rem; margin-top:4px;">
+                            ${ui.escapeHtml(s.courseTitle || '')} · ความจุที่นั่ง: <span class="num" style="font-weight:600; color:var(--ink-navy);">${s.capacity || 0}</span> ที่นั่ง
+                        </div>
+                    </div>
+                </div>
+                <div style="display:flex; align-items:center; gap:10px;">
+                    ${isActive ? `
+                        <button type="button" class="btn btn--secondary btn--sm" onclick='openAssignTeacherModal(${JSON.stringify(s)})'>
+                            👤 มอบหมายผู้สอน
+                        </button>
+                        <button type="button" class="btn btn--secondary btn--sm" onclick='editSectionCapacity(${JSON.stringify(s)})'>
+                            ✏ ปรับความจุ
+                        </button>
+                        <button type="button" class="btn btn--danger btn--sm" onclick='confirmCancelSection(${JSON.stringify(s)})'>
+                            ยกเลิกกลุ่มเรียน
+                        </button>
+                    ` : `
+                        <span class="muted" style="font-size:0.85rem; font-weight:500;">กลุ่มเรียนถูกยกเลิกแล้ว</span>
+                    `}
+                </div>
+            `;
+            list.appendChild(item);
+        });
+    }
+
+    async function loadCoursesForSelect() {
+        const select = document.getElementById('section-course');
+        try {
+            const res = await api.get('/api/v1/courses?page=0&size=100');
+            if (res.ok) {
+                const list = (res.data && res.data.content) ? res.data.content : (Array.isArray(res.data) ? res.data : []);
+                select.innerHTML = '<option value="">-- เลือกรายวิชา --</option>';
+                list.forEach(c => {
+                    const opt = document.createElement('option');
+                    opt.value = c.id;
+                    opt.textContent = `${c.courseCode} - ${c.title}`;
+                    select.appendChild(opt);
+                });
+            }
+        } catch(e) {}
+    }
+
+    async function loadSections() {
+        const list = document.getElementById('section-list');
+        ui.renderLoading(list, 3);
+        const res = await api.get('/api/v1/sections');
+        if (!res.ok) {
+            ui.renderError(list, res.error);
+            return;
+        }
+
+        allSections = Array.isArray(res.data) ? res.data : (res.data.content || []);
+
+        // Update counts
+        const activeCount = allSections.filter(s => s.status === 'ACTIVE').length;
+        const cancelledCount = allSections.filter(s => s.status === 'CANCELLED').length;
+        document.getElementById('count-all').textContent = allSections.length;
+        document.getElementById('count-active').textContent = activeCount;
+        document.getElementById('count-cancelled').textContent = cancelledCount;
+
+        renderFilteredSections();
+    }
+
+    document.getElementById('create-section-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-create-section');
+        ui.setBusy(btn, true);
+
+        const payload = {
+            courseId: Number(document.getElementById('section-course').value),
+            sectionNumber: Number(document.getElementById('section-number').value),
+            capacity: Number(document.getElementById('section-capacity').value)
+        };
+
+        const res = await api.post('/api/v1/sections', payload);
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', `เปิดกลุ่มเรียนที่ ${payload.sectionNumber} สำเร็จ`);
+            document.getElementById('create-section-form').reset();
+            document.getElementById('section-number').value = '1';
+            document.getElementById('section-capacity').value = '40';
+            await loadSections();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถเปิดกลุ่มเรียนได้');
+        }
+    });
+
+    document.getElementById('assign-teacher-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-assign-teacher');
+        ui.setBusy(btn, true);
+
+        const sectionId = document.getElementById('assign-section-id').value;
+        const teacherId = Number(document.getElementById('assign-teacher-select').value);
+
+        const res = await api.put(`/api/v1/sections/${sectionId}/teacher`, { teacherId });
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', 'มอบหมายผู้สอนประจำกลุ่มเรียนสำเร็จ');
+            closeAssignTeacherModal();
+            await loadSections();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถมอบหมายผู้สอนได้');
+        }
+    });
+
+    loadCoursesForSelect();
+    loadSections();
+</script>
+</body>
+</html>

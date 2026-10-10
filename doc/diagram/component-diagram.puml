@@ -26,6 +26,7 @@ component "AcadOS Application" as AcadOS {
             component "RegistrationApiController" as RegistrationApiController
             component "ScheduleApiController" as ScheduleApiController
             component "TeacherSwapApiController" as TeacherSwapApiController
+            component "TeacherPreferenceApiController" as TeacherPreferenceApiController
             component "SectionApiController" as SectionApiController
             component "NotificationApiController" as NotificationApiController
             component "UserApiController" as UserApiController
@@ -49,12 +50,13 @@ component "AcadOS Application" as AcadOS {
         component "RegistrationService" as RegistrationService
         component "SchedulingService\n(Orchestrator)" as SchedulingService
         component "TeacherSwapService" as TeacherSwapService
+        component "TeacherSwapQueryService\n(CQRS Read)" as TeacherSwapQueryService
+        component "TeacherPreferenceService" as TeacherPreferenceService
         component "SectionCancellationService" as CancellationService
         component "NotificationService" as NotificationService
         component "HolidayService" as HolidayService
         component "UserService" as UserService
-        component "SectionService" as SectionService
-        component "TeacherAssignmentService" as TeacherAssignmentService
+        component "SectionService\n(incl. Teacher Assignment)" as SectionService
         component "AcademicEventService" as AcademicEventService
     }
 
@@ -64,7 +66,7 @@ component "AcadOS Application" as AcadOS {
         interface "ScoringStrategy" as ScoringStrategy
         component "PreferenceScoreStrategy" as PreferenceScoreStrategy
         component "WorkloadScoreStrategy" as WorkloadScoreStrategy
-        component "RoomSuitabilityScoreStrategy\n(TBA)" as RoomSuitabilityScoreStrategy
+        component "RoomSuitabilityScoreStrategy" as RoomSuitabilityScoreStrategy
     }
 
     component "Design Pattern Components" as Patterns {
