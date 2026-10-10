@@ -396,6 +396,8 @@ AcadOS/
 
 ```
 
+Slide Presentation : [https://canva.link/7kd96uokll32n4s]
+
 ---
 
 *จัดทำโดย คณะผู้พัฒนาโครงงาน AcadOS — วิทยาลัยการคอมพิวเตอร์ มหาวิทยาลัยขอนแก่น*
