@@ -16,7 +16,7 @@
 code/acados/src/main/java/com/project/acados/
 ├── config/              # Spring Configuration (Security, OpenAPI/Swagger, WebMvc)
 ├── controller/
-│   ├── api/             # REST API Controllers (11 ชุด: Course, Room, Section, Swap ฯลฯ)
+│   ├── api/             # REST API Controllers (12 ชุด: Course, Room, Section, TeacherPreference, Swap ฯลฯ)
 │   └── web/             # Thymeleaf Web Controllers (Home, Dashboard, Timetable)
 ├── domain/entity/       # JPA Relational Entities (16 ตัว: User, Course, Schedule ฯลฯ)
 ├── dto/
@@ -27,12 +27,12 @@ code/acados/src/main/java/com/project/acados/
 ├── notification/        # Notification Strategy Pattern (InApp, Email/Mailtrap)
 ├── pattern/
 │   ├── holiday/         # Adapter Pattern สำหรับเชื่อมต่อ ThailandFormats API
-│   ├── observer/        # Observer Pattern สำหรับแจ้งเตือนเมื่อตารางมีการเปลี่ยนแปลง
-│   ├── scoring/         # Strategy Pattern สำหรับคำนวณคะแนนตาราง (Preference, Workload, Room)
-│   └── state/           # State Pattern สำหรับบริหารสถานะกลุ่มเรียน (Active, Cancelled)
+│   └── observer/        # Observer Pattern สำหรับแจ้งเตือนเมื่อตารางมีการเปลี่ยนแปลง
 ├── repository/          # Spring Data JPA Repository Interfaces (16 Repositories)
 ├── security/            # JWT Token Provider, Filters, และ CustomUserDetailsService
-└── service/             # Service Interfaces และ Business Implementation Classes
+├── service/             # Service Interfaces และ Business Implementation Classes
+├── state/               # State Pattern สำหรับบริหารสถานะกลุ่มเรียน (Active, Cancelled)
+└── strategy/            # Strategy Pattern สำหรับคำนวณคะแนนตาราง (Preference, Workload, Room)
 ```
 
 ---
