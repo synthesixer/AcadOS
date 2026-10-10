@@ -1,5 +1,5 @@
-@startuml 03-class-diagram
-title AcadOS - Class Diagram (Domain + Service + Repository + Design Patterns)\nอ้างอิง Implement Plan v6 §6, §7, §8, §10, §14, §16, §17 · field ที่เอกสารไม่ระบุ ใช้ชื่อตาม database.md / Sequence Diagram
+@startuml 03-class-diagram-full
+title AcadOS - Full Class Diagram (Domain + Service + Repository + Exception + Design Patterns)\nอ้างอิง Implement Plan v6 §6, §7, §8, §10, §14, §16, §17 · field ที่เอกสารไม่ระบุ ใช้ชื่อตาม database.md / Sequence Diagram
 hide empty members
 skinparam classAttributeIconSize 0
 skinparam linetype polyline
@@ -373,7 +373,7 @@ package "strategy" <<Strategy>> {
   class RoomSuitabilityScoreStrategy {
     + calculateScore(candidate: Candidate): int
   }
-  note bottom of RoomSuitabilityScoreStrategy : เงื่อนไข = TBA (§12.4, §28)
+  note bottom of RoomSuitabilityScoreStrategy : ความจุห้องพอดี section.capacity <= room <= 1.5x (+20 คะแนน)
 }
 
 ' =====================================================================
