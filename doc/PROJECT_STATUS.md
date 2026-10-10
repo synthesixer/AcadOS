@@ -56,3 +56,48 @@
   - **Security Tests:** `TokenProvider`, `CustomUserDetailsService`, `JwtAuthenticationFilter`
   - **Controller WebMvc Tests:** REST APIs ทั้งหมด (`TeacherSwap`, `User`, `Holiday`, `Course`, `Room`, `Schedule`, `AcademicEvent`, `TrackCApiControllerTests`)
   - **Integration Tests:** End-to-End Database & Domain Integrity (`Day1CrossEntityIntegrationTest`, `SchedulingServiceIntegrationTest`, `UserProfileAndAuthIntegrationTest`)
+
+---
+
+## 4. ผลการวัดระดับ Code Coverage ด้วย JaCoCo (Baseline Measurement)
+
+- **เครื่องมือ:** `jacoco-maven-plugin:0.8.12` (รองรับ Java 21)
+- **แหล่งข้อมูลรายงาน:** `target/site/jacoco/jacoco.csv`, `target/site/jacoco/index.html`
+- **จำนวนคลาสทั้งหมดที่ตรวจวัด (Analyzed Classes):** 91 Classes
+
+### 4.1 สรุป Code Coverage ราย Package
+| Package | Line Coverage (%) | Branch Coverage (%) | ประเมินสถานะ |
+| :--- | :---: | :---: | :---: |
+| `domain.entity` | **100.00%** | **87.50%** | ✅ ผ่านเกณฑ์ระดับสูง |
+| `state` (Section State Machine) | **100.00%** | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
+| `domain.enums` | **100.00%** | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
+| `dto.request` | **100.00%** | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
+| `notification.strategy` | **100.00%** | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
+| `config` | **100.00%** | **100.00%** | ✅ ผ่านเกณฑ์ระดับสูง |
+| `security` | **97.22%** | **65.62%** | ✅ Line ผ่าน / Branch เฝ้าระวัง |
+| `service` (Constraint/Selector) | **92.91%** | **82.61%** | ✅ ผ่านเกณฑ์ ($\ge$ 85%) |
+| `dto.response` | **90.54%** | **61.54%** | ✅ ผ่านเกณฑ์ |
+| `exception` | **89.47%** | **66.67%** | ✅ ผ่านเกณฑ์ |
+| `controller.api` | **87.38%** | **50.00%** | ✅ Line ผ่าน ($\ge$ 85%) |
+| `service.impl` | **86.79%** | **67.71%** | ✅ Line ผ่าน ($\ge$ 85%) |
+| `strategy` (Scoring Strategy) | **79.31%** | **58.82%** | ⚠️ ปรับปรุงเพิ่มอีก 6% เพื่อแตะ 85% |
+| `mapper` | **78.82%** | **53.85%** | ℹ️ MapStruct Generated |
+| `pattern.observer` | **75.00%** | **100.00%** | ℹ️ Observer Subject/Publisher |
+| `pattern.holiday` (External Adapter)| **62.22%** | **34.29%** | ⚠️ ต้องการ Negative & Resilience Tests |
+
+### 4.2 สรุป Service Implementation Coverage ราย Class
+| Class ใน `service.impl` | Line Coverage (%) | Branch Coverage (%) |
+| :--- | :---: | :---: |
+| `NotificationServiceImpl` | **100.00%** | **95.45%** |
+| `RoomServiceImpl` | **100.00%** | **71.43%** |
+| `SectionServiceImpl` | **100.00%** | **100.00%** |
+| `CourseServiceImpl` | **100.00%** | **83.33%** |
+| `SectionCancellationServiceImpl` | **100.00%** | **87.50%** |
+| `RegistrationServiceImpl` | **98.41%** | **96.15%** |
+| `TeacherSwapServiceImpl` | **91.67%** | **60.00%** |
+| `TeacherSwapQueryServiceImpl` | **87.27%** | **40.91%** |
+| `HolidayServiceImpl` | **77.78%** | **83.33%** |
+| `SchedulingServiceImpl` | **76.22%** | **59.21%** |
+| `UserServiceImpl` | **70.59%** | **50.00%** |
+| `AcademicEventServiceImpl` | **70.37%** | **62.50%** |
+

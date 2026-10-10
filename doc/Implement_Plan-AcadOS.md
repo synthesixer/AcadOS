@@ -27,7 +27,7 @@
   - [สารบัญ (Table of Contents)](#สารบัญ-table-of-contents)
   - [1. Project Overview \& Identity](#1-project-overview--identity)
     - [1.1 Project Identity](#11-project-identity)
-    - [1.2 Version 4 Objective](#12-version-4-objective)
+    - [1.2 Project Objectives](#12-project-objectives)
     - [1.3 Core Architecture Direction](#13-core-architecture-direction)
   - [2. Development Principles](#2-development-principles)
     - [2.1 Feature Complete, Complexity Limited](#21-feature-complete-complexity-limited)
@@ -73,6 +73,8 @@
   - [19. Testing Plan \& Quality Assurance](#19-testing-plan--quality-assurance)
     - [19.1 Unit Testing](#191-unit-testing)
     - [19.2 Integration Testing](#192-integration-testing)
+    - [19.3 Code Coverage Measurement \& Verification (JaCoCo)](#193-code-coverage-measurement--verification-jacoco)
+      - [1. เหตุผลทางวิศวกรรมซอฟต์แวร์ที่ต้องใช้ JaCoCo (Rationale for Choosing JaCoCo)](#1-เหตุผลทางวิศวกรรมซอฟต์แวร์ที่ต้องใช้-jacoco-rationale-for-choosing-jacoco)
   - [20. Required Diagrams Specification](#20-required-diagrams-specification)
   - [21. Repository Structure \& Git Workflow](#21-repository-structure--git-workflow)
     - [21.1 โครงสร้างโฟลเดอร์ของ Repository](#211-โครงสร้างโฟลเดอร์ของ-repository)
@@ -81,9 +83,15 @@
     - [22.1 Commit Breakdown สำหรับสมาชิกทั้ง 3 คน](#221-commit-breakdown-สำหรับสมาชิกทั้ง-3-คน)
     - [22.2 แผนการดำเนินงาน 4 วัน (Four-Day Execution Plan)](#222-แผนการดำเนินงาน-4-วัน-four-day-execution-plan)
   - [23. Deployment Architecture, Checklist \& Demo Scenarios](#23-deployment-architecture-checklist--demo-scenarios)
-    - [23.1 Cloud Production Deployment Environment \& Container Architecture](#231-cloud-production-deployment-environment--container-architecture-ตรงตาม-implementation-จริง)
+    - [23.1 Cloud Production Deployment Environment \& Container Architecture (ตรงตาม Implementation จริง)](#231-cloud-production-deployment-environment--container-architecture-ตรงตาม-implementation-จริง)
+      - [1. ข้อกำหนดสภาพแวดล้อม Cloud Server (Host Specifications)](#1-ข้อกำหนดสภาพแวดล้อม-cloud-server-host-specifications)
+      - [2. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)](#2-โครงสร้างคอนเทนเนอร์ใน-docker-compose-3-services-architecture)
+      - [3. รายละเอียด Multi-Stage Dockerfile (`code/acados/Dockerfile`)](#3-รายละเอียด-multi-stage-dockerfile-codeacadosdockerfile)
+      - [4. กลไกความทนทานและการคงอยู่ของข้อมูล (Data Persistence \& Healthcheck)](#4-กลไกความทนทานและการคงอยู่ของข้อมูล-data-persistence--healthcheck)
+      - [5. สรุป Service Endpoints บน Cloud Production Host (`http://<SERVER_PUBLIC_IP>`)](#5-สรุป-service-endpoints-บน-cloud-production-host-httpserver_public_ip)
+      - [6. คำสั่งในการ Deploy และจัดการบน Production Server](#6-คำสั่งในการ-deploy-และจัดการบน-production-server)
     - [23.2 Deployment Checklist](#232-deployment-checklist)
-    - [23.3 Final Demo Scenarios](#233-final-demo-scenarios)
+    - [23.2 Final Demo Scenarios](#232-final-demo-scenarios)
   - [24. Final Project Definition \& Definition of Done](#24-final-project-definition--definition-of-done)
     - [24.1 Definition of Done (DoD)](#241-definition-of-done-dod)
   - [25. Scope Preservation \& Priority Strategy](#25-scope-preservation--priority-strategy)
@@ -171,7 +179,7 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 | **Validation** | Jakarta Bean Validation | Hibernate Validator (`@NotNull`, `@Size`, `@Email` ฯลฯ) |
 | **API Documentation** | Springdoc OpenAPI (Swagger UI) | สเปก OpenAPI v3 เข้าถึงผ่าน `/swagger-ui.html` |
 | **Frontend** | Thymeleaf + HTML5 / CSS3 / JS | เรนเดอร์ฝั่ง Server เรียกใช้งานผ่าน Web Controller และ REST API |
-| **Testing** | JUnit 5 + Mockito + Spring Boot Test | ทดสอบ Unit Test, Service Mocking, Integration Testing และ Testcontainers |
+| **Testing & Code Coverage** | JUnit 5 + Mockito + Spring Boot Test + JaCoCo | ทดสอบ Unit Test, Service Mocking, Integration Testing และวัดผล Code Coverage (Line & Branch) ด้วย JaCoCo 0.8.12 |
 | **Containerization** | Docker & Docker Compose (Multi-Container) | รองรับ 3 คอนเทนเนอร์: `acados-app` (Spring Boot 3.3.4 บน Eclipse Temurin 21 JRE), `acados-db` (MySQL 8.4 LTS), และ `acados-phpmyadmin` พร้อม Docker Persistent Volume `mysql_data` |
 | **Deployment** | Cloud Host Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose บน Linux VPS เข้าถึงโดยตรง Port 8080 (No Nginx), phpMyAdmin Port 8081, ฐานข้อมูลภายใน Port 3306 พร้อม Healthcheck `mysqladmin ping` และ Auto-restart policy |
 | **Email Service** | Mailtrap (mailtrap.io) Sandbox SMTP | บริการ Sandbox SMTP ทดสอบส่งอีเมลผ่าน `spring-boot-starter-mail` (Host: `sandbox.smtp.mailtrap.io`, Port 587) ตรวจสอบผลบน Web Inbox ตอน Demo ได้ทันที |
@@ -817,6 +825,110 @@ $$\text{External Holiday API (ThailandFormats)} \longrightarrow \text{ExternalHo
 - `POST /api/v1/registrations`: ตรวจสอบ Transaction และการตัดสิทธิ์ที่นั่ง
 - `POST /api/v1/schedules/generate`: ตรวจสอบการบันทึก Schedule ชุดใหม่ลงใน MySQL
 - `POST /api/v1/teacher-swaps`: ตรวจสอบการสร้างสถานะคำขอ
+
+### 19.3 Code Coverage Measurement & Verification (JaCoCo)
+
+ระบบ AcadOS กำหนดใช้ **JaCoCo (Java Code Coverage Library)** ผ่านปลั๊กอิน `jacoco-maven-plugin` ในการตรวจสอบ วัดผล และประเมินความครอบคลุมของชุดทดสอบทั้งโปรเจกต์แบบอัตโนมัติ
+
+#### 1. ข้อกำหนดเวอร์ชันและสภาพแวดล้อมทางเทคนิค (Version & Technical Requirements)
+| องค์ประกอบ | เวอร์ชัน / ข้อกำหนดที่รองรับ | รายละเอียดและความเข้ากันได้ทางเทคนิค |
+| :--- | :--- | :--- |
+| **JaCoCo Plugin** | `0.8.12` *(ขั้นต่ำ $\ge$ 0.8.11)* | เวอร์ชันทางการที่ปรับปรุงเอนจิน **ASM 9.6+** เพื่อรองรับ Bytecode Class File Major Version 65 ของ Java 21 |
+| **Java SDK Runtime** | Java 21 LTS (Eclipse Temurin 21) | รองรับ Virtual Threads, Records, Sealed Classes และ Pattern Matching อย่างสมบูรณ์ |
+| **Build Tool** | Apache Maven 3.9+ | ผสานการทำงานผ่าน Maven Standard Lifecycle (`test` และ `verify` phase) |
+| **Testing Framework**| JUnit 5 (Jupiter 5.10+) + Mockito 5+ | รองรับ Mockito Inline ByteBuddy Mock Maker โดยไม่เกิดความขัดแย้งกับ Bytecode Instrumentation |
+| **Backend Framework**| Spring Boot 3.3.4 | รองรับ CGLIB / Spring Data JPA Dynamic Proxies ได้อย่างไร้รอยต่อ |
+
+#### 2. สถาปัตยกรรมการทำงานของ JaCoCo (JaCoCo Architecture & Instrumentation Flow)
+JaCoCo ทำงานโดยใช้กลไก **On-the-fly Bytecode Instrumentation** ซึ่งแทรกโพรบ (Execution Probes) เข้าไปใน Bytecode ในหน่วยความจำขณะคลาสกำลังถูกโหลดเข้าสู่ JVM โดยไม่แตะต้อง Source Code หรือไฟล์ `.class` บนดิสก์:
+
+```mermaid
+flowchart TD
+    subgraph Phase1["1. JVM Launch & Agent Attachment"]
+        A["Maven Test Execution"] --> B["JaCoCo Java Agent (-javaagent)"]
+    end
+
+    subgraph Phase2["2. On-the-Fly Bytecode Instrumentation"]
+        B --> C["JVM ClassLoader Loads Classes"]
+        C --> D["JaCoCo Agent Injects Execution Probes"]
+        D --> E["Instrumented Bytecode in JVM Memory"]
+    end
+
+    subgraph Phase3["3. Test Execution & Probe Triggering"]
+        E --> F["Run 247+ JUnit Tests"]
+        F --> G["Execution Probes Record Hits (Line & Branch)"]
+        G --> H["Dump Execution Data to target/jacoco.exec"]
+    end
+
+    subgraph Phase4["4. Report Synthesis"]
+        H --> I["JaCoCo Report Goal"]
+        J["Compiled .class Files"] --> I
+        K["Java Source Files (src/main/java)"] --> I
+        I --> L["target/site/jacoco/index.html (HTML Report)"]
+        I --> M["target/site/jacoco/jacoco.csv (Data Metrics)"]
+        I --> N["target/site/jacoco/jacoco.xml (CI/CD Pipeline)"]
+    end
+```
+
+- **Execution Probe:** อาร์เรย์ของ Boolean Flags ขนาดเล็กที่แทรกอยู่ระหว่าง Bytecode Instructions ทุกจุดที่เป็น Branch/Decision ทำให้การตรวจสอบกิ่งเงื่อนไขมีความเร็วสูงมาก ($O(1)$ ต่อการกระทำ)
+- **Data Collector:** เมื่อ JVM สิ้นสุดกระบวนการทดสอบ ข้อมูลโพรบทั้งหมดจะถูกบันทึกเป็นไฟล์ไบนารี `target/jacoco.exec`
+- **Report Generator:** ปลั๊กอินอ่านไฟล์ `jacoco.exec` เทียบกับ Source Code และ Compiled Bytecode เพื่อคำนวณสถิติ Line, Branch, Method, และ Class Coverage ออกมาเป็นรายงาน
+
+#### 3. เหตุผลทางวิศวกรรมซอฟต์แวร์ที่ต้องใช้ JaCoCo (Rationale for Choosing JaCoCo)
+1. **รองรับ Java 21 LTS Bytecode อย่างสมบูรณ์ (Full Java 21 Compatibility):**
+   JaCoCo เวอร์ชัน 0.8.12 ขึ้นไปเป็นเครื่องมือวัด Coverage ชั้นนำใน Java Ecosystem ที่ปรับปรุงเอนจิน ASM ให้รองรับสเปก Bytecode ของ Java 21 LTS อย่างสมบูรณ์ ไม่เกิดปัญหา `Unsupported class file major version 65` หรือข้อผิดพลาดกับ Pattern Matching, Records และ Virtual Threads
+2. **วัดผลลึกถึงระดับกิ่งเงื่อนไข (Branch & Decision Coverage):**
+   การวัดเพียง Line Coverage อย่างเดียวอาจสร้างความเข้าใจผิด (False Sense of Security) เนื่องจากโค้ดอาจรันผ่านบรรทัดนั้น แต่ไม่ได้ทดสอบกิ่งเงื่อนไขที่ซับซ้อน เช่น ใน `ConstraintEvaluator` และ `ScheduleSelector` ซึ่งมี Hard Constraints (BR-01 ถึง BR-08) หลากหลายทิศทาง JaCoCo สามารถรายงานผล **Branch Coverage (Decision Coverage)** ช่วยให้ระบุกิ่ง `if-else` หรือเงื่อนไขตรรกะที่ยังไม่ถูกทดสอบได้อย่างแม่นยำ
+3. **ผสานเข้ากับวงจรการ Build ของ Maven ได้อย่างไร้รอยต่อ (Seamless Maven Lifecycle Integration):**
+   JaCoCo ทำงานผสานเข้ากับ Lifecycle ปกติของ Maven ผ่าน Goal:
+   - `prepare-agent`: ติดตั้ง Java Agent เบื้องหลังอัตโนมัติก่อนเริ่มรัน Unit/Integration Tests
+   - `report`: สังเคราะห์รายงาน Coverage ทันทีที่การทดสอบในเฟส `test` หรือ `verify` สิ้นสุดลง โดยทีมงานไม่ต้องเปลี่ยนพฤติกรรมการพัฒนาหรือจำคำสั่งพิเศษเพิ่มเติม (เพียงรัน `mvn test` รายงานก็ถูกสร้างทันที)
+4. **ความแม่นยำสูงและมี Runtime Overhead ต่ำ (On-the-fly Bytecode Instrumentation):**
+   JaCoCo ใช้วิธีแทรก Instrumentation Code บน Bytecode ในหน่วยความจำขณะที่ ClassLoader กำลังโหลดคลาส (On-the-fly) ไม่ต้องแก้ไขไฟล์ Source Code หรือแปลงไฟล์ `.class` ล่วงหน้า (Offline) ส่งผลให้การรันชุดทดสอบ 247+ ข้อรวดเร็วและใช้เวลาเพียงไม่กี่นาที
+5. **ไม่ขัดแย้งกับ Spring Boot 3.3.4, Hibernate และ Mockito (Zero Interference):**
+   JaCoCo ทำงานเข้ากันได้อย่างสมบูรณ์กับ Dynamic Proxies ของ Spring Boot, ByteBuddy Subclasses ของ Hibernate JPA, และ Mockito Inline Mock Maker โดยไม่ก่อให้เกิดปัญหา ClassLoader Leak หรือ Bytecode Mutation Conflict
+6. **รายงานผลรอบด้านหลายรูปแบบ (Multi-Format Reporting):**
+   - **HTML Report (`target/site/jacoco/index.html`):** รายงานแบบ Interactive แสดงแถบสีเขียว/เหลือง/แดง แยกรายละเอียดระดับบรรทัดและกิ่งเงื่อนไข สำหรับนักพัฒนาใช้ตรวจสอบจุดบกพร่อง
+   - **CSV Report (`target/site/jacoco/jacoco.csv`):** สำหรับสกัดข้อมูลตัวเลข สรุปแนวโน้ม และวิเคราะห์ทางสถิติของแต่ละโมดูล
+   - **XML Report (`target/site/jacoco/jacoco.xml`):** รองรับการส่งต่อข้อมูลเข้าสู่ระบบ CI/CD Pipeline และ Quality Gate ของ SonarQube
+
+#### 4. วิธีการรันและการตรวจสอบรายงาน (Execution & Verification Guide)
+
+คำสั่งทั้งหมดให้รันจากโฟลเดอร์ของแอปพลิเคชัน (`code/acados`):
+
+##### 4.1 คำสั่งการรันผ่าน Maven
+1. **รันการทดสอบทั้งหมดพร้อมสร้างรายงาน Coverage อัตโนมัติ:**
+   ```bash
+   mvn test
+   ```
+   *(ปลั๊กอินจะดักจับ `prepare-agent` ตอนเริ่มต้น และสร้างรายงานใน `target/site/jacoco/` ทันทีที่ Test จบ)*
+
+2. **รัน Clean และทดสอบใหม่ทั้งหมดแบบสมบูรณ์:**
+   ```bash
+   mvn clean test
+   ```
+   *(แนะนำใช้ก่อน Commit งาน เพื่อล้างไฟล์ชั่วคราวและสร้างรายงานจากโค้ดล่าสุดจริง)*
+
+3. **รันเฉพาะการสังเคราะห์รายงานซ้ำ (โดยไม่รัน Test ซ้ำ):**
+   ```bash
+   mvn jacoco:report
+   ```
+   *(กรณีที่มีไฟล์ `target/jacoco.exec` อยู่แล้วและต้องการเรนเดอร์ HTML ใหม่)*
+
+##### 4.2 แหล่งที่อยู่ของไฟล์รายงานผลลัพธ์ (Output Artifact Locations)
+| ไฟล์ผลลัพธ์ | ที่อยู่ของไฟล์ (Relative Path) | คำอธิบาย |
+| :--- | :--- | :--- |
+| **Execution Binary Data** | `target/jacoco.exec` | ข้อมูลบันทึกการแตะโพรบระดับไบนารีจาก Java Agent |
+| **Interactive HTML Dashboard** | `target/site/jacoco/index.html` | แดชบอร์ดสรุปผลภาพรวม และสามารถคลิกเจาะลึกดูโค้ดรายบรรทัดได้ |
+| **CSV Raw Metrics** | `target/site/jacoco/jacoco.csv` | สรุปตัวเลข Missed/Covered Instructions, Branches, Lines, Methods, Classes |
+| **XML Machine-Readable** | `target/site/jacoco/jacoco.xml` | สำหรับผูกต่อเข้ากับเครื่องมือตรวจสอบคุณภาพโค้ดอัตโนมัติ (เช่น SonarQube / GitHub Actions) |
+
+##### 4.3 วิธีการเปิดดูรายงานบน Web Browser
+เปิดดูผลลัพธ์ผ่าน Terminal / PowerShell:
+```powershell
+Start-Process code/acados/target/site/jacoco/index.html
+```
+หรือเปิดไฟล์ `index.html` ในโฟลเดอร์ `code/acados/target/site/jacoco/` ด้วยเบราว์เซอร์ใดก็ได้ (Chrome, Edge, Firefox)
 
 ---
 
