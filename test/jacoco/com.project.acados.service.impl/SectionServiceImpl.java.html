@@ -1,0 +1,206 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SectionServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">SectionServiceImpl.java</span></div><h1>SectionServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.Course;
+import com.project.acados.domain.entity.Registration;
+import com.project.acados.domain.entity.Schedule;
+import com.project.acados.domain.entity.Section;
+import com.project.acados.domain.entity.Teacher;
+import com.project.acados.domain.entity.TeacherAvailability;
+import com.project.acados.domain.enums.NotificationType;
+import com.project.acados.domain.enums.ScheduleStatus;
+import com.project.acados.domain.enums.SectionStatus;
+import com.project.acados.dto.request.SectionRequest;
+import com.project.acados.dto.response.TeacherAssignmentOptionResponse;
+import com.project.acados.exception.BusinessRuleException;
+import com.project.acados.exception.ResourceNotFoundException;
+import com.project.acados.notification.strategy.NotificationChannel;
+import com.project.acados.repository.CourseRepository;
+import com.project.acados.repository.RegistrationRepository;
+import com.project.acados.repository.ScheduleRepository;
+import com.project.acados.repository.SectionRepository;
+import com.project.acados.repository.TeacherAvailabilityRepository;
+import com.project.acados.repository.TeacherQualificationRepository;
+import com.project.acados.repository.TeacherRepository;
+import com.project.acados.service.NotificationService;
+import com.project.acados.service.SectionService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.List;
+import java.util.Objects;
+
+/**
+ * Default SectionService. The checks follow Userflow A12-2 (create), A12-3 (update), and A13 (assign teacher).
+ */
+@Service
+@RequiredArgsConstructor
+public class SectionServiceImpl implements SectionService {
+
+    private final SectionRepository sectionRepository;
+    private final CourseRepository courseRepository;
+    private final RegistrationRepository registrationRepository;
+    private final TeacherRepository teacherRepository;
+    private final TeacherQualificationRepository teacherQualificationRepository;
+    private final TeacherAvailabilityRepository teacherAvailabilityRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final NotificationService notificationService;
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;Section&gt; getSections(Long courseId) {
+<span class="fc" id="L52">        return sectionRepository.findAllWithCourse(courseId);</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public Section getSection(Long id) {
+<span class="fc" id="L58">        return sectionRepository.findWithCourseById(id)</span>
+<span class="fc" id="L59">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบ Section&quot;));</span>
+    }
+
+    @Override
+    @Transactional
+    public Section createSection(SectionRequest request) {
+<span class="fc" id="L65">        Course course = courseRepository.findById(request.courseId())</span>
+<span class="fc" id="L66">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบรายวิชา&quot;));</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (sectionRepository.existsByCourseIdAndSectionNumber(course.getId(), request.sectionNumber())) {</span>
+<span class="fc" id="L68">            throw new BusinessRuleException(&quot;Section &quot; + request.sectionNumber() + &quot; ของรายวิชานี้มีอยู่แล้ว&quot;);</span>
+        }
+<span class="fc" id="L70">        return sectionRepository.save(Section.builder()</span>
+<span class="fc" id="L71">                .course(course)</span>
+<span class="fc" id="L72">                .sectionNumber(request.sectionNumber())</span>
+<span class="fc" id="L73">                .capacity(request.capacity())</span>
+<span class="fc" id="L74">                .status(SectionStatus.ACTIVE)</span>
+<span class="fc" id="L75">                .build());</span>
+    }
+
+    @Override
+    @Transactional
+    public Section updateSection(Long id, SectionRequest request) {
+<span class="fc" id="L81">        Section section = sectionRepository.findWithCourseById(id)</span>
+<span class="fc" id="L82">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบ Section&quot;));</span>
+<span class="fc bfc" id="L83" title="All 2 branches covered.">        if (section.getStatus() != SectionStatus.ACTIVE) {</span>
+<span class="fc" id="L84">            throw new BusinessRuleException(&quot;Section นี้ถูกยกเลิกแล้ว ไม่สามารถแก้ไขได้&quot;);</span>
+        }
+<span class="fc bfc" id="L86" title="All 2 branches covered.">        if (request.capacity() &lt; registrationRepository.countBySectionId(id)) {</span>
+<span class="fc" id="L87">            throw new BusinessRuleException(&quot;BR-05: จำนวนที่นั่งน้อยกว่าจำนวนผู้ลงทะเบียน&quot;);</span>
+        }
+<span class="fc" id="L89">        section.setCapacity(request.capacity());</span>
+<span class="fc" id="L90">        return section;</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;TeacherAssignmentOptionResponse&gt; getTeacherOptions(Long id) {
+<span class="fc" id="L96">        Section section = sectionRepository.findWithCourseById(id)</span>
+<span class="pc" id="L97">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบ Section&quot;));</span>
+<span class="fc" id="L98">        Long courseId = section.getCourse().getId();</span>
+<span class="fc" id="L99">        return teacherRepository.findAll().stream()</span>
+<span class="fc" id="L100">                .map(t -&gt; new TeacherAssignmentOptionResponse(</span>
+<span class="fc" id="L101">                        t.getId(),</span>
+<span class="fc" id="L102">                        t.getFullName(),</span>
+<span class="fc" id="L103">                        t.getUser().getUniversityId(),</span>
+<span class="fc" id="L104">                        teacherQualificationRepository.existsByTeacherIdAndCourseId(t.getId(), courseId)</span>
+                ))
+<span class="fc" id="L106">                .toList();</span>
+    }
+
+    @Override
+    @Transactional
+    public Section assignTeacher(Long id, Long teacherId) {
+<span class="fc" id="L112">        Section section = sectionRepository.findWithCourseById(id)</span>
+<span class="fc" id="L113">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบ Section&quot;));</span>
+
+<span class="fc bfc" id="L115" title="All 2 branches covered.">        if (section.getStatus() != SectionStatus.ACTIVE) {</span>
+<span class="fc" id="L116">            throw new BusinessRuleException(&quot;Section นี้ถูกยกเลิกแล้ว ไม่สามารถมอบหมายผู้สอนได้&quot;);</span>
+        }
+
+<span class="fc" id="L119">        Teacher teacher = teacherRepository.findById(teacherId)</span>
+<span class="fc" id="L120">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบอาจารย์&quot;));</span>
+
+        // BR-06: Teacher Qualification
+<span class="fc bfc" id="L123" title="All 2 branches covered.">        if (!teacherQualificationRepository.existsByTeacherIdAndCourseId(teacher.getId(), section.getCourse().getId())) {</span>
+<span class="fc" id="L124">            throw new BusinessRuleException(&quot;BR-06: อาจารย์ไม่มีคุณสมบัติสอนรายวิชานี้&quot;);</span>
+        }
+
+        // Schedules must exist and be PUBLISHED
+<span class="fc" id="L128">        List&lt;Schedule&gt; schedules = scheduleRepository.findBySectionId(id);</span>
+<span class="fc bfc" id="L129" title="All 2 branches covered.">        if (schedules.isEmpty()) {</span>
+<span class="fc" id="L130">            throw new BusinessRuleException(&quot;Section ยังไม่มีคาบเรียน กรุณาจัดตารางเรียนก่อน&quot;);</span>
+        }
+<span class="fc bfc" id="L132" title="All 2 branches covered.">        boolean hasNonPublished = schedules.stream().anyMatch(s -&gt; s.getStatus() != ScheduleStatus.PUBLISHED);</span>
+<span class="fc bfc" id="L133" title="All 2 branches covered.">        if (hasNonPublished) {</span>
+<span class="fc" id="L134">            throw new BusinessRuleException(&quot;Section มีคาบเรียนที่ยังไม่ได้รับการ Publish (ต้อง Publish ตารางเรียนก่อนมอบหมายผู้สอน)&quot;);</span>
+        }
+
+        // BR-07: Teacher Availability
+<span class="fc" id="L138">        List&lt;TeacherAvailability&gt; unavailabilities = teacherAvailabilityRepository.findByTeacherId(teacher.getId());</span>
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        for (Schedule schedule : schedules) {</span>
+<span class="fc" id="L140">            boolean unavailable = unavailabilities.stream()</span>
+<span class="pc bpc" id="L141" title="1 of 2 branches missed.">                    .filter(a -&gt; !a.isAvailable())</span>
+<span class="fc" id="L142">                    .map(TeacherAvailability::getTimeSlot)</span>
+<span class="fc" id="L143">                    .anyMatch(slot -&gt; slot.overlapsWith(schedule.getTimeSlot()));</span>
+<span class="fc bfc" id="L144" title="All 2 branches covered.">            if (unavailable) {</span>
+<span class="fc" id="L145">                throw new BusinessRuleException(&quot;BR-07: อาจารย์ไม่ว่างในช่วงเวลาของคาบเรียน&quot;);</span>
+            }
+<span class="fc" id="L147">        }</span>
+
+        // BR-01: Teacher Schedule Conflict
+<span class="fc bfc" id="L150" title="All 2 branches covered.">        for (Schedule schedule : schedules) {</span>
+<span class="fc bfc" id="L151" title="All 2 branches covered.">            for (ScheduleStatus status : List.of(ScheduleStatus.PUBLISHED, ScheduleStatus.DRAFT)) {</span>
+<span class="fc" id="L152">                List&lt;Schedule&gt; existingSchedules = scheduleRepository.findByTeacherIdAndStatus(teacher.getId(), status);</span>
+<span class="fc bfc" id="L153" title="All 2 branches covered.">                for (Schedule existing : existingSchedules) {</span>
+<span class="pc bpc" id="L154" title="1 of 2 branches missed.">                    if (Objects.equals(existing.getSection().getId(), id)) {</span>
+<span class="nc" id="L155">                        continue;</span>
+                    }
+<span class="pc bpc" id="L157" title="1 of 2 branches missed.">                    if (existing.getTimeSlot().overlapsWith(schedule.getTimeSlot())) {</span>
+<span class="fc bfc" id="L158" title="All 2 branches covered.">                        if (status == ScheduleStatus.DRAFT) {</span>
+<span class="fc" id="L159">                            throw new BusinessRuleException(&quot;DRAFT Timetable Conflict: ตารางร่างของอาจารย์มีคาบสอนชนกัน&quot;);</span>
+                        }
+<span class="fc" id="L161">                        throw new BusinessRuleException(&quot;BR-01: อาจารย์มีตารางสอนชนกันในคาบเรียนนี้&quot;);</span>
+                    }
+<span class="nc" id="L163">                }</span>
+<span class="fc" id="L164">            }</span>
+<span class="fc" id="L165">        }</span>
+
+        // Update schedule teacher
+<span class="fc" id="L168">        Teacher previousTeacher = schedules.get(0).getTeacher();</span>
+<span class="fc bfc" id="L169" title="All 2 branches covered.">        for (Schedule schedule : schedules) {</span>
+<span class="fc" id="L170">            schedule.setTeacher(teacher);</span>
+<span class="fc" id="L171">            scheduleRepository.save(schedule);</span>
+<span class="fc" id="L172">        }</span>
+
+        // Notifications (Userflow A13)
+<span class="fc" id="L175">        notificationService.sendNotification(</span>
+<span class="fc" id="L176">                teacher.getUser(),</span>
+                NotificationType.SCHEDULE_CHANGED,
+                &quot;มอบหมายการสอนรายวิชา&quot;,
+<span class="fc" id="L179">                &quot;คุณได้รับมอบหมายให้สอนวิชา &quot; + section.getCourse().getCourseCode() + &quot; กลุ่ม &quot; + section.getSectionNumber(),</span>
+                NotificationChannel.IN_APP
+        );
+
+<span class="pc bpc" id="L183" title="2 of 4 branches missed.">        if (previousTeacher != null &amp;&amp; !Objects.equals(previousTeacher.getId(), teacher.getId())) {</span>
+<span class="fc" id="L184">            notificationService.sendNotification(</span>
+<span class="fc" id="L185">                    previousTeacher.getUser(),</span>
+                    NotificationType.SCHEDULE_CHANGED,
+                    &quot;เปลี่ยนแปลงการมอบหมายผู้สอน&quot;,
+<span class="fc" id="L188">                    &quot;คุณถูกเปลี่ยนผู้สอนในวิชา &quot; + section.getCourse().getCourseCode() + &quot; กลุ่ม &quot; + section.getSectionNumber(),</span>
+                    NotificationChannel.IN_APP
+            );
+        }
+
+<span class="fc bfc" id="L193" title="All 2 branches covered.">        for (Registration reg : registrationRepository.findBySectionId(id)) {</span>
+<span class="fc" id="L194">            notificationService.sendNotification(</span>
+<span class="fc" id="L195">                    reg.getStudent().getUser(),</span>
+                    NotificationType.SCHEDULE_CHANGED,
+                    &quot;เปลี่ยนแปลงผู้สอน&quot;,
+<span class="fc" id="L198">                    &quot;วิชา &quot; + section.getCourse().getCourseCode() + &quot; กลุ่ม &quot; + section.getSectionNumber() + &quot; ได้เปลี่ยนผู้สอนเป็น &quot; + teacher.getFullName(),</span>
+                    NotificationChannel.IN_APP
+            );
+<span class="fc" id="L201">        }</span>
+
+<span class="fc" id="L203">        return section;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

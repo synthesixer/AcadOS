@@ -1,0 +1,172 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegistrationMapperImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.mapper</a> &gt; <span class="el_source">RegistrationMapperImpl.java</span></div><h1>RegistrationMapperImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.mapper;
+
+import com.project.acados.domain.entity.Course;
+import com.project.acados.domain.entity.Registration;
+import com.project.acados.domain.entity.Section;
+import com.project.acados.domain.entity.Student;
+import com.project.acados.dto.response.RegistrationResponse;
+import java.time.LocalDateTime;
+import java.util.ArrayList;
+import java.util.List;
+import javax.annotation.processing.Generated;
+import org.springframework.stereotype.Component;
+
+@Generated(
+    value = &quot;org.mapstruct.ap.MappingProcessor&quot;,
+    date = &quot;2026-10-10T18:07:35+0700&quot;,
+    comments = &quot;version: 1.5.5.Final, compiler: javac, environment: Java 21.0.12 (Oracle Corporation)&quot;
+)
+@Component
+<span class="fc" id="L20">public class RegistrationMapperImpl implements RegistrationMapper {</span>
+
+    @Override
+    public RegistrationResponse toResponse(Registration registration) {
+<span class="pc bpc" id="L24" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L25">            return null;</span>
+        }
+
+<span class="fc" id="L28">        Long studentId = null;</span>
+<span class="fc" id="L29">        String studentName = null;</span>
+<span class="fc" id="L30">        Long sectionId = null;</span>
+<span class="fc" id="L31">        Integer sectionNumber = null;</span>
+<span class="fc" id="L32">        Long courseId = null;</span>
+<span class="fc" id="L33">        String courseCode = null;</span>
+<span class="fc" id="L34">        String courseTitle = null;</span>
+<span class="fc" id="L35">        Long id = null;</span>
+<span class="fc" id="L36">        LocalDateTime registeredAt = null;</span>
+
+<span class="fc" id="L38">        studentId = registrationStudentId( registration );</span>
+<span class="fc" id="L39">        studentName = registrationStudentFullName( registration );</span>
+<span class="fc" id="L40">        sectionId = registrationSectionId( registration );</span>
+<span class="fc" id="L41">        sectionNumber = registrationSectionSectionNumber( registration );</span>
+<span class="fc" id="L42">        courseId = registrationCourseId( registration );</span>
+<span class="fc" id="L43">        courseCode = registrationCourseCourseCode( registration );</span>
+<span class="fc" id="L44">        courseTitle = registrationCourseTitle( registration );</span>
+<span class="fc" id="L45">        id = registration.getId();</span>
+<span class="fc" id="L46">        registeredAt = registration.getRegisteredAt();</span>
+
+<span class="fc" id="L48">        RegistrationResponse registrationResponse = new RegistrationResponse( id, registeredAt, studentId, studentName, sectionId, sectionNumber, courseId, courseCode, courseTitle );</span>
+
+<span class="fc" id="L50">        return registrationResponse;</span>
+    }
+
+    @Override
+    public List&lt;RegistrationResponse&gt; toResponseList(List&lt;Registration&gt; registrations) {
+<span class="pc bpc" id="L55" title="1 of 2 branches missed.">        if ( registrations == null ) {</span>
+<span class="nc" id="L56">            return null;</span>
+        }
+
+<span class="fc" id="L59">        List&lt;RegistrationResponse&gt; list = new ArrayList&lt;RegistrationResponse&gt;( registrations.size() );</span>
+<span class="fc bfc" id="L60" title="All 2 branches covered.">        for ( Registration registration : registrations ) {</span>
+<span class="fc" id="L61">            list.add( toResponse( registration ) );</span>
+<span class="fc" id="L62">        }</span>
+
+<span class="fc" id="L64">        return list;</span>
+    }
+
+    private Long registrationStudentId(Registration registration) {
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L69">            return null;</span>
+        }
+<span class="fc" id="L71">        Student student = registration.getStudent();</span>
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">        if ( student == null ) {</span>
+<span class="nc" id="L73">            return null;</span>
+        }
+<span class="fc" id="L75">        Long id = student.getId();</span>
+<span class="pc bpc" id="L76" title="1 of 2 branches missed.">        if ( id == null ) {</span>
+<span class="nc" id="L77">            return null;</span>
+        }
+<span class="fc" id="L79">        return id;</span>
+    }
+
+    private String registrationStudentFullName(Registration registration) {
+<span class="pc bpc" id="L83" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L84">            return null;</span>
+        }
+<span class="fc" id="L86">        Student student = registration.getStudent();</span>
+<span class="pc bpc" id="L87" title="1 of 2 branches missed.">        if ( student == null ) {</span>
+<span class="nc" id="L88">            return null;</span>
+        }
+<span class="fc" id="L90">        String fullName = student.getFullName();</span>
+<span class="pc bpc" id="L91" title="1 of 2 branches missed.">        if ( fullName == null ) {</span>
+<span class="nc" id="L92">            return null;</span>
+        }
+<span class="fc" id="L94">        return fullName;</span>
+    }
+
+    private Long registrationSectionId(Registration registration) {
+<span class="pc bpc" id="L98" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L99">            return null;</span>
+        }
+<span class="fc" id="L101">        Section section = registration.getSection();</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">        if ( section == null ) {</span>
+<span class="nc" id="L103">            return null;</span>
+        }
+<span class="fc" id="L105">        Long id = section.getId();</span>
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        if ( id == null ) {</span>
+<span class="nc" id="L107">            return null;</span>
+        }
+<span class="fc" id="L109">        return id;</span>
+    }
+
+    private Integer registrationSectionSectionNumber(Registration registration) {
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L114">            return null;</span>
+        }
+<span class="fc" id="L116">        Section section = registration.getSection();</span>
+<span class="pc bpc" id="L117" title="1 of 2 branches missed.">        if ( section == null ) {</span>
+<span class="nc" id="L118">            return null;</span>
+        }
+<span class="fc" id="L120">        Integer sectionNumber = section.getSectionNumber();</span>
+<span class="pc bpc" id="L121" title="1 of 2 branches missed.">        if ( sectionNumber == null ) {</span>
+<span class="nc" id="L122">            return null;</span>
+        }
+<span class="fc" id="L124">        return sectionNumber;</span>
+    }
+
+    private Long registrationCourseId(Registration registration) {
+<span class="pc bpc" id="L128" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L129">            return null;</span>
+        }
+<span class="fc" id="L131">        Course course = registration.getCourse();</span>
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if ( course == null ) {</span>
+<span class="nc" id="L133">            return null;</span>
+        }
+<span class="fc" id="L135">        Long id = course.getId();</span>
+<span class="pc bpc" id="L136" title="1 of 2 branches missed.">        if ( id == null ) {</span>
+<span class="nc" id="L137">            return null;</span>
+        }
+<span class="fc" id="L139">        return id;</span>
+    }
+
+    private String registrationCourseCourseCode(Registration registration) {
+<span class="pc bpc" id="L143" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L144">            return null;</span>
+        }
+<span class="fc" id="L146">        Course course = registration.getCourse();</span>
+<span class="pc bpc" id="L147" title="1 of 2 branches missed.">        if ( course == null ) {</span>
+<span class="nc" id="L148">            return null;</span>
+        }
+<span class="fc" id="L150">        String courseCode = course.getCourseCode();</span>
+<span class="pc bpc" id="L151" title="1 of 2 branches missed.">        if ( courseCode == null ) {</span>
+<span class="nc" id="L152">            return null;</span>
+        }
+<span class="fc" id="L154">        return courseCode;</span>
+    }
+
+    private String registrationCourseTitle(Registration registration) {
+<span class="pc bpc" id="L158" title="1 of 2 branches missed.">        if ( registration == null ) {</span>
+<span class="nc" id="L159">            return null;</span>
+        }
+<span class="fc" id="L161">        Course course = registration.getCourse();</span>
+<span class="pc bpc" id="L162" title="1 of 2 branches missed.">        if ( course == null ) {</span>
+<span class="nc" id="L163">            return null;</span>
+        }
+<span class="fc" id="L165">        String title = course.getTitle();</span>
+<span class="pc bpc" id="L166" title="1 of 2 branches missed.">        if ( title == null ) {</span>
+<span class="nc" id="L167">            return null;</span>
+        }
+<span class="fc" id="L169">        return title;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

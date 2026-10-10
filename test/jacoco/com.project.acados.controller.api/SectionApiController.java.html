@@ -1,0 +1,99 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SectionApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">SectionApiController.java</span></div><h1>SectionApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.domain.entity.Section;
+import com.project.acados.dto.request.SectionRequest;
+import com.project.acados.dto.response.SectionResponse;
+import com.project.acados.mapper.SectionMapper;
+import com.project.acados.service.SectionCancellationService;
+import com.project.acados.service.SectionService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import jakarta.validation.groups.Default;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.validation.annotation.Validated;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PathVariable;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RequestParam;
+import org.springframework.web.bind.annotation.RestController;
+
+import java.net.URI;
+import java.util.List;
+
+/**
+ * REST API for section management. Sections are cancelled, never deleted.
+ * Reference: Implement_Plan-AcadOS.md §16, Userflow A08 and A12-1 to A12-3
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/sections&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;Sections&quot;, description = &quot;Section management and cancellation&quot;)
+public class SectionApiController {
+
+    private final SectionService sectionService;
+    private final SectionCancellationService sectionCancellationService;
+    private final SectionMapper sectionMapper;
+
+    @GetMapping
+    @Operation(summary = &quot;List sections, optionally of one course&quot;)
+    public List&lt;SectionResponse&gt; getSections(@RequestParam(required = false) Long courseId) {
+<span class="fc" id="L46">        return sectionMapper.toResponseList(sectionService.getSections(courseId));</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Get one section&quot;)
+    public SectionResponse getSection(@PathVariable Long id) {
+<span class="fc" id="L52">        return sectionMapper.toResponse(sectionService.getSection(id));</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Create a section of a course&quot;)
+    public ResponseEntity&lt;SectionResponse&gt; createSection(
+            @Validated({Default.class, SectionRequest.OnCreate.class}) @RequestBody SectionRequest request) {
+<span class="fc" id="L60">        Section section = sectionService.createSection(request);</span>
+<span class="fc" id="L61">        return ResponseEntity</span>
+<span class="fc" id="L62">                .created(URI.create(&quot;/api/v1/sections/&quot; + section.getId()))</span>
+<span class="fc" id="L63">                .body(sectionMapper.toResponse(section));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Change the capacity of a section&quot;)
+    public SectionResponse updateSection(@PathVariable Long id, @Valid @RequestBody SectionRequest request) {
+<span class="fc" id="L70">        return sectionMapper.toResponse(sectionService.updateSection(id, request));</span>
+    }
+
+    @PutMapping(&quot;/{id}/cancel&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Cancel a section, delete its registrations and release its periods&quot;)
+    public SectionResponse cancelSection(@PathVariable Long id) {
+<span class="fc" id="L77">        sectionCancellationService.cancelSection(id);</span>
+<span class="fc" id="L78">        return sectionMapper.toResponse(sectionService.getSection(id));</span>
+    }
+
+    @PutMapping(&quot;/{id}/teacher&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Assign a teacher to all schedules of a section (Sub-feature A13)&quot;)
+    public SectionResponse assignTeacher(
+            @PathVariable Long id,
+            @Valid @RequestBody com.project.acados.dto.request.AssignTeacherRequest request
+    ) {
+<span class="fc" id="L88">        Section section = sectionService.assignTeacher(id, request.teacherId());</span>
+<span class="fc" id="L89">        return sectionMapper.toResponse(section);</span>
+    }
+
+    @GetMapping(&quot;/{id}/teachers&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Get teacher options indicating qualification for this section&quot;)
+    public List&lt;com.project.acados.dto.response.TeacherAssignmentOptionResponse&gt; getTeacherOptions(@PathVariable Long id) {
+<span class="fc" id="L96">        return sectionService.getTeacherOptions(id);</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -1,0 +1,178 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TeacherPreferenceServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">TeacherPreferenceServiceImpl.java</span></div><h1>TeacherPreferenceServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.*;
+import com.project.acados.dto.request.TeacherAvailabilityToggleRequest;
+import com.project.acados.dto.request.TeacherPreferenceRequest;
+import com.project.acados.dto.response.CourseResponse;
+import com.project.acados.dto.response.TeacherAvailabilityResponse;
+import com.project.acados.dto.response.TeacherPreferenceResponse;
+import com.project.acados.repository.*;
+import com.project.acados.service.TeacherPreferenceService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+import org.springframework.web.server.ResponseStatusException;
+
+import java.util.Comparator;
+import java.util.List;
+import java.util.Optional;
+
+@Service
+@RequiredArgsConstructor
+public class TeacherPreferenceServiceImpl implements TeacherPreferenceService {
+
+    private final UserRepository userRepository;
+    private final TeacherRepository teacherRepository;
+    private final TeacherPreferenceRepository teacherPreferenceRepository;
+    private final TeacherQualificationRepository teacherQualificationRepository;
+    private final CourseRepository courseRepository;
+    private final TeacherAvailabilityRepository teacherAvailabilityRepository;
+    private final TimeSlotRepository timeSlotRepository;
+
+    private Teacher resolveTeacher(String userIdentifier) {
+<span class="pc bpc" id="L34" title="2 of 4 branches missed.">        if (userIdentifier == null || userIdentifier.isBlank()) {</span>
+<span class="nc" id="L35">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;กรุณาเข้าสู่ระบบ&quot;);</span>
+        }
+<span class="fc" id="L37">        User user = userRepository.findByUniversityId(userIdentifier)</span>
+<span class="pc" id="L38">                .or(() -&gt; userRepository.findByEmail(userIdentifier))</span>
+<span class="pc" id="L39">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;ไม่พบข้อมูลผู้ใช้&quot;));</span>
+
+<span class="fc" id="L41">        return teacherRepository.findByUserId(user.getId())</span>
+<span class="pc" id="L42">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;บัญชีนี้ไม่มีสิทธิ์ของอาจารย์&quot;));</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;TeacherPreferenceResponse&gt; getPreferences(String userIdentifier) {
+<span class="fc" id="L48">        Teacher teacher = resolveTeacher(userIdentifier);</span>
+<span class="fc" id="L49">        return teacherPreferenceRepository.findByTeacherIdOrderByPriorityAsc(teacher.getId()).stream()</span>
+<span class="fc" id="L50">                .map(p -&gt; new TeacherPreferenceResponse(</span>
+<span class="fc" id="L51">                        p.getId(),</span>
+<span class="fc" id="L52">                        p.getCourse().getId(),</span>
+<span class="fc" id="L53">                        p.getCourse().getCourseCode(),</span>
+<span class="fc" id="L54">                        p.getCourse().getTitle(),</span>
+<span class="fc" id="L55">                        p.getPriority()</span>
+<span class="fc" id="L56">                ))</span>
+<span class="fc" id="L57">                .toList();</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;CourseResponse&gt; getQualifiedCourses(String userIdentifier) {
+<span class="fc" id="L63">        Teacher teacher = resolveTeacher(userIdentifier);</span>
+<span class="fc" id="L64">        List&lt;TeacherQualification&gt; qualifications = teacherQualificationRepository.findByTeacherId(teacher.getId());</span>
+<span class="fc" id="L65">        return qualifications.stream()</span>
+<span class="fc" id="L66">                .map(TeacherQualification::getCourse)</span>
+<span class="fc" id="L67">                .map(CourseResponse::fromEntity)</span>
+<span class="fc" id="L68">                .toList();</span>
+    }
+
+    @Override
+    @Transactional
+    public TeacherPreferenceResponse savePreference(TeacherPreferenceRequest request, String userIdentifier) {
+<span class="fc" id="L74">        Teacher teacher = resolveTeacher(userIdentifier);</span>
+
+        // Verify qualification (BR-06)
+<span class="fc bfc" id="L77" title="All 2 branches covered.">        if (!teacherQualificationRepository.existsByTeacherIdAndCourseId(teacher.getId(), request.courseId())) {</span>
+<span class="fc" id="L78">            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, &quot;ท่านยังไม่มีคุณสมบัติในการสอนรายวิชานี้ (BR-06)&quot;);</span>
+        }
+
+<span class="fc" id="L81">        Course course = courseRepository.findById(request.courseId())</span>
+<span class="pc" id="L82">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;ไม่พบรายวิชาที่ระบุ&quot;));</span>
+
+<span class="fc" id="L84">        List&lt;TeacherPreference&gt; existing = teacherPreferenceRepository.findByTeacherId(teacher.getId());</span>
+<span class="fc" id="L85">        TeacherPreference target = existing.stream()</span>
+<span class="pc" id="L86">                .filter(p -&gt; p.getCourse().getId().equals(request.courseId()))</span>
+<span class="fc" id="L87">                .findFirst()</span>
+<span class="fc" id="L88">                .orElse(null);</span>
+
+<span class="pc bpc" id="L90" title="1 of 2 branches missed.">        if (target != null) {</span>
+<span class="nc" id="L91">            target.setPriority(request.priority());</span>
+<span class="nc" id="L92">        } else {</span>
+<span class="fc" id="L93">            target = TeacherPreference.builder()</span>
+<span class="fc" id="L94">                    .teacher(teacher)</span>
+<span class="fc" id="L95">                    .course(course)</span>
+<span class="fc" id="L96">                    .priority(request.priority())</span>
+<span class="fc" id="L97">                    .build();</span>
+        }
+
+<span class="fc" id="L100">        TeacherPreference saved = teacherPreferenceRepository.save(target);</span>
+<span class="fc" id="L101">        return new TeacherPreferenceResponse(</span>
+<span class="fc" id="L102">                saved.getId(),</span>
+<span class="fc" id="L103">                saved.getCourse().getId(),</span>
+<span class="fc" id="L104">                saved.getCourse().getCourseCode(),</span>
+<span class="fc" id="L105">                saved.getCourse().getTitle(),</span>
+<span class="fc" id="L106">                saved.getPriority()</span>
+        );
+    }
+
+    @Override
+    @Transactional
+    public void deletePreference(Long id, String userIdentifier) {
+<span class="fc" id="L113">        Teacher teacher = resolveTeacher(userIdentifier);</span>
+<span class="fc" id="L114">        TeacherPreference preference = teacherPreferenceRepository.findById(id)</span>
+<span class="pc" id="L115">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;ไม่พบข้อมูลความต้องการสอน&quot;));</span>
+
+<span class="fc bfc" id="L117" title="All 2 branches covered.">        if (!preference.getTeacher().getId().equals(teacher.getId())) {</span>
+<span class="fc" id="L118">            throw new ResponseStatusException(HttpStatus.FORBIDDEN, &quot;ไม่สามารถลบข้อมูลของอาจารย์ท่านอื่นได้&quot;);</span>
+        }
+
+<span class="fc" id="L121">        teacherPreferenceRepository.delete(preference);</span>
+<span class="fc" id="L122">    }</span>
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;TeacherAvailabilityResponse&gt; getAvailabilities(String userIdentifier) {
+<span class="fc" id="L127">        Teacher teacher = resolveTeacher(userIdentifier);</span>
+<span class="fc" id="L128">        List&lt;TimeSlot&gt; allSlots = timeSlotRepository.findAll().stream()</span>
+<span class="fc" id="L129">                .sorted(Comparator.comparing(TimeSlot::getDayOfWeek)</span>
+<span class="fc" id="L130">                        .thenComparing(TimeSlot::getStartTime))</span>
+<span class="fc" id="L131">                .toList();</span>
+
+<span class="fc" id="L133">        return allSlots.stream().map(slot -&gt; {</span>
+<span class="fc" id="L134">            Optional&lt;TeacherAvailability&gt; availOpt = teacherAvailabilityRepository</span>
+<span class="fc" id="L135">                    .findByTeacherIdAndTimeSlotId(teacher.getId(), slot.getId());</span>
+<span class="fc" id="L136">            boolean isAvail = availOpt.map(TeacherAvailability::isAvailable).orElse(true);</span>
+<span class="fc" id="L137">            Long recordId = availOpt.map(TeacherAvailability::getId).orElse(null);</span>
+<span class="fc" id="L138">            return new TeacherAvailabilityResponse(</span>
+<span class="fc" id="L139">                    recordId,</span>
+<span class="fc" id="L140">                    slot.getId(),</span>
+<span class="fc" id="L141">                    slot.getDayOfWeek(),</span>
+<span class="fc" id="L142">                    slot.getStartTime(),</span>
+<span class="fc" id="L143">                    slot.getEndTime(),</span>
+<span class="fc" id="L144">                    isAvail</span>
+            );
+<span class="fc" id="L146">        }).toList();</span>
+    }
+
+    @Override
+    @Transactional
+    public TeacherAvailabilityResponse updateAvailability(TeacherAvailabilityToggleRequest request, String userIdentifier) {
+<span class="fc" id="L152">        Teacher teacher = resolveTeacher(userIdentifier);</span>
+<span class="fc" id="L153">        TimeSlot slot = timeSlotRepository.findById(request.timeSlotId())</span>
+<span class="pc" id="L154">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;ไม่พบรหัสช่วงเวลาที่ระบุ&quot;));</span>
+
+<span class="fc" id="L156">        TeacherAvailability target = teacherAvailabilityRepository</span>
+<span class="fc" id="L157">                .findByTeacherIdAndTimeSlotId(teacher.getId(), slot.getId())</span>
+<span class="fc" id="L158">                .orElseGet(() -&gt; TeacherAvailability.builder()</span>
+<span class="fc" id="L159">                        .teacher(teacher)</span>
+<span class="fc" id="L160">                        .timeSlot(slot)</span>
+<span class="fc" id="L161">                        .isAvailable(true)</span>
+<span class="fc" id="L162">                        .build());</span>
+
+<span class="fc" id="L164">        target.setAvailable(request.isAvailable());</span>
+<span class="fc" id="L165">        TeacherAvailability saved = teacherAvailabilityRepository.save(target);</span>
+
+<span class="fc" id="L167">        return new TeacherAvailabilityResponse(</span>
+<span class="fc" id="L168">                saved.getId(),</span>
+<span class="fc" id="L169">                slot.getId(),</span>
+<span class="fc" id="L170">                slot.getDayOfWeek(),</span>
+<span class="fc" id="L171">                slot.getStartTime(),</span>
+<span class="fc" id="L172">                slot.getEndTime(),</span>
+<span class="fc" id="L173">                saved.isAvailable()</span>
+        );
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

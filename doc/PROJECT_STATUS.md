@@ -87,6 +87,9 @@
 - [`doc/Implement_Plan-AcadOS.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/Implement_Plan-AcadOS.md): อัปเดตรายการ Service Layer, Cross-reference ถึง `design-patterns.md`, และอัปเดตสถาปัตยกรรมคลาวด์ใน Section 23 (Dual Cloud Architecture: Render PaaS + Managed MySQL, VPS Docker Compose, JVM memory optimization, และ CI/CD GitHub Actions)
 - [`doc/design-patterns.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/design-patterns.md): จัดทำเอกสารสรุป GoF Patterns 8 แบบ และ Architectural Patterns พร้อมไดอะแกรมและผลการทดสอบ
 - [`doc/solid-analysis.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/solid-analysis.md): จัดทำเอกสารวิเคราะห์ SOLID Principles พร้อมระบุชื่อคลาส หมายเลขบรรทัด และเหตุผลทางวิศวกรรมครบทั้ง 5 ข้อ
+- [`code/acados/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/README.md): เอกสารคู่มือสำหรับนักพัฒนา อธิบายสถาปัตยกรรม Spring Boot 3.3.4, โครงสร้างแพ็กเกจ, วิธีรันในเครื่อง, ตัวแปรสภาพแวดล้อม และ Docker
+- [`img/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/README.md): เอกสารกำกับคลังรูปภาพและคู่มือการรัน Robot Framework E2E Test Suite พร้อมรายการ Screenshots
+- [`img/robot_testcase.robot`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/robot_testcase.robot): สคริปต์ Robot Framework ทดสอบหน้าเว็บจริง 5 Scenarios และสั่งแคปภาพหน้าจออัตโนมัติลงใน `img/`
 
 ### 2.3 Automation & CI/CD
 - [`.github/workflows/ci-cd.yml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/.github/workflows/ci-cd.yml): สร้าง GitHub Actions Workflow สำหรับ Automated Testing (`mvn clean test`) และอัปโหลด JaCoCo Report อัตโนมัติ (รับคะแนนพิเศษ §11)
@@ -109,10 +112,16 @@
 - **ชุดทดสอบ Unit & Integration Tests ทั้งระบบ:**
   - รันคำสั่ง: `mvn clean test`
   - ผลลัพธ์: **326 Tests Run, 0 Failures, 0 Errors, 0 Skipped (BUILD SUCCESS 100% Green)**
+  - JaCoCo Code Coverage Report: คัดลอกและจัดเก็บถาวรไว้ที่ [`test/jacoco/index.html`](../test/jacoco/index.html) ตามเกณฑ์รายวิชา (§9 และ §14)
+- **ชุดทดสอบ End-to-End Acceptance Tests (Robot Framework & Selenium):**
+  - รันคำสั่ง: `python -m robot -d img/results img/robot_testcase.robot`
+  - ผลลัพธ์: **8 Tests Run, 8 Passed, 0 Failed (100% Green)** ครอบคลุมทั้ง Positive, Negative, และวนครบทุกหน้าจอหลักของระบบ
+  - บันทึกภาพหน้าจอหลักฐานจริง 17 ภาพครบถ้วนลงในโฟลเดอร์ [`img/`](../img/) (Negative Auth & Security 3 ภาพ, Admin Tour 6 ภาพ, Timetable Engine 2 ภาพ, Student Portal 3 ภาพ, Teacher Portal 2 ภาพ, Swagger & Actuator 2 ภาพ)
 - **การปฏิบัติตามกฎเกณฑ์ของอาจารย์ (`doc/prof_ruleset.md`):**
   - **ข้อ 3 (Layered Architecture):** ผ่าน 100% — ไม่มีการข้าม Layer จาก Controller ไปยัง Repository โดยทุก Controller เรียกผ่าน Service Interface
   - **ข้อ 4 (SOLID Principles):** ผ่าน 100% — ปฏิบัติตาม DIP (Controller พึ่งพา Interface), SRP (Controller คุมเฉพาะ Web/HTTP, Service คุม Business Logic), และ ISP
   - **ข้อ 5 (Design Patterns):** ผ่าน 100% — Layered Architecture, Repository Pattern, Service Layer Pattern, CQRS (TeacherSwapQueryService), DTO + Mapper
+  - **ข้อ 9 & 14 (Folder Structure & Test Reports):** ผ่าน 100% — โฟลเดอร์ `code/`, `test/`, `doc/`, `img/` มีไฟล์ครบถ้วนพร้อมรายงานการทดสอบ JaCoCo และ Robot Framework
 
 ---
 
@@ -120,3 +129,4 @@
 
 1. **Git Synchronization:** พร้อมสำหรับ Stage และ Commit การเปลี่ยนแปลงทั้งหมดใน Branch `puttimed_6733804171_03`
 2. **System Consistency:** โค้ดจริง ไดอะแกรม เอกสารข้อกำหนด และ Data Dictionary สอดคล้องตรงกัน 100% โดยไม่มีข้อขัดแย้งตกค้าง
+

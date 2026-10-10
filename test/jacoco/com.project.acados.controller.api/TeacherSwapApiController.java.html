@@ -1,0 +1,132 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>TeacherSwapApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">TeacherSwapApiController.java</span></div><h1>TeacherSwapApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.domain.entity.TeacherSwapRequest;
+import com.project.acados.dto.request.SwapCreateRequest;
+import com.project.acados.dto.request.SwapResponseRequest;
+import com.project.acados.dto.response.SwapInboxResponse;
+import com.project.acados.dto.response.SwapResponse;
+import com.project.acados.service.TeacherSwapQueryService;
+import com.project.acados.service.TeacherSwapService;
+import com.project.acados.service.UserService;
+import jakarta.validation.Valid;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.security.core.Authentication;
+import org.springframework.web.bind.annotation.*;
+
+import java.net.URI;
+
+@RestController
+@RequestMapping(&quot;/api/v1/teacher-swaps&quot;)
+public class TeacherSwapApiController {
+    private final TeacherSwapService teacherSwapService;
+    private final TeacherSwapQueryService queryService;
+    private final UserService userService;
+    private final com.project.acados.repository.ScheduleRepository scheduleRepository;
+
+    public TeacherSwapApiController(
+            TeacherSwapService teacherSwapService,
+            TeacherSwapQueryService queryService,
+            UserService userService,
+            com.project.acados.repository.ScheduleRepository scheduleRepository
+<span class="fc" id="L32">    ) {</span>
+<span class="fc" id="L33">        this.teacherSwapService = teacherSwapService;</span>
+<span class="fc" id="L34">        this.queryService = queryService;</span>
+<span class="fc" id="L35">        this.userService = userService;</span>
+<span class="fc" id="L36">        this.scheduleRepository = scheduleRepository;</span>
+<span class="fc" id="L37">    }</span>
+
+    @GetMapping
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public SwapInboxResponse getMyRequests(Authentication authentication) {
+<span class="fc" id="L42">        Long teacherId = userService.getTeacherIdByUniversityId(authentication.getName());</span>
+<span class="fc" id="L43">        return queryService.getRequestsForTeacher(teacherId);</span>
+    }
+
+    @GetMapping(&quot;/my-schedules&quot;)
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public java.util.List&lt;com.project.acados.dto.response.ScheduleResponse&gt; getMySchedules(Authentication authentication) {
+<span class="nc" id="L49">        Long teacherId = userService.getTeacherIdByUniversityId(authentication.getName());</span>
+<span class="nc" id="L50">        return scheduleRepository.findByTeacherId(teacherId).stream()</span>
+<span class="nc" id="L51">                .map(com.project.acados.dto.response.ScheduleResponse::fromEntity)</span>
+<span class="nc" id="L52">                .toList();</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public ResponseEntity&lt;SwapResponse&gt; create(
+            @Valid @RequestBody SwapCreateRequest request,
+            Authentication authentication
+    ) {
+<span class="fc" id="L61">        Long requestingTeacherId = userService.getTeacherIdByUniversityId(authentication.getName());</span>
+<span class="fc" id="L62">        TeacherSwapRequest saved = teacherSwapService.createSwapRequest(</span>
+                requestingTeacherId,
+<span class="fc" id="L64">                request.requestingScheduleId(),</span>
+<span class="fc" id="L65">                request.targetTeacherId(),</span>
+<span class="fc" id="L66">                request.targetScheduleId()</span>
+        );
+<span class="fc" id="L68">        return ResponseEntity.created(URI.create(&quot;/api/v1/teacher-swaps/&quot; + saved.getId()))</span>
+<span class="fc" id="L69">                .body(toResponse(saved));</span>
+    }
+
+    @PutMapping(&quot;/{id}/respond&quot;)
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public ResponseEntity&lt;Void&gt; respond(
+            @PathVariable Long id,
+            @Valid @RequestBody SwapResponseRequest request,
+            Authentication authentication
+    ) {
+<span class="fc" id="L79">        Long respondingTeacherId = userService.getTeacherIdByUniversityId(authentication.getName());</span>
+<span class="fc" id="L80">        teacherSwapService.respondSwap(id, respondingTeacherId, request.accept());</span>
+<span class="fc" id="L81">        return ResponseEntity.ok().build();</span>
+    }
+
+    @PutMapping(&quot;/{id}/approve&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;Void&gt; approve(@PathVariable Long id) {
+<span class="fc" id="L87">        teacherSwapService.approveSwap(id);</span>
+<span class="fc" id="L88">        return ResponseEntity.ok().build();</span>
+    }
+
+    @PutMapping(&quot;/{id}/reject&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;Void&gt; reject(@PathVariable Long id) {
+<span class="fc" id="L94">        teacherSwapService.rejectSwap(id);</span>
+<span class="fc" id="L95">        return ResponseEntity.ok().build();</span>
+    }
+
+    @PutMapping(&quot;/{id}/cancel&quot;)
+    @PreAuthorize(&quot;hasRole('TEACHER')&quot;)
+    public ResponseEntity&lt;Void&gt; cancel(@PathVariable Long id, Authentication authentication) {
+<span class="nc" id="L101">        Long requestingTeacherId = userService.getTeacherIdByUniversityId(authentication.getName());</span>
+<span class="nc" id="L102">        teacherSwapService.cancelSwap(id, requestingTeacherId);</span>
+<span class="nc" id="L103">        return ResponseEntity.ok().build();</span>
+    }
+
+    @GetMapping(&quot;/all&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;java.util.List&lt;SwapResponse&gt;&gt; getAllRequests() {
+<span class="fc" id="L109">        return ResponseEntity.ok(queryService.getAllRequests());</span>
+    }
+
+    private SwapResponse toResponse(TeacherSwapRequest request) {
+<span class="pc bpc" id="L113" title="1 of 2 branches missed.">        String reqTeacherName = request.getRequestingTeacher() != null ? request.getRequestingTeacher().getFullName() : null;</span>
+<span class="pc bpc" id="L114" title="1 of 2 branches missed.">        String targetTeacherName = request.getTargetTeacher() != null ? request.getTargetTeacher().getFullName() : null;</span>
+<span class="fc" id="L115">        return new SwapResponse(</span>
+<span class="fc" id="L116">                request.getId(),</span>
+<span class="fc" id="L117">                request.getRequestingTeacher().getId(),</span>
+<span class="pc bpc" id="L118" title="1 of 2 branches missed.">                request.getRequestingSchedule() == null ? null : request.getRequestingSchedule().getId(),</span>
+<span class="fc" id="L119">                request.getTargetTeacher().getId(),</span>
+<span class="pc bpc" id="L120" title="1 of 2 branches missed.">                request.getTargetSchedule() == null ? null : request.getTargetSchedule().getId(),</span>
+<span class="fc" id="L121">                request.getStatus(),</span>
+<span class="fc" id="L122">                request.getCreatedAt(),</span>
+<span class="fc" id="L123">                request.getRespondedAt(),</span>
+<span class="fc" id="L124">                request.getReviewedAt(),</span>
+                reqTeacherName,
+                targetTeacherName,
+                null,
+                null
+        );
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

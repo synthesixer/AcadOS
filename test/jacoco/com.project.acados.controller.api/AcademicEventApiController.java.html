@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AcademicEventApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">AcademicEventApiController.java</span></div><h1>AcademicEventApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.domain.entity.AcademicEvent;
+import com.project.acados.domain.enums.AcademicEventType;
+import com.project.acados.dto.request.AcademicEventRequest;
+import com.project.acados.dto.response.AcademicEventResponse;
+import com.project.acados.service.AcademicEventService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.tags.Tag;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * REST API Controller for Academic Calendar events.
+ * Reference: Implement_Plan-AcadOS.md §16, database.md §2.15, class diagram.puml
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/academic-events&quot;)
+@RequiredArgsConstructor
+@Tag(name = &quot;Academic Events&quot;, description = &quot;Academic Calendar API&quot;)
+public class AcademicEventApiController {
+
+    private final AcademicEventService academicEventService;
+
+    @GetMapping
+    @Operation(summary = &quot;Get all academic events, optionally filtered by event type&quot;)
+    public ResponseEntity&lt;List&lt;AcademicEventResponse&gt;&gt; getEvents(
+            @RequestParam(required = false) AcademicEventType type
+    ) {
+<span class="fc bfc" id="L36" title="All 2 branches covered.">        List&lt;AcademicEvent&gt; events = (type != null)</span>
+<span class="fc" id="L37">                ? academicEventService.getEventsByType(type)</span>
+<span class="fc" id="L38">                : academicEventService.getEvents();</span>
+
+<span class="fc" id="L40">        List&lt;AcademicEventResponse&gt; responseList = events.stream()</span>
+<span class="fc" id="L41">                .map(AcademicEventResponse::fromEntity)</span>
+<span class="fc" id="L42">                .toList();</span>
+
+<span class="fc" id="L44">        return ResponseEntity.ok(responseList);</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    @Operation(summary = &quot;Get single academic event by ID&quot;)
+    public ResponseEntity&lt;AcademicEventResponse&gt; getEvent(@PathVariable Long id) {
+<span class="fc" id="L50">        AcademicEvent event = academicEventService.getEvent(id);</span>
+<span class="fc" id="L51">        return ResponseEntity.ok(AcademicEventResponse.fromEntity(event));</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Create an academic event (ADMIN only)&quot;)
+    public ResponseEntity&lt;AcademicEventResponse&gt; createEvent(@Valid @RequestBody AcademicEventRequest request) {
+<span class="fc" id="L58">        AcademicEvent created = academicEventService.createEvent(request);</span>
+<span class="fc" id="L59">        return ResponseEntity.status(HttpStatus.CREATED).body(AcademicEventResponse.fromEntity(created));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Update an academic event (ADMIN only)&quot;)
+    public ResponseEntity&lt;AcademicEventResponse&gt; updateEvent(
+            @PathVariable Long id,
+            @Valid @RequestBody AcademicEventRequest request
+    ) {
+<span class="fc" id="L69">        AcademicEvent updated = academicEventService.updateEvent(id, request);</span>
+<span class="fc" id="L70">        return ResponseEntity.ok(AcademicEventResponse.fromEntity(updated));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    @Operation(summary = &quot;Delete an academic event (ADMIN only)&quot;)
+    public ResponseEntity&lt;Void&gt; deleteEvent(@PathVariable Long id) {
+<span class="fc" id="L77">        academicEventService.deleteEvent(id);</span>
+<span class="fc" id="L78">        return ResponseEntity.noContent().build();</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

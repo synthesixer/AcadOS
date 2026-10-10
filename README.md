@@ -29,15 +29,15 @@
   - [8. วิธีดำเนินงานและขั้นตอนการพัฒนา (Methodology \& Workflow)](#8-วิธีดำเนินงานและขั้นตอนการพัฒนา-methodology--workflow)
   - [9. ผลการดำเนินงานและการทดสอบ (Implementation Results \& Verification)](#9-ผลการดำเนินงานและการทดสอบ-implementation-results--verification)
     - [9.1 ผลการทดสอบอัตโนมัติ (Automated Testing Proof)](#91-ผลการทดสอบอัตโนมัติ-automated-testing-proof)
-    - [9.2 การทดสอบ 4 สถานการณ์จำลองหลัก (4 Demo Scenarios)](#92-การทดสอบ-4-สถานการณ์จำลองหลัก-4-demo-scenarios)
+    - [9.2 คู่มือการรัน JaCoCo Code Coverage ในเครื่องตนเอง (How to Run JaCoCo Locally)](#92-คู่มือการรัน-jacoco-code-coverage-ในเครื่องตนเอง-how-to-run-jacoco-locally)
+    - [9.3 การทดสอบยอมรับระบบด้วย Robot Framework E2E (Positive \& Negative Scenarios)](#93-การทดสอบยอมรับระบบด้วย-robot-framework-e2e-positive--negative-scenarios)
+    - [9.4 การทดสอบ 4 สถานการณ์จำลองหลัก (4 Demo Scenarios)](#94-การทดสอบ-4-สถานการณ์จำลองหลัก-4-demo-scenarios)
   - [10. การติดตั้งและวิธีรันเพื่อทำซ้ำ (Installation \& How to Run Locally)](#10-การติดตั้งและวิธีรันเพื่อทำซ้ำ-installation--how-to-run-locally)
     - [10.1 สิ่งที่ต้องเตรียม (Prerequisites)](#101-สิ่งที่ต้องเตรียม-prerequisites)
     - [10.2 ขั้นตอนการรันระบบในเครื่อง (Step-by-Step Local Run)](#102-ขั้นตอนการรันระบบในเครื่อง-step-by-step-local-run)
     - [10.3 บัญชีผู้ใช้สำหรับการทดสอบ (Default Seed Accounts)](#103-บัญชีผู้ใช้สำหรับการทดสอบ-default-seed-accounts)
-  - [11. คู่มือการ Deploy ขึ้น Cloud (Cloud Deployment Guide)](#11-คู่มือการ-deploy-ขึ้น-cloud-cloud-deployment-guide)
-    - [แนะนำ: Deploy ผ่าน Railway (railway.app) — สะดวกที่สุดในที่เดียว](#แนะนำ-deploy-ผ่าน-railway-railwayapp--สะดวกที่สุดในที่เดียว)
-  - [12. Public Deployment URL \& API Documentation](#12-public-deployment-url--api-documentation)
-  - [13. โครงสร้างไดเรกทอรีโครงการ (Project Structure)](#13-โครงสร้างไดเรกทอรีโครงการ-project-structure)
+  - [11. Public Deployment URL \& API Documentation](#11-public-deployment-url--api-documentation)
+  - [12. โครงสร้างไดเรกทอรีโครงการ (Project Structure)](#12-โครงสร้างไดเรกทอรีโครงการ-project-structure)
 
 ---
 
@@ -227,10 +227,76 @@ flowchart LR
 [INFO] Total time: 50.987 s
 [INFO] ------------------------------------------------------------------------
 ```
-- **สถานะ:** **326 / 326 Tests Passed (100% Green, 0 Failures, 0 Errors)**
-- **Code Coverage:** สร้างรายงาน JaCoCo Coverage Report สำเร็จที่ `code/acados/target/site/jacoco/`
+- **สถานะ Unit & Integration Tests:** **326 / 326 Tests Passed (100% Green, 0 Failures, 0 Errors)**
+- **Code Coverage Report:** สร้างรายงาน JaCoCo Coverage Report จัดเก็บถาวรใน Repository ที่ [`test/jacoco/index.html`](test/jacoco/index.html) (ครอบคลุม 94 คลาส)
+- **สถานะ End-to-End Acceptance Tests (Robot Framework):** **8 / 8 Scenarios Passed (100% Green)** ครอบคลุมทั้ง Positive, Negative, และวนครบทุกหน้า พร้อมบันทึกภาพหน้าจอจริง 17 ภาพลงในโฟลเดอร์ [`img/`](img/)
 
-### 9.2 การทดสอบ 4 สถานการณ์จำลองหลัก (4 Demo Scenarios)
+---
+
+### 9.2 คู่มือการรัน JaCoCo Code Coverage ในเครื่องตนเอง (How to Run JaCoCo Locally)
+
+ระบบใช้ **JaCoCo Maven Plugin 0.8.12** เพื่อวัดความครอบคลุมของโค้ด (Line & Branch Coverage) ครบทุกเลเยอร์:
+
+#### 1. คำสั่งรันชุดทดสอบและสร้างรายงาน:
+```bash
+# เข้าสู่ไดเรกทอรีโปรเจกต์
+cd code/acados
+
+# รันชุดทดสอบทั้งหมดและสั่งสร้างรายงานความครอบคลุม
+mvn clean test
+```
+*ระบบจะรันชุดทดสอบ 326 รายการ และบันทึกผลการวิเคราะห์ Code Coverage อัตโนมัติ*
+
+#### 2. วิธีการเปิดดูรายงานความครอบคลุม (Interactive HTML Report):
+หลังรันเสร็จสิ้น สามารถเปิดดูรายงานผ่านเว็บเบราว์เซอร์ได้ทันที:
+- **เปิดไฟล์รายงานที่เพิ่งสร้างขึ้นใหม่ในเครื่อง:**
+  - ตำแหน่งไฟล์: `code/acados/target/site/jacoco/index.html`
+  - คำสั่งเปิดบน Windows (PowerShell):
+    ```powershell
+    Start-Process code/acados/target/site/jacoco/index.html
+    ```
+- **เปิดรายงานฉบับจัดเก็บถาวรใน Repository:**
+  - ลิงก์ตรงใน Repo: [`test/jacoco/index.html`](test/jacoco/index.html)
+  - รายงานจะแสดงสถิติความครอบคลุมทั้ง 94 คลาส (Instruction, Branch, Cyclomatic Complexity, Lines, Methods)
+
+---
+
+### 9.3 การทดสอบยอมรับระบบด้วย Robot Framework E2E (Positive & Negative Scenarios)
+
+ระบบมีชุดทดสอบอัตโนมัติ End-to-End Acceptance Tests พัฒนาด้วย **Robot Framework** และ **SeleniumLibrary** เพื่อจำลองพฤติกรรมผู้ใช้จริงบนเว็บเบราว์เซอร์ ครอบคลุมทั้งกรณีปกติ (Positive), กรณีข้อผิดพลาด/ความปลอดภัย (Negative), และเดินทางวนตรวจครบทุกหน้าจอหลักของระบบ พร้อมบันทึกภาพหน้าจอจริง (17 Screenshots) ลงในโฟลเดอร์ [`img/`](img/):
+
+#### 1. การติดตั้งเครื่องมือที่จำเป็น (Prerequisites):
+```bash
+pip install robotframework robotframework-seleniumlibrary
+```
+
+#### 2. คำสั่งรันชุดทดสอบ Robot Framework:
+ตรวจสอบว่าแอปพลิเคชันกำลังทำงานอยู่ที่ `http://localhost:8080` จากนั้นรันคำสั่ง:
+```bash
+# รันชุดทดสอบและบันทึกภาพหน้าจอลงใน img/
+robot -d img/results img/robot_testcase.robot
+
+# หรือรันจากชุดทดสอบในไดเรกทอรี test/
+robot -d test/results test/robot_testcases.robot
+```
+
+#### 3. สรุปผลการทดสอบ Robot Framework (8 Scenarios, 8 Passed, 0 Failed — 100% Green):
+| รหัส Scenario | ประเภท (Category) | พฤติกรรมที่ทดสอบ (Test Description) | หน้าจอที่ระบบวนเข้าตรวจสอบ | ผลการทดสอบ |
+| :--- | :---: | :--- | :--- | :---: |
+| **`TC_NEG_01`** | **Negative** | กรอกรหัสผ่านผิด $\to$ แสดง Error Box และปฏิเสธการล็อกอิน | `/login` | **PASS** |
+| **`TC_NEG_02`** | **Negative** | กรอก University ID ที่ไม่มีในระบบ $\to$ แสดง Error Box | `/login` | **PASS** |
+| **`TC_NEG_03`** | **Negative** | เข้าถึง Protected Route โดยไม่ล็อกอิน $\to$ 401 Unauthorized | `/admin/dashboard` | **PASS** |
+| **`TC01`** | **Positive** | Admin ล็อกอิน ตรวจสอบ Dashboard, Courses, Rooms, Sections, Users | `/admin/**` (5 หน้า) | **PASS** |
+| **`TC02`** | **Positive** | Admin สั่ง Generate Timetable อัตโนมัติและแสดงผล DRAFT | `/timetable` | **PASS** |
+| **`TC03`** | **Positive** | Student ล็อกอิน ตรวจสอบ Dashboard, ค้นหาวิชา, ประวัติลงทะเบียน | `/student/**` (3 หน้า) | **PASS** |
+| **`TC04`** | **Positive** | Teacher ล็อกอิน ตรวจสอบ Dashboard และกล่องแลกคาบสอน | `/teacher/**` (2 หน้า) | **PASS** |
+| **`TC05`** | **Positive** | ตรวจสอบ Swagger UI และ Spring Actuator Healthcheck (`UP`) | `/swagger-ui.html`, `/actuator/health` | **PASS** |
+
+*ภาพหน้าจอหลักฐานจริงทั้งหมดถูกบันทึกไว้ในโฟลเดอร์ [**`img/`**](img/) เรียบร้อยแล้ว*
+
+---
+
+### 9.4 การทดสอบ 4 สถานการณ์จำลองหลัก (4 Demo Scenarios)
 1. **Scenario 1 — Student Course Registration:** นักศึกษาลงทะเบียนเรียน $\to$ ระบบตรวจสอบเงื่อนไขเวลาชน (BR-03), วิชาซ้ำ (BR-04), ความจุเต็ม (BR-05), ช่วงเวลาลงทะเบียน (BR-09) $\to$ บันทึกและแจ้งเตือนผ่าน In-App
 2. **Scenario 2 — Automatic Timetable Scheduling:** Admin สั่งสร้างตาราง $\to$ Constraint Engine คัดกรอง Hard Constraints $\to$ Scoring Strategy เลือก Candidate ที่ดีที่สุด $\to$ บันทึกสถานะ DRAFT $\to$ Admin ตรวจสอบและสั่ง Publish
 3. **Scenario 3 — Teacher Swap Workflow:** อาจารย์ A สร้างคำขอสลับสอน $\to$ ระบบบันทึก Snapshot และตรวจสถานะ $\to$ อาจารย์ B กด Accept $\to$ Admin กด Approve $\to$ สลับตารางสอนในระบบอัตโนมัติ
@@ -280,41 +346,15 @@ mvn spring-boot:run
 
 ---
 
-## 11. คู่มือการ Deploy ขึ้น Cloud (Cloud Deployment Guide)
+## 11. Public Deployment URL & API Documentation
 
-ระบบ AcadOS ได้รับการปรับแต่งให้เป็น **12-Factor App** รองรับการนำขึ้น Cloud Service ได้อย่างง่ายดายผ่าน **Docker Container**:
-
-### แนะนำ: Deploy ผ่าน Railway (railway.app) — สะดวกที่สุดในที่เดียว
-
-1. **เข้าสู่ระบบ:** ไปที่ [railway.app](https://railway.app) และล็อกอินด้วยบัญชี GitHub
-2. **สร้าง Database:** กด **+ New Project** $\to$ เลือก **Provision MySQL** (จะได้ MySQL 8.x ทันที)
-3. **เชื่อมต่อโค้ด:** ในโปรเจกต์เดิม กด **+ New** $\to$ เลือก **GitHub Repo** $\to$ เลือก `AcadOS`
-4. **ตั้งค่า Web Service:**
-   - ไปที่ **Settings** $\to$ หัวข้อ **Build** $\to$ กำหนด **Root Directory:** `code/acados` *(สำคัญมาก)*
-   - ไปที่ **Settings** $\to$ หัวข้อ **Networking** $\to$ กดปุ่ม **Generate Domain** เพื่อรับ Public HTTPS URL
-5. **กำหนด Environment Variables:** ในแท็บ **Variables** ของ Web Service เพิ่มค่าดังนี้:
-   ```properties
-   SPRING_DATASOURCE_URL=jdbc:mysql://${{MySQL.MYSQLHOST}}:${{MySQL.MYSQLPORT}}/${{MySQL.MYSQLDATABASE}}?useSSL=false&serverTimezone=UTC&allowPublicKeyRetrieval=true
-   SPRING_DATASOURCE_USERNAME=${{MySQL.MYSQLUSER}}
-   SPRING_DATASOURCE_PASSWORD=${{MySQL.MYSQLPASSWORD}}
-   SPRING_SQL_INIT_MODE=always
-   ACADOS_JWT_SECRET=404E635266556A586E3272357538782F413F4428472B4B6250645367566B5970
-   ```
-6. **Deploy:** ระบบจะบิลด์ Docker Image และออนไลน์อัตโนมัติพร้อมใบรับรอง HTTPS ฟรี
-
-*(สำหรับคู่มือ Render Web Service และ Cloud VPS สามารถดูรายละเอียดเพิ่มเติมได้ที่ [doc/Implement_Plan-AcadOS.md §23](doc/Implement_Plan-AcadOS.md#23-deployment-architecture-checklist--demo-scenarios))*
-
----
-
-## 12. Public Deployment URL & API Documentation
-
-- 🌐 **Web Application Public URL:** [https://acados.up.railway.app](https://acados.up.railway.app) *(หรือ URL บน Cloud ที่ใช้งานจริง ณ วันนำเสนอ)*
+- 🌐 **Web Application Public URL:** [https://acados.up.railway.app](https://acados.up.railway.app) *(หรือ Public Cloud URL ที่เปิดให้บริการจริง ณ วันตรวจประเมิน)*
 - 📑 **Swagger UI / OpenAPI Documentation:** [https://acados.up.railway.app/swagger-ui.html](https://acados.up.railway.app/swagger-ui.html)
 - 🩺 **Application Health Status:** [https://acados.up.railway.app/actuator/health](https://acados.up.railway.app/actuator/health)
 
 ---
 
-## 13. โครงสร้างไดเรกทอรีโครงการ (Project Structure)
+## 12. โครงสร้างไดเรกทอรีโครงการ (Project Structure)
 
 โครงสร้างโฟลเดอร์เป็นไปตามมาตรฐานข้อกำหนดรายวิชา ([`doc/prof_ruleset.md`](doc/prof_ruleset.md) §9):
 
@@ -333,7 +373,10 @@ AcadOS/
 │       ├── Dockerfile            # Multi-stage Container Build (Temurin 21 JRE)
 │       └── docker-compose.yml    # Multi-container Compose (App, DB, phpMyAdmin)
 ├── test/
-│   └── README.md                 # เอกสารสรุปผลการทดสอบระบบและรายงาน JaCoCo
+│   ├── README.md                 # เอกสารสรุปผลการทดสอบระบบและคู่มือรัน Test
+│   ├── TEST_REPORT.md            # รายงานสรุปผลการทดสอบละเอียด 326 Tests
+│   ├── robot_testcases.robot     # สคริปต์ Robot Framework E2E Acceptance Test Suite
+│   └── jacoco/                   # รายงาน Interactive JaCoCo Code Coverage (index.html, csv, xml)
 ├── doc/
 │   ├── Implement_Plan-AcadOS.md  # แผนสถาปัตยกรรมและข้อกำหนดระบบฉบับสมบูรณ์
 │   ├── solid-analysis.md         # เอกสารวิเคราะห์ SOLID Principles ละเอียดรายบรรทัด
@@ -345,9 +388,12 @@ AcadOS/
 │   └── slide/
 │       └── README.md             # ไดเรกทอรีสำหรับสไลด์นำเสนอโครงงาน
 ├── img/
-│   └── .gitkeep                  # ไดเรกทอรีรูปภาพและมัลติมีเดียประกอบระบบ
+│   ├── README.md                 # คู่มือคลังรูปภาพและรายการ Screenshots
+│   ├── robot_testcase.robot      # สคริปต์ Robot Framework สำหรับบันทึกภาพหน้าจออัตโนมัติ
+│   └── *.png                     # ภาพหลักฐานการทดสอบจริง 10 ภาพ (TC01 - TC05)
 ├── README.md                     # เอกสารแนะนำและคู่มือการใช้งานระบบฉบับสมบูรณ์
 └── .gitignore
+
 ```
 
 ---

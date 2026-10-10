@@ -34,7 +34,7 @@ public class SecurityConfig {
                         .requestMatchers("/api/v1/auth/**").permitAll()
                         .requestMatchers("/login", "/error", "/favicon.svg", "/css/**", "/js/**").permitAll()
                         .requestMatchers("/", "/calendar", "/holidays", "/timetable", "/timetable/grid").permitAll()
-                        .requestMatchers("/api-docs", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+                        .requestMatchers("/api-docs", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html", "/actuator/**").permitAll()
 
                         // Role-based Web Routes according to Activity Diagrams & Implement Plan
                         .requestMatchers("/admin/**").hasRole("ADMIN")

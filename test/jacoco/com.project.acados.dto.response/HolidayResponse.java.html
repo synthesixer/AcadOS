@@ -1,0 +1,42 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>HolidayResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.dto.response</a> &gt; <span class="el_source">HolidayResponse.java</span></div><h1>HolidayResponse.java</h1><pre class="source lang-java linenums">package com.project.acados.dto.response;
+
+import com.project.acados.domain.entity.PublicHoliday;
+import lombok.*;
+
+import java.time.LocalDate;
+
+/**
+ * Response DTO for PublicHoliday entity.
+ * Reference: class diagram.puml, Implement_Plan-AcadOS.md §16
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class HolidayResponse {
+
+    private Long id;
+    private LocalDate date;
+    private String name;
+    private String description;
+
+    @com.fasterxml.jackson.annotation.JsonProperty(&quot;holidayDate&quot;)
+    public LocalDate getHolidayDate() {
+<span class="fc" id="L26">        return date;</span>
+    }
+
+    public static HolidayResponse fromEntity(PublicHoliday holiday) {
+<span class="pc bpc" id="L30" title="1 of 2 branches missed.">        if (holiday == null) {</span>
+<span class="nc" id="L31">            return null;</span>
+        }
+<span class="fc" id="L33">        return HolidayResponse.builder()</span>
+<span class="fc" id="L34">                .id(holiday.getId())</span>
+<span class="fc" id="L35">                .date(holiday.getDate())</span>
+<span class="fc" id="L36">                .name(holiday.getName())</span>
+<span class="fc" id="L37">                .description(holiday.getDescription())</span>
+<span class="fc" id="L38">                .build();</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>
