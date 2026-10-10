@@ -37,6 +37,7 @@ import static org.mockito.Mockito.verify;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.get;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.post;
 import static org.springframework.test.web.servlet.request.MockMvcRequestBuilders.put;
+import static org.hamcrest.Matchers.containsString;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.jsonPath;
 import static org.springframework.test.web.servlet.result.MockMvcResultMatchers.status;
 
@@ -207,12 +208,14 @@ class TrackCApiIntegrationTest {
                         .content(registrationBody(softwareDesignSection)))
                 .andExpect(status().isCreated());
 
-        // No GlobalExceptionHandler exists yet, so the BusinessRuleException reaches the test.
-        assertThatThrownBy(() -> mockMvc.perform(post("/api/v1/registrations")
+        // Handled by GlobalExceptionHandler, returning 400 Bad Request with error payload
+        mockMvc.perform(post("/api/v1/registrations")
                 .contentType(MediaType.APPLICATION_JSON)
-                .content(registrationBody(databaseSection))))
-                .hasRootCauseInstanceOf(BusinessRuleException.class)
-                .hasMessageContaining("BR-03");
+                .content(registrationBody(databaseSection)))
+                .andExpect(status().isBadRequest())
+                .andExpect(jsonPath("$.status").value(400))
+                .andExpect(jsonPath("$.error").value("Bad Request"))
+                .andExpect(jsonPath("$.message", containsString("BR-03")));
 
         assertThat(registrationRepository.count()).isEqualTo(1);
         assertThat(notificationTypesOf("S001"))
