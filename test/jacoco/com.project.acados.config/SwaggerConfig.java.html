@@ -1,0 +1,35 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SwaggerConfig.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.config</a> &gt; <span class="el_source">SwaggerConfig.java</span></div><h1>SwaggerConfig.java</h1><pre class="source lang-java linenums">package com.project.acados.config;
+
+import io.swagger.v3.oas.models.Components;
+import io.swagger.v3.oas.models.OpenAPI;
+import io.swagger.v3.oas.models.info.Info;
+import io.swagger.v3.oas.models.security.SecurityRequirement;
+import io.swagger.v3.oas.models.security.SecurityScheme;
+import org.springframework.context.annotation.Bean;
+import org.springframework.context.annotation.Configuration;
+
+/**
+ * OpenAPI 3 documentation served at /swagger-ui.html.
+ * Declares the JWT bearer scheme so the Authorize button sends &quot;Authorization: Bearer &lt;token&gt;&quot;.
+ */
+@Configuration
+<span class="fc" id="L16">public class SwaggerConfig {</span>
+
+    private static final String BEARER_SCHEME = &quot;bearerAuth&quot;;
+
+    @Bean
+    public OpenAPI acadosOpenApi() {
+<span class="fc" id="L22">        return new OpenAPI()</span>
+<span class="fc" id="L23">                .info(new Info()</span>
+<span class="fc" id="L24">                        .title(&quot;AcadOS API&quot;)</span>
+<span class="fc" id="L25">                        .description(&quot;Automated Proctor Scheduling and Academic Operations System&quot;)</span>
+<span class="fc" id="L26">                        .version(&quot;v1&quot;))</span>
+<span class="fc" id="L27">                .components(new Components()</span>
+<span class="fc" id="L28">                        .addSecuritySchemes(BEARER_SCHEME, new SecurityScheme()</span>
+<span class="fc" id="L29">                                .type(SecurityScheme.Type.HTTP)</span>
+<span class="fc" id="L30">                                .scheme(&quot;bearer&quot;)</span>
+<span class="fc" id="L31">                                .bearerFormat(&quot;JWT&quot;)))</span>
+<span class="fc" id="L32">                .addSecurityItem(new SecurityRequirement().addList(BEARER_SCHEME));</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

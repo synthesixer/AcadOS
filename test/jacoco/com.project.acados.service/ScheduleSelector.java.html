@@ -1,0 +1,67 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScheduleSelector.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service</a> &gt; <span class="el_source">ScheduleSelector.java</span></div><h1>ScheduleSelector.java</h1><pre class="source lang-java linenums">package com.project.acados.service;
+
+import com.project.acados.strategy.ScoringStrategy;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Component;
+
+import java.util.ArrayList;
+import java.util.List;
+import java.util.Random;
+
+/**
+ * Selects the optimal Candidate schedule based on soft constraint scoring.
+ * Evaluates ScoringStrategy implementations, ranks candidates, and breaks ties randomly.
+ * Reference: class diagram.puml (§6 scheduling), Implement_Plan-AcadOS.md §10.3, §12.1, §12.4
+ */
+@Component
+@RequiredArgsConstructor
+public class ScheduleSelector {
+
+    public static final int BASELINE_SCORE = 100;
+
+    private final List&lt;ScoringStrategy&gt; scoringStrategies;
+    private final Random random = new Random();
+
+    /**
+     * Evaluates soft scores for passed candidates and returns the winning Candidate.
+     *
+     * @param candidates list of candidates that already passed all Hard Constraints
+     * @return highest scoring Candidate (randomized on tie) or null if list is empty
+     */
+    public Candidate selectBest(List&lt;Candidate&gt; candidates) {
+<span class="fc bfc" id="L32" title="All 4 branches covered.">        if (candidates == null || candidates.isEmpty()) {</span>
+<span class="fc" id="L33">            return null;</span>
+        }
+
+        // 1. Calculate soft factor scores
+<span class="fc bfc" id="L37" title="All 2 branches covered.">        for (Candidate candidate : candidates) {</span>
+<span class="fc" id="L38">            int totalScore = BASELINE_SCORE;</span>
+<span class="pc bpc" id="L39" title="1 of 2 branches missed.">            if (scoringStrategies != null) {</span>
+<span class="fc bfc" id="L40" title="All 2 branches covered.">                for (ScoringStrategy strategy : scoringStrategies) {</span>
+<span class="fc" id="L41">                    totalScore += strategy.calculateScore(candidate);</span>
+<span class="fc" id="L42">                }</span>
+            }
+<span class="fc" id="L44">            candidate.setScore(totalScore);</span>
+<span class="fc" id="L45">        }</span>
+
+        // 2. Find max score
+<span class="fc" id="L48">        int maxScore = candidates.stream()</span>
+<span class="fc" id="L49">                .mapToInt(Candidate::getScore)</span>
+<span class="fc" id="L50">                .max()</span>
+<span class="fc" id="L51">                .orElse(BASELINE_SCORE);</span>
+
+        // 3. Collect tied candidates
+<span class="fc" id="L54">        List&lt;Candidate&gt; topCandidates = candidates.stream()</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">                .filter(c -&gt; c.getScore() == maxScore)</span>
+<span class="fc" id="L56">                .toList();</span>
+
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (topCandidates.size() == 1) {</span>
+<span class="fc" id="L59">            return topCandidates.get(0);</span>
+        }
+
+        // 4. Random tie-breaking as specified in §12.1 &amp; Sequence 05
+<span class="fc" id="L63">        return topCandidates.get(random.nextInt(topCandidates.size()));</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

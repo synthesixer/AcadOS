@@ -1,0 +1,171 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RegistrationServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">RegistrationServiceImpl.java</span></div><h1>RegistrationServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.Registration;
+import com.project.acados.domain.entity.Schedule;
+import com.project.acados.domain.entity.Section;
+import com.project.acados.domain.entity.Student;
+import com.project.acados.domain.entity.User;
+import com.project.acados.domain.enums.AcademicEventType;
+import com.project.acados.domain.enums.UserRole;
+import com.project.acados.repository.UserRepository;
+import com.project.acados.domain.enums.NotificationType;
+import com.project.acados.domain.enums.ScheduleStatus;
+import com.project.acados.domain.enums.SectionStatus;
+import com.project.acados.exception.BusinessRuleException;
+import com.project.acados.exception.ResourceNotFoundException;
+import com.project.acados.notification.strategy.NotificationChannel;
+import com.project.acados.repository.AcademicEventRepository;
+import com.project.acados.repository.RegistrationRepository;
+import com.project.acados.repository.ScheduleRepository;
+import com.project.acados.repository.SectionRepository;
+import com.project.acados.repository.StudentRepository;
+import com.project.acados.service.NotificationService;
+import com.project.acados.service.RegistrationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.time.LocalDate;
+import java.util.ArrayList;
+import java.util.List;
+
+/**
+ * Default RegistrationService. The checks run in the order of Sequence Diagram 04.
+ */
+@Service
+@RequiredArgsConstructor
+public class RegistrationServiceImpl implements RegistrationService {
+
+    private final AcademicEventRepository academicEventRepository;
+    private final SectionRepository sectionRepository;
+    private final RegistrationRepository registrationRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final StudentRepository studentRepository;
+    private final UserRepository userRepository;
+    private final NotificationService notificationService;
+
+    @Override
+    @Transactional
+    public Registration register(String universityId, Long sectionId) {
+<span class="fc" id="L50">        Student student = findStudent(universityId);</span>
+<span class="fc" id="L51">        requireRegistrationPeriod();</span>
+
+<span class="fc" id="L53">        Section section = sectionRepository.findById(sectionId)</span>
+<span class="fc" id="L54">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบ Section ที่เลือก&quot;));</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        if (section.getStatus() != SectionStatus.ACTIVE) {</span>
+<span class="fc" id="L56">            throw new BusinessRuleException(&quot;Section นี้ถูกยกเลิกแล้ว ไม่สามารถลงทะเบียนได้&quot;);</span>
+        }
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        if (checkDuplicate(student.getId(), section.getCourse().getId())) {</span>
+<span class="fc" id="L59">            throw new BusinessRuleException(&quot;BR-04: ลงทะเบียนวิชานี้ไปแล้ว&quot;);</span>
+        }
+<span class="fc bfc" id="L61" title="All 2 branches covered.">        if (registrationRepository.countBySectionId(sectionId) &gt;= section.getCapacity()) {</span>
+<span class="fc" id="L62">            throw new BusinessRuleException(&quot;BR-05: Section นี้เต็มแล้ว&quot;);</span>
+        }
+<span class="fc bfc" id="L64" title="All 2 branches covered.">        if (checkConflict(student.getId(), sectionId)) {</span>
+<span class="fc" id="L65">            notificationService.sendNotificationInNewTransaction(student.getUser(),</span>
+                    NotificationType.CONFLICT_DETECTED,
+                    &quot;ลงทะเบียนไม่สำเร็จ: เวลาเรียนชนกัน&quot;,
+<span class="fc" id="L68">                    sectionLabel(section) + &quot; มีเวลาเรียนชนกับ Section ที่ลงทะเบียนไว้แล้ว&quot;,</span>
+                    NotificationChannel.IN_APP);
+<span class="fc" id="L70">            throw new BusinessRuleException(&quot;BR-03: เวลาเรียนชนกับ Section ที่ลงทะเบียนไว้แล้ว&quot;);</span>
+        }
+
+<span class="fc" id="L73">        Registration registration = registrationRepository.save(Registration.builder()</span>
+<span class="fc" id="L74">                .student(student)</span>
+<span class="fc" id="L75">                .section(section)</span>
+<span class="fc" id="L76">                .course(section.getCourse())</span>
+<span class="fc" id="L77">                .build());</span>
+
+<span class="fc" id="L79">        notificationService.sendNotification(student.getUser(),</span>
+                NotificationType.REGISTRATION_SUCCESS,
+                &quot;ลงทะเบียนสำเร็จ&quot;,
+<span class="fc" id="L82">                &quot;คุณลงทะเบียน &quot; + sectionLabel(section) + &quot; เรียบร้อยแล้ว&quot;,</span>
+                NotificationChannel.IN_APP, NotificationChannel.EMAIL);
+<span class="fc" id="L84">        return registration;</span>
+    }
+
+    @Override
+    @Transactional
+    public void withdraw(String universityId, Long registrationId) {
+<span class="fc" id="L90">        Student student = findStudent(universityId);</span>
+<span class="fc" id="L91">        requireRegistrationPeriod();</span>
+
+<span class="fc" id="L93">        Registration registration = registrationRepository.findByIdAndStudentId(registrationId, student.getId())</span>
+<span class="fc" id="L94">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบการลงทะเบียน&quot;));</span>
+<span class="fc" id="L95">        String label = sectionLabel(registration.getSection());</span>
+<span class="fc" id="L96">        registrationRepository.delete(registration);</span>
+
+<span class="fc" id="L98">        notificationService.sendNotification(student.getUser(),</span>
+                NotificationType.REGISTRATION_WITHDRAWN,
+                &quot;ถอนรายวิชาสำเร็จ&quot;,
+                &quot;คุณถอน &quot; + label + &quot; เรียบร้อยแล้ว&quot;,
+                NotificationChannel.IN_APP);
+<span class="fc" id="L103">    }</span>
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;Registration&gt; getRegistrations(String universityId, Long sectionId) {
+<span class="fc" id="L108">        User user = userRepository.findByUniversityId(universityId)</span>
+<span class="fc" id="L109">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบข้อมูลผู้ใช้&quot;));</span>
+<span class="fc bfc" id="L110" title="All 2 branches covered.">        if (user.getRole() == UserRole.ADMIN) {</span>
+<span class="fc" id="L111">            return registrationRepository.findAllWithDetails(null, sectionId);</span>
+        }
+<span class="fc" id="L113">        Student student = findStudent(universityId);</span>
+<span class="fc" id="L114">        return registrationRepository.findAllWithDetails(student.getId(), sectionId);</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkDuplicate(Long studentId, Long courseId) {
+<span class="fc" id="L120">        return registrationRepository.existsByStudentIdAndCourseId(studentId, courseId);</span>
+    }
+
+    @Override
+    @Transactional(readOnly = true)
+    public boolean checkConflict(Long studentId, Long sectionId) {
+<span class="fc" id="L126">        List&lt;Schedule&gt; newPeriods = publishedPeriods(sectionId);</span>
+<span class="pc bpc" id="L127" title="1 of 2 branches missed.">        if (newPeriods.isEmpty()) {</span>
+<span class="nc" id="L128">            return false;</span>
+        }
+<span class="fc" id="L130">        List&lt;Schedule&gt; registeredPeriods = new ArrayList&lt;&gt;();</span>
+<span class="fc bfc" id="L131" title="All 2 branches covered.">        for (Registration registration : registrationRepository.findByStudentId(studentId)) {</span>
+<span class="fc" id="L132">            registeredPeriods.addAll(publishedPeriods(registration.getSection().getId()));</span>
+<span class="fc" id="L133">        }</span>
+<span class="fc bfc" id="L134" title="All 2 branches covered.">        for (Schedule newPeriod : newPeriods) {</span>
+<span class="fc bfc" id="L135" title="All 2 branches covered.">            for (Schedule registeredPeriod : registeredPeriods) {</span>
+<span class="fc bfc" id="L136" title="All 2 branches covered.">                if (newPeriod.getTimeSlot().overlapsWith(registeredPeriod.getTimeSlot())) {</span>
+<span class="fc" id="L137">                    return true;</span>
+                }
+<span class="fc" id="L139">            }</span>
+<span class="fc" id="L140">        }</span>
+<span class="fc" id="L141">        return false;</span>
+    }
+
+    private Student findStudent(String universityId) {
+<span class="fc" id="L145">        return studentRepository.findByUserUniversityId(universityId)</span>
+<span class="fc" id="L146">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบข้อมูลนักศึกษา&quot;));</span>
+    }
+
+    /**
+     * BR-09: registering and withdrawing are allowed only inside a REGISTRATION_PERIOD event.
+     */
+    private void requireRegistrationPeriod() {
+<span class="fc" id="L153">        boolean insidePeriod = !academicEventRepository</span>
+<span class="fc" id="L154">                .findActiveEventsByTypeAndDate(AcademicEventType.REGISTRATION_PERIOD, LocalDate.now())</span>
+<span class="fc bfc" id="L155" title="All 2 branches covered.">                .isEmpty();</span>
+<span class="fc bfc" id="L156" title="All 2 branches covered.">        if (!insidePeriod) {</span>
+<span class="fc" id="L157">            throw new BusinessRuleException(&quot;BR-09: ไม่อยู่ในช่วงเวลาลงทะเบียน&quot;);</span>
+        }
+<span class="fc" id="L159">    }</span>
+
+    private List&lt;Schedule&gt; publishedPeriods(Long sectionId) {
+<span class="fc" id="L162">        return scheduleRepository.findBySectionId(sectionId).stream()</span>
+<span class="fc bfc" id="L163" title="All 2 branches covered.">                .filter(schedule -&gt; schedule.getStatus() == ScheduleStatus.PUBLISHED)</span>
+<span class="fc" id="L164">                .toList();</span>
+    }
+
+    private String sectionLabel(Section section) {
+<span class="fc" id="L168">        return section.getCourse().getCourseCode() + &quot; Section &quot; + section.getSectionNumber();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

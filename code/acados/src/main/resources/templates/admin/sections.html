@@ -349,6 +349,26 @@
         }
     });
 
+    document.getElementById('assign-teacher-form').addEventListener('submit', async (e) => {
+        e.preventDefault();
+        const btn = document.getElementById('btn-submit-assign-teacher');
+        ui.setBusy(btn, true);
+
+        const sectionId = document.getElementById('assign-section-id').value;
+        const teacherId = Number(document.getElementById('assign-teacher-select').value);
+
+        const res = await api.put(`/api/v1/sections/${sectionId}/teacher`, { teacherId });
+        ui.setBusy(btn, false);
+
+        if (res.ok) {
+            ui.toast('success', 'มอบหมายผู้สอนประจำกลุ่มเรียนสำเร็จ');
+            closeAssignTeacherModal();
+            await loadSections();
+        } else {
+            ui.toast('error', res.error.message || 'ไม่สามารถมอบหมายผู้สอนได้');
+        }
+    });
+
     loadCoursesForSelect();
     loadSections();
 </script>

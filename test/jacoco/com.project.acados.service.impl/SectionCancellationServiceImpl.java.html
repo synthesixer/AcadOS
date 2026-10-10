@@ -1,0 +1,107 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>SectionCancellationServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">SectionCancellationServiceImpl.java</span></div><h1>SectionCancellationServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.Registration;
+import com.project.acados.domain.entity.Schedule;
+import com.project.acados.domain.entity.Section;
+import com.project.acados.domain.entity.TeacherSwapRequest;
+import com.project.acados.domain.entity.User;
+import com.project.acados.domain.enums.NotificationType;
+import com.project.acados.domain.enums.SwapStatus;
+import com.project.acados.exception.ResourceNotFoundException;
+import com.project.acados.notification.strategy.NotificationChannel;
+import com.project.acados.repository.RegistrationRepository;
+import com.project.acados.repository.ScheduleRepository;
+import com.project.acados.repository.SectionRepository;
+import com.project.acados.repository.TeacherSwapRequestRepository;
+import com.project.acados.service.NotificationService;
+import com.project.acados.service.SectionCancellationService;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+import java.util.stream.Collectors;
+
+/**
+ * Default SectionCancellationService. The steps follow Userflow A08.
+ */
+@Service
+@RequiredArgsConstructor
+public class SectionCancellationServiceImpl implements SectionCancellationService {
+
+    private final SectionRepository sectionRepository;
+    private final RegistrationRepository registrationRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final TeacherSwapRequestRepository swapRequestRepository;
+    private final NotificationService notificationService;
+
+    @Override
+    @Transactional
+    public void cancelSection(Long sectionId) {
+<span class="fc" id="L44">        Section section = sectionRepository.findWithCourseById(sectionId)</span>
+<span class="fc" id="L45">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบ Section&quot;));</span>
+<span class="fc" id="L46">        section.cancel();</span>
+
+<span class="fc" id="L48">        List&lt;Schedule&gt; periods = scheduleRepository.findBySectionId(sectionId);</span>
+<span class="fc" id="L49">        Set&lt;Long&gt; periodIds = periods.stream().map(Schedule::getId).collect(Collectors.toSet());</span>
+
+<span class="fc" id="L51">        Map&lt;Long, User&gt; recipients = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L52" title="All 2 branches covered.">        for (Registration registration : registrationRepository.findBySectionId(sectionId)) {</span>
+<span class="fc" id="L53">            addRecipient(recipients, registration.getStudent().getUser());</span>
+<span class="fc" id="L54">        }</span>
+<span class="fc bfc" id="L55" title="All 2 branches covered.">        for (Schedule period : periods) {</span>
+<span class="fc" id="L56">            addRecipient(recipients, period.getTeacher().getUser());</span>
+<span class="fc" id="L57">        }</span>
+<span class="fc bfc" id="L58" title="All 2 branches covered.">        for (TeacherSwapRequest swapRequest : swapRequestRepository.findAll()) {</span>
+<span class="fc bfc" id="L59" title="All 2 branches covered.">            if (releasePeriods(swapRequest, periodIds)) {</span>
+<span class="fc" id="L60">                addRecipient(recipients, swapRequest.getRequestingTeacher().getUser());</span>
+<span class="fc" id="L61">                addRecipient(recipients, swapRequest.getTargetTeacher().getUser());</span>
+            }
+<span class="fc" id="L63">        }</span>
+
+<span class="fc" id="L65">        registrationRepository.deleteBySectionId(sectionId);</span>
+<span class="fc" id="L66">        scheduleRepository.deleteAll(periods);</span>
+
+<span class="fc" id="L68">        String label = section.getCourse().getCourseCode() + &quot; Section &quot; + section.getSectionNumber();</span>
+<span class="fc bfc" id="L69" title="All 2 branches covered.">        for (User recipient : recipients.values()) {</span>
+<span class="fc" id="L70">            notificationService.sendNotification(recipient,</span>
+                    NotificationType.SECTION_CANCELLED,
+                    &quot;Section ถูกยกเลิก&quot;,
+                    label + &quot; ถูกยกเลิกแล้ว การลงทะเบียนและคาบสอนของ Section นี้ถูกลบออก&quot;,
+                    NotificationChannel.IN_APP);
+<span class="fc" id="L75">        }</span>
+<span class="fc" id="L76">    }</span>
+
+    /**
+     * Detaches the swap request from the periods that are about to be deleted, so its row is kept
+     * as audit history (database.md §2.13), and cancels it when it was still open.
+     *
+     * @return true when the swap request referred to one of the periods
+     */
+    private boolean releasePeriods(TeacherSwapRequest swapRequest, Set&lt;Long&gt; periodIds) {
+<span class="fc" id="L85">        boolean affected = false;</span>
+<span class="fc" id="L86">        Schedule requestingPeriod = swapRequest.getRequestingSchedule();</span>
+<span class="pc bpc" id="L87" title="1 of 4 branches missed.">        if (requestingPeriod != null &amp;&amp; periodIds.contains(requestingPeriod.getId())) {</span>
+<span class="fc" id="L88">            swapRequest.setRequestingSchedule(null);</span>
+<span class="fc" id="L89">            affected = true;</span>
+        }
+<span class="fc" id="L91">        Schedule targetPeriod = swapRequest.getTargetSchedule();</span>
+<span class="pc bpc" id="L92" title="1 of 4 branches missed.">        if (targetPeriod != null &amp;&amp; periodIds.contains(targetPeriod.getId())) {</span>
+<span class="fc" id="L93">            swapRequest.setTargetSchedule(null);</span>
+<span class="fc" id="L94">            affected = true;</span>
+        }
+<span class="fc bfc" id="L96" title="All 4 branches covered.">        if (affected &amp;&amp; (swapRequest.getStatus() == SwapStatus.PENDING</span>
+<span class="pc bpc" id="L97" title="1 of 2 branches missed.">                || swapRequest.getStatus() == SwapStatus.ACCEPTED)) {</span>
+<span class="fc" id="L98">            swapRequest.cancel();</span>
+        }
+<span class="fc" id="L100">        return affected;</span>
+    }
+
+    private void addRecipient(Map&lt;Long, User&gt; recipients, User user) {
+<span class="fc" id="L104">        recipients.put(user.getId(), user);</span>
+<span class="fc" id="L105">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

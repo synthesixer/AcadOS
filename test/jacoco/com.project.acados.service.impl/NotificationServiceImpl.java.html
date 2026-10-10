@@ -1,0 +1,131 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>NotificationServiceImpl.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.service.impl</a> &gt; <span class="el_source">NotificationServiceImpl.java</span></div><h1>NotificationServiceImpl.java</h1><pre class="source lang-java linenums">package com.project.acados.service.impl;
+
+import com.project.acados.domain.entity.Notification;
+import com.project.acados.domain.entity.Registration;
+import com.project.acados.domain.entity.Schedule;
+import com.project.acados.domain.entity.Section;
+import com.project.acados.domain.entity.User;
+import com.project.acados.domain.enums.NotificationType;
+import com.project.acados.domain.enums.ScheduleStatus;
+import com.project.acados.exception.ResourceNotFoundException;
+import com.project.acados.notification.strategy.NotificationChannel;
+import com.project.acados.notification.strategy.NotificationMessage;
+import com.project.acados.notification.strategy.NotificationStrategy;
+import com.project.acados.pattern.observer.ScheduleChangeSubject;
+import com.project.acados.repository.NotificationRepository;
+import com.project.acados.repository.RegistrationRepository;
+import com.project.acados.repository.ScheduleRepository;
+import com.project.acados.service.NotificationService;
+import jakarta.annotation.PostConstruct;
+import lombok.RequiredArgsConstructor;
+import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Propagation;
+import org.springframework.transaction.annotation.Transactional;
+
+import java.util.Arrays;
+import java.util.EnumSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
+
+/**
+ * Default NotificationService. Spring injects every NotificationStrategy bean,
+ * and each one is asked whether it supports the requested channel.
+ */
+@Service
+@RequiredArgsConstructor
+public class NotificationServiceImpl implements NotificationService {
+
+    private final List&lt;NotificationStrategy&gt; strategies;
+    private final NotificationRepository notificationRepository;
+    private final RegistrationRepository registrationRepository;
+    private final ScheduleRepository scheduleRepository;
+    private final ScheduleChangeSubject scheduleChangeSubject;
+
+    /**
+     * Observer Pattern: registers this service with the subject once at startup.
+     */
+    @PostConstruct
+    void attachToScheduleChanges() {
+<span class="fc" id="L51">        scheduleChangeSubject.attach(this);</span>
+<span class="fc" id="L52">    }</span>
+
+    @Override
+    @Transactional
+    public void sendNotification(User recipient, NotificationType type, String title, String message,
+                                 NotificationChannel... channels) {
+<span class="fc" id="L58">        send(recipient, type, title, message, channels);</span>
+<span class="fc" id="L59">    }</span>
+
+    @Override
+    @Transactional(propagation = Propagation.REQUIRES_NEW)
+    public void sendNotificationInNewTransaction(User recipient, NotificationType type, String title,
+                                                 String message, NotificationChannel... channels) {
+<span class="fc" id="L65">        send(recipient, type, title, message, channels);</span>
+<span class="fc" id="L66">    }</span>
+
+    @Override
+    @Transactional(readOnly = true)
+    public List&lt;Notification&gt; getNotifications(String universityId) {
+<span class="fc" id="L71">        return notificationRepository.findByUserUniversityIdOrderByCreatedAtDesc(universityId);</span>
+    }
+
+    @Override
+    @Transactional
+    public void markAsRead(String universityId, Long notificationId) {
+<span class="fc" id="L77">        Notification notification = notificationRepository.findByIdAndUserUniversityId(notificationId, universityId)</span>
+<span class="fc" id="L78">                .orElseThrow(() -&gt; new ResourceNotFoundException(&quot;ไม่พบการแจ้งเตือน&quot;));</span>
+<span class="fc" id="L79">        notification.markAsRead();</span>
+<span class="fc" id="L80">    }</span>
+
+    /**
+     * Called by the subject inside the transaction of the service that changed the timetable
+     * (publish, swap approval). Sends one in-app SCHEDULE_CHANGED per changed section to each
+     * registered student and each teacher of its PUBLISHED periods.
+     */
+    @Override
+    public void onScheduleChanged(List&lt;Section&gt; sections) {
+<span class="fc bfc" id="L89" title="All 2 branches covered.">        if (sections == null) {</span>
+<span class="fc" id="L90">            return;</span>
+        }
+<span class="fc bfc" id="L92" title="All 2 branches covered.">        for (Section section : sections) {</span>
+<span class="fc" id="L93">            Map&lt;Long, User&gt; recipients = new LinkedHashMap&lt;&gt;();</span>
+<span class="fc bfc" id="L94" title="All 2 branches covered.">            for (Registration registration : registrationRepository.findBySectionId(section.getId())) {</span>
+<span class="fc" id="L95">                User student = registration.getStudent().getUser();</span>
+<span class="fc" id="L96">                recipients.put(student.getId(), student);</span>
+<span class="fc" id="L97">            }</span>
+<span class="fc bfc" id="L98" title="All 2 branches covered.">            for (Schedule schedule : scheduleRepository.findBySectionId(section.getId())) {</span>
+<span class="fc bfc" id="L99" title="All 2 branches covered.">                if (schedule.getStatus() == ScheduleStatus.PUBLISHED) {</span>
+<span class="fc" id="L100">                    User teacher = schedule.getTeacher().getUser();</span>
+<span class="fc" id="L101">                    recipients.put(teacher.getId(), teacher);</span>
+                }
+<span class="fc" id="L103">            }</span>
+<span class="fc" id="L104">            String label = section.getCourse().getCourseCode() + &quot; Section &quot; + section.getSectionNumber();</span>
+<span class="fc bfc" id="L105" title="All 2 branches covered.">            for (User recipient : recipients.values()) {</span>
+<span class="fc" id="L106">                send(recipient, NotificationType.SCHEDULE_CHANGED,</span>
+                        &quot;ตารางเรียนมีการเปลี่ยนแปลง&quot;,
+                        &quot;ตารางของ &quot; + label + &quot; มีการเปลี่ยนแปลง กรุณาตรวจสอบตารางล่าสุด&quot;,
+                        NotificationChannel.IN_APP);
+<span class="fc" id="L110">            }</span>
+<span class="fc" id="L111">        }</span>
+<span class="fc" id="L112">    }</span>
+
+    private void send(User recipient, NotificationType type, String title, String message,
+                      NotificationChannel... channels) {
+<span class="pc bpc" id="L116" title="1 of 4 branches missed.">        if (channels == null || channels.length == 0) {</span>
+<span class="fc" id="L117">            throw new IllegalArgumentException(&quot;At least one notification channel is required&quot;);</span>
+        }
+<span class="fc" id="L119">        Set&lt;NotificationChannel&gt; requestedChannels = EnumSet.copyOf(Arrays.asList(channels));</span>
+<span class="fc" id="L120">        NotificationMessage notificationMessage = new NotificationMessage(recipient, type, title, message);</span>
+
+<span class="fc bfc" id="L122" title="All 2 branches covered.">        for (NotificationChannel channel : requestedChannels) {</span>
+<span class="fc bfc" id="L123" title="All 2 branches covered.">            for (NotificationStrategy strategy : strategies) {</span>
+<span class="fc bfc" id="L124" title="All 2 branches covered.">                if (strategy.supports(channel)) {</span>
+<span class="fc" id="L125">                    strategy.send(notificationMessage);</span>
+                }
+<span class="fc" id="L127">            }</span>
+<span class="fc" id="L128">        }</span>
+<span class="fc" id="L129">    }</span>
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

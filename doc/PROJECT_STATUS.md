@@ -28,9 +28,9 @@
      - Refactor `TeacherPreferenceApiController.java` ให้พึ่งพาเฉพาะ `TeacherPreferenceService` ผ่าน Constructor Injection
      - สร้าง [`TeacherPreferenceServiceImplTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherPreferenceServiceImplTest.java) ครอบคลุมทุก Scenario
      - อัปเดต `class diagram.puml` และ `component-diagram.puml` แทนที่คลาสเดิมด้วย `TeacherPreferenceService`
-5. **[Use Case Completeness] การเพิ่ม Use Cases สำหรับอาจารย์ใน `Usecase_diagram.md`:**
+5. **[Use Case Completeness] การเพิ่ม Use Cases สำหรับอาจารย์ใน `Teacher-UseCase-Diagram.puml`:**
    - **ปัญหาเดิม:** Usecase Diagram ขาดการระบุ Use Case "Manage Course Preferences (D21)" และ "Change Password"
-   - **การแก้ไข:** เพิ่ม `UC_TManagePref` (Manage Course Preferences Priority 1-5, D21) และ `UC_TChangePassword` (Change Password) ลงในแพ็กเกจ Profile Modal ใน `doc/diagram/Usecase_diagram.md` พร้อมเชื่อมโยงกับ Actor Teacher
+   - **การแก้ไข:** เพิ่ม `UC_TManagePref` (Manage Course Preferences Priority 1-5, D21) และ `UC_TChangePassword` (Change Password) ลงในแพ็กเกจ Profile Modal ใน `doc/diagram/UsecaseDiagram/Teacher-UseCase-Diagram.puml` พร้อมเชื่อมโยงกับ Actor Teacher
 6. **[Data Dictionary Detail] การระบุสล็อตเวลาละเอียด 1.5 ชม. (IDs 32–56) ใน `database.md`:**
    - **ปัญหาเดิม:** `database.md` ยังไม่ได้บันทึกสเปกของสล็อตเวลาละเอียด 1.5 ชม. ที่เพิ่มใน `data.sql`
    - **การแก้ไข:** อัปเดตหัวข้อ 2.7 `time_slots` และ 2.12 `teacher_availabilities` ใน `doc/database.md` บันทึกรายละเอียดของ TimeSlot ทั้ง 5 กลุ่ม โดยเฉพาะสล็อต 1.5 ชม. (IDs 32–56 รวม 25 สล็อต) ที่ใช้ในการกำหนดเวลาไม่สะดวกสอนของอาจารย์เพื่อตรวจสอบ Hard Constraint BR-07
@@ -40,6 +40,32 @@
 8. **[CQRS Pattern Representation] การบันทึก `TeacherSwapQueryService` ใน Diagrams:**
    - **ปัญหาเดิม:** มีการแยก Query ออกจาก Command ตามแนวคิด CQRS ในโค้ดจริง แต่ในไดอะแกรมไม่มีคลาสนี้
    - **การแก้ไข:** เพิ่ม `TeacherSwapQueryService` และ `TeacherSwapQueryServiceImpl` ลงใน `class diagram.puml` และ `component-diagram.puml` สะท้อนสถาปัตยกรรมระบบจริง
+9. **[Userflow Consolidation - Hybrid Best Practice] การปรับปรุง Userflow Diagram ให้กระชับ:**
+   - **ปัญหาเดิม:** `Userflow_diagram.md` มีขนาดยาวถึง 1,654 บรรทัด และแตก Micro-CRUD ย่อยมากถึง 49 แผนภาพ ทำให้เลื่อนดูยากและเรนเดอร์ช้า
+   - **การแก้ไข:** ยุบรวมแผนภาพจาก 49 แผนภาพ เหลือเพียง 19 แผนภาพหลักแบบ Unified User Journey โดยผสาน Micro-CRUD และการทำงานใน Modal เดียวกันเข้าด้วยกัน พร้อมจัดกลุ่มด้วย `<details><summary>` พับเก็บได้ตาม 4 บทบาท (Common, Student, Teacher, Admin) โดยยังคงเงื่อนไข Business Rules BR-01 ถึง BR-10 ครบถ้วน 100%
+10. **[Design Patterns Documentation - Prof Ruleset §5] การจัดทำเอกสาร GoF Patterns ที่ใช้งานจริง:**
+    - **การดำเนินการ:** จัดทำเอกสาร [`doc/design-patterns.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/design-patterns.md) สรุป Pattern ที่ใช้งานจริงในโค้ด ทั้งกลุ่ม Behavioral (State, Strategy Scoring, Strategy Notification, Observer), Structural (Adapter), และ Creational (Builder, Singleton, Factory Method) พร้อมปัญหาที่แก้, ซอร์สไฟล์ที่ใช้งาน, และ Class Diagrams ประกอบครบถ้วน 100%
+11. **[Cross-Artifact Consistency & Gap Resolution] การตรวจสอบและปรับปรุงความสอดคล้องข้ามเอกสารและโค้ด:**
+    - **การตรวจสอบ:** Cross-check ระหว่าง `design-patterns.md`, `Userflow_diagram.md`, `Implement_Plan-AcadOS.md`, Usecase Diagrams (`*.puml`), System Diagrams, และ Source Code จริง
+    - **การแก้ไข:**
+      - ปรับปรุง Observer Pattern ใน `design-patterns.md` ให้ระบุ `NotificationService`/`NotificationServiceImpl` เป็น Concrete Observer ตรงตามโค้ดจริง (ตัดชื่อคลาสสมมติ TeacherScheduleObserver/StudentScheduleObserver ออกตามหลัก Zero Hallucination)
+      - ปรับแก้ HTTP Method & Paths ใน `Userflow_diagram.md`: T01 (`/teacher-swaps/my-schedules`), T02 (`PUT /change-password`), A05 (`PUT /sections/{id}/teacher`), A08 (`PUT /{id}/approve` & `PUT /{id}/reject`), A09 (`PUT /sections/{id}/cancel`) ให้ตรงกับ REST Controllers 100%
+      - แก้ไข UI Bug ใน `admin/sections.html` โดยเพิ่ม Event Listener ให้แบบฟอร์ม Assign Teacher Modal (`#assign-teacher-form`) เพื่อยิง `PUT /api/v1/sections/{id}/teacher` ได้จริง
+      - ลบข้อความ `(TBA)` ของ `RoomSuitabilityScoreStrategy` ใน `component-diagram.puml` หลังมี Implementation และ Unit Tests รองรับ
+      - เพิ่ม Use Case Profile Modal (View Profile Info, Change Password) ใน `Student-UseCase-Diagram.puml` และ `Admin-UseCase-Diagram.puml` ให้สอดคล้องกันทุกบทบาทตาม `main-layout.html`
+      - เพิ่ม Cross-reference Link ใน `Implement_Plan-AcadOS.md` §17.2 ไปยัง `doc/design-patterns.md`
+12. **[SOLID Principles Documentation - Prof Ruleset §4] การจัดทำเอกสารวิเคราะห์ SOLID Principles:**
+    - **การดำเนินการ:** จัดทำเอกสาร [`doc/solid-analysis.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/solid-analysis.md) วิเคราะห์และตรวจสอบการปฏิบัติตามหลักการ SOLID Principles ทั้ง 5 ข้อ (SRP, OCP, LSP, ISP, DIP) อย่างละเอียด พร้อมระบุชื่อคลาส หมายเลขบรรทัดจริงในซอร์สโค้ด และเหตุผลทางวิศวกรรมรองรับ 100% ตรงตามข้อกำหนดอาจารย์ใน `doc/prof_ruleset.md` §4
+13. **[Cloud Deployment & CI/CD Pipeline - Prof Ruleset §11 & §14] การเตรียมความพร้อม Cloud Deployment (ทางเลือกที่ 1):**
+    - **การดำเนินการ:**
+      - ปรับปรุง [`application.properties`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/application.properties) รองรับ Dynamic Port `${PORT:8080}`, Cloud Datasource Environment Variables, JWT Secret, และ Mail Host
+      - ปรับปรุง [`Dockerfile`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/Dockerfile) เพิ่ม JVM Container Memory Constraints (`-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`) ป้องกัน OOM บน Cloud Free Tier
+      - ติดตั้ง GitHub Actions Automated Workflow ([`.github/workflows/ci-cd.yml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/.github/workflows/ci-cd.yml)) รัน `mvn clean test` และอัปโหลด JaCoCo Report อัตโนมัติ (รับคะแนนพิเศษตามเกณฑ์ §11)
+      - จัดทำแผนปฏิบัติการ [Cloud Deployment Implementation Plan](file:///C:/Users/WINDOWS%2011/.gemini/antigravity/brain/3170965d-6e40-43ee-a4a2-3141241a48cc/cloud_deployment_plan.md)
+14. **[Repository Rubric & Comprehensive README.md - Prof Ruleset §9, §10, §14] การจัดทำ README.md ฉบับสมบูรณ์และแก้ปัญหา Folder Tracking:**
+    - **การดำเนินการ:**
+      - ยกระดับ [`README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/README.md) สู่ระดับ Production-Ready ละเอียดครบถ้วน 13 หัวข้อ: ใครทำ (ตารางสมาชิกครบทุกคนพร้อม Section/Branch/บทบาท), ที่มาและความสำคัญ, วัตถุประสงค์, ขอบเขต 3 บทบาท (Admin, Teacher, Student) และกฎ BR-01..11, ประโยชน์, Tech Stack, สถาปัตยกรรม 3-Tier และ SOLID 100%, 8 Design Patterns, วิธีดำเนินงาน Vertical Slicing, ผลการดำเนินงาน 326 Tests Green (100%), ขั้นตอนติดตั้งและทำซ้ำในเครื่อง, คู่มือ Deploy บน Railway Cloud, และโครงสร้างโปรเจกต์
+      - สร้าง [`img/.gitkeep`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/.gitkeep), [`test/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/test/README.md), และ [`doc/slide/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/slide/README.md) เพื่อแก้ไขปัญหา Git ไม่ติดตามโฟลเดอร์ว่างเปล่า ให้มีโฟลเดอร์ครบถ้วนบน GitHub Remote 100% ตามเกณฑ์ข้อกำหนดอาจารย์
 
 ---
 
@@ -51,17 +77,28 @@
 - [`TeacherPreferenceApiController.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/java/com/project/acados/controller/api/TeacherPreferenceApiController.java): Refactor ลด Coupling โดยพึ่งพาเฉพาะ `TeacherPreferenceService`
 - [`TeacherPreferenceApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/TeacherPreferenceApiControllerTest.java): ปรับปรุง Unit Test ให้ mock Service Layer
 - [`TeacherPreferenceServiceImplTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherPreferenceServiceImplTest.java): สร้างใหม่ Unit Test 8 ข้อ ครอบคลุม BR-06, BR-07, CRUD, และ Authorization (ผ่าน 100%)
+- [`admin/sections.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/sections.html): เพิ่ม Event Listener ให้แบบฟอร์ม Assign Teacher Modal (`#assign-teacher-form`) เพื่อยิง `PUT /api/v1/sections/{id}/teacher` ได้จริง
+- [`Dockerfile`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/Dockerfile): เพิ่ม JVM Container Memory Constraints (`-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`)
+- [`application.properties`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/application.properties): ปรับปรุงให้รองรับ Dynamic Port `${PORT:8080}` และ Cloud Database Environment Variables
 
 ### 2.2 Documentation & Specification
 - [`README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/README.md): แก้ไข Broken Links, โครงสร้างไดเรกทอรี, ระบุ TBA ตามมติผู้ใช้
 - [`doc/database.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/database.md): บันทึกรายละเอียด TimeSlots IDs 32–56 (1.5 ชม.) ในตาราง `time_slots` และ `teacher_availabilities`
-- [`doc/Implement_Plan-AcadOS.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/Implement_Plan-AcadOS.md): อัปเดตรายการ Service Layer ให้ตรงกับโค้ดจริง
+- [`doc/Implement_Plan-AcadOS.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/Implement_Plan-AcadOS.md): อัปเดตรายการ Service Layer, Cross-reference ถึง `design-patterns.md`, และอัปเดตสถาปัตยกรรมคลาวด์ใน Section 23 (Dual Cloud Architecture: Render PaaS + Managed MySQL, VPS Docker Compose, JVM memory optimization, และ CI/CD GitHub Actions)
+- [`doc/design-patterns.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/design-patterns.md): จัดทำเอกสารสรุป GoF Patterns 8 แบบ และ Architectural Patterns พร้อมไดอะแกรมและผลการทดสอบ
+- [`doc/solid-analysis.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/solid-analysis.md): จัดทำเอกสารวิเคราะห์ SOLID Principles พร้อมระบุชื่อคลาส หมายเลขบรรทัด และเหตุผลทางวิศวกรรมครบทั้ง 5 ข้อ
+- [`code/acados/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/README.md): เอกสารคู่มือสำหรับนักพัฒนา อธิบายสถาปัตยกรรม Spring Boot 3.3.4, โครงสร้างแพ็กเกจ, วิธีรันในเครื่อง, ตัวแปรสภาพแวดล้อม และ Docker
+- [`img/README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/README.md): เอกสารกำกับคลังรูปภาพและคู่มือการรัน Robot Framework E2E Test Suite พร้อมรายการ Screenshots
+- [`img/robot_testcase.robot`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/img/robot_testcase.robot): สคริปต์ Robot Framework ทดสอบหน้าเว็บจริง 5 Scenarios และสั่งแคปภาพหน้าจออัตโนมัติลงใน `img/`
 
-### 2.3 System Architecture & UML Diagrams
+### 2.3 Automation & CI/CD
+- [`.github/workflows/ci-cd.yml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/.github/workflows/ci-cd.yml): สร้าง GitHub Actions Workflow สำหรับ Automated Testing (`mvn clean test`) และอัปโหลด JaCoCo Report อัตโนมัติ (รับคะแนนพิเศษ §11)
+
+### 2.4 System Architecture & UML Diagrams
 - [`doc/diagram/class diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/class%20diagram.puml): ปรับปรุง `SectionService` (เพิ่ม `assignTeacher`), เพิ่ม `TeacherPreferenceService`, เพิ่ม `TeacherSwapQueryService`, ลบ `TeacherAssignmentService`
 - [`doc/diagram/component-diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/component-diagram.puml): อัปเดต Components และความสัมพันธ์ให้ตรงกับโครงสร้าง Service Layer ล่าสุด
 - [`doc/diagram/Userflow_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Userflow_diagram.md): อัปเดต Flow วันหยุดราชการในตารางสรุปให้รองรับ Admin Manual Sync
-- [`doc/diagram/Usecase_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Usecase_diagram.md): เพิ่ม Use Cases กำหนดวิชาที่อยากสอน (D21) และเปลี่ยนรหัสผ่านใน Scope ของ Teacher
+- [`doc/diagram/UsecaseDiagram/*.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/UsecaseDiagram/): เพิ่ม Use Cases Profile Modal (View Profile Info, Change Password, Manage Preferences D21) ให้ครอบคลุมทุกบทบาท
 - [`doc/diagram/ActivityDiagram/activity_authentication.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_authentication.puml): แยกการตรวจสอบ 401 Unauthorized vs 403 Forbidden
 - [`doc/diagram/ActivityDiagram/activity_schedule_generation.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_schedule_generation.puml): แยก 401 vs 403 ใน Security Filter ของ Generate, Publish, และ Discard Flows
 - [`doc/diagram/ActivityDiagram/activity_section_cancellation.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/ActivityDiagram/activity_section_cancellation.puml): แยก 401 vs 403 ใน Security Filter ของ Admin Cancellation
@@ -75,10 +112,16 @@
 - **ชุดทดสอบ Unit & Integration Tests ทั้งระบบ:**
   - รันคำสั่ง: `mvn clean test`
   - ผลลัพธ์: **326 Tests Run, 0 Failures, 0 Errors, 0 Skipped (BUILD SUCCESS 100% Green)**
+  - JaCoCo Code Coverage Report: คัดลอกและจัดเก็บถาวรไว้ที่ [`test/jacoco/index.html`](../test/jacoco/index.html) ตามเกณฑ์รายวิชา (§9 และ §14)
+- **ชุดทดสอบ End-to-End Acceptance Tests (Robot Framework & Selenium):**
+  - รันคำสั่ง: `python -m robot -d img/results img/robot_testcase.robot`
+  - ผลลัพธ์: **8 Tests Run, 8 Passed, 0 Failed (100% Green)** ครอบคลุมทั้ง Positive, Negative, และวนครบทุกหน้าจอหลักของระบบ
+  - บันทึกภาพหน้าจอหลักฐานจริง 17 ภาพครบถ้วนลงในโฟลเดอร์ [`img/`](../img/) (Negative Auth & Security 3 ภาพ, Admin Tour 6 ภาพ, Timetable Engine 2 ภาพ, Student Portal 3 ภาพ, Teacher Portal 2 ภาพ, Swagger & Actuator 2 ภาพ)
 - **การปฏิบัติตามกฎเกณฑ์ของอาจารย์ (`doc/prof_ruleset.md`):**
   - **ข้อ 3 (Layered Architecture):** ผ่าน 100% — ไม่มีการข้าม Layer จาก Controller ไปยัง Repository โดยทุก Controller เรียกผ่าน Service Interface
   - **ข้อ 4 (SOLID Principles):** ผ่าน 100% — ปฏิบัติตาม DIP (Controller พึ่งพา Interface), SRP (Controller คุมเฉพาะ Web/HTTP, Service คุม Business Logic), และ ISP
   - **ข้อ 5 (Design Patterns):** ผ่าน 100% — Layered Architecture, Repository Pattern, Service Layer Pattern, CQRS (TeacherSwapQueryService), DTO + Mapper
+  - **ข้อ 9 & 14 (Folder Structure & Test Reports):** ผ่าน 100% — โฟลเดอร์ `code/`, `test/`, `doc/`, `img/` มีไฟล์ครบถ้วนพร้อมรายงานการทดสอบ JaCoCo และ Robot Framework
 
 ---
 
@@ -86,3 +129,4 @@
 
 1. **Git Synchronization:** พร้อมสำหรับ Stage และ Commit การเปลี่ยนแปลงทั้งหมดใน Branch `puttimed_6733804171_03`
 2. **System Consistency:** โค้ดจริง ไดอะแกรม เอกสารข้อกำหนด และ Data Dictionary สอดคล้องตรงกัน 100% โดยไม่มีข้อขัดแย้งตกค้าง
+

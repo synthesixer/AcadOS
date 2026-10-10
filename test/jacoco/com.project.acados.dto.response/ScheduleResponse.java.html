@@ -1,0 +1,86 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>ScheduleResponse.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.dto.response</a> &gt; <span class="el_source">ScheduleResponse.java</span></div><h1>ScheduleResponse.java</h1><pre class="source lang-java linenums">package com.project.acados.dto.response;
+
+import com.project.acados.domain.entity.Schedule;
+import com.project.acados.domain.enums.ScheduleStatus;
+import lombok.*;
+
+import java.time.DayOfWeek;
+import java.time.LocalTime;
+
+/**
+ * Response DTO for Schedule entity.
+ * Reference: class diagram.puml, Implement_Plan-AcadOS.md §16
+ */
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class ScheduleResponse {
+
+    private Long id;
+    private Long sectionId;
+    private Integer sectionNumber;
+    private String courseCode;
+    private String courseTitle;
+
+    private Long teacherId;
+    private String teacherName;
+
+    private Long roomId;
+    private String roomName;
+
+    private Long timeSlotId;
+    private DayOfWeek dayOfWeek;
+
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = &quot;HH:mm:ss&quot;)
+    private LocalTime startTime;
+
+    @com.fasterxml.jackson.annotation.JsonFormat(shape = com.fasterxml.jackson.annotation.JsonFormat.Shape.STRING, pattern = &quot;HH:mm:ss&quot;)
+    private LocalTime endTime;
+
+    private ScheduleStatus status;
+
+    public static ScheduleResponse fromEntity(Schedule schedule) {
+<span class="pc bpc" id="L45" title="1 of 2 branches missed.">        if (schedule == null) {</span>
+<span class="nc" id="L46">            return null;</span>
+        }
+
+<span class="fc" id="L49">        ScheduleResponseBuilder builder = ScheduleResponse.builder()</span>
+<span class="fc" id="L50">                .id(schedule.getId())</span>
+<span class="fc" id="L51">                .status(schedule.getStatus());</span>
+
+<span class="pc bpc" id="L53" title="1 of 2 branches missed.">        if (schedule.getSection() != null) {</span>
+<span class="fc" id="L54">            builder.sectionId(schedule.getSection().getId())</span>
+<span class="fc" id="L55">                    .sectionNumber(schedule.getSection().getSectionNumber());</span>
+<span class="pc bpc" id="L56" title="1 of 2 branches missed.">            if (schedule.getSection().getCourse() != null) {</span>
+<span class="fc" id="L57">                builder.courseCode(schedule.getSection().getCourse().getCourseCode())</span>
+<span class="fc" id="L58">                        .courseTitle(schedule.getSection().getCourse().getTitle());</span>
+            }
+        }
+
+<span class="fc bfc" id="L62" title="All 2 branches covered.">        if (schedule.getTeacher() != null) {</span>
+<span class="fc" id="L63">            builder.teacherId(schedule.getTeacher().getId())</span>
+<span class="fc" id="L64">                    .teacherName(schedule.getTeacher().getFullName());</span>
+        }
+
+<span class="fc bfc" id="L67" title="All 2 branches covered.">        if (schedule.getRoom() != null) {</span>
+<span class="pc bpc" id="L68" title="1 of 2 branches missed.">            String bldg = schedule.getRoom().getBuilding() != null ? schedule.getRoom().getBuilding() : &quot;&quot;;</span>
+<span class="pc bpc" id="L69" title="1 of 2 branches missed.">            String rNum = schedule.getRoom().getRoomNumber() != null ? schedule.getRoom().getRoomNumber() : &quot;&quot;;</span>
+<span class="fc" id="L70">            String roomName = (bldg + &quot; &quot; + rNum).trim();</span>
+<span class="fc" id="L71">            builder.roomId(schedule.getRoom().getId())</span>
+<span class="pc bpc" id="L72" title="1 of 2 branches missed.">                    .roomName(roomName.isEmpty() ? &quot;TBA&quot; : roomName);</span>
+        }
+
+<span class="fc bfc" id="L75" title="All 2 branches covered.">        if (schedule.getTimeSlot() != null) {</span>
+<span class="fc" id="L76">            builder.timeSlotId(schedule.getTimeSlot().getId())</span>
+<span class="fc" id="L77">                    .dayOfWeek(schedule.getTimeSlot().getDayOfWeek())</span>
+<span class="fc" id="L78">                    .startTime(schedule.getTimeSlot().getStartTime())</span>
+<span class="fc" id="L79">                    .endTime(schedule.getTimeSlot().getEndTime());</span>
+        }
+
+<span class="fc" id="L82">        return builder.build();</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

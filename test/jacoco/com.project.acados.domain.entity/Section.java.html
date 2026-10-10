@@ -1,0 +1,82 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>Section.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.domain.entity</a> &gt; <span class="el_source">Section.java</span></div><h1>Section.java</h1><pre class="source lang-java linenums">package com.project.acados.domain.entity;
+
+import com.project.acados.domain.enums.SectionStatus;
+import com.project.acados.state.ActiveSectionState;
+import com.project.acados.state.CancelledSectionState;
+import com.project.acados.state.SectionState;
+import jakarta.persistence.*;
+import jakarta.validation.constraints.Min;
+import jakarta.validation.constraints.NotNull;
+import lombok.*;
+
+/**
+ * Section entity representing course study groups.
+ * Reference: database.md §2.5, class diagram.puml
+ */
+@Entity
+@Table(
+    name = &quot;sections&quot;,
+    uniqueConstraints = {
+        @UniqueConstraint(name = &quot;uk_sections_course_section_num&quot;, columnNames = {&quot;course_id&quot;, &quot;section_number&quot;})
+    }
+)
+@Getter
+@Setter
+@NoArgsConstructor
+@AllArgsConstructor
+@Builder
+public class Section {
+
+    @Id
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
+
+    @NotNull
+    @ManyToOne(fetch = FetchType.LAZY)
+    @JoinColumn(name = &quot;course_id&quot;, nullable = false)
+    private Course course;
+
+    @NotNull
+    @Min(1)
+    @Column(name = &quot;section_number&quot;, nullable = false)
+    private Integer sectionNumber;
+
+    @NotNull
+    @Min(1)
+    @Column(name = &quot;capacity&quot;, nullable = false)
+    private Integer capacity;
+
+    @NotNull
+    @Builder.Default
+    @Enumerated(EnumType.STRING)
+    @Column(name = &quot;status&quot;, nullable = false, length = 20)
+    private SectionStatus status = SectionStatus.ACTIVE;
+
+    /**
+     * State Pattern: state object matching the stored status. Not a column.
+     */
+    @Transient
+    private SectionState state;
+
+    public void cancel() {
+<span class="fc" id="L62">        getState().cancel(this);</span>
+<span class="fc" id="L63">    }</span>
+
+    public SectionState getState() {
+<span class="fc bfc" id="L66" title="All 2 branches covered.">        if (state == null) {</span>
+<span class="fc bfc" id="L67" title="All 2 branches covered.">            state = status == SectionStatus.CANCELLED ? new CancelledSectionState() : new ActiveSectionState();</span>
+        }
+<span class="fc" id="L69">        return state;</span>
+    }
+
+    public void setState(SectionState state) {
+<span class="fc" id="L73">        this.state = state;</span>
+<span class="fc" id="L74">    }</span>
+
+    public void setStatus(SectionStatus status) {
+<span class="fc" id="L77">        this.status = status;</span>
+<span class="fc" id="L78">        this.state = null;</span>
+<span class="fc" id="L79">    }</span>
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

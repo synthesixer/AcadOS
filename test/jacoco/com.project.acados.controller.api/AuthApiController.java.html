@@ -1,0 +1,158 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>AuthApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">AuthApiController.java</span></div><h1>AuthApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.dto.request.LoginRequest;
+import com.project.acados.dto.response.AuthResponse;
+import com.project.acados.security.TokenProvider;
+import jakarta.servlet.http.Cookie;
+import jakarta.servlet.http.HttpServletResponse;
+import jakarta.validation.Valid;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.authentication.AuthenticationManager;
+import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.GrantedAuthority;
+import org.springframework.security.core.userdetails.UserDetails;
+import org.springframework.web.bind.annotation.PostMapping;
+import org.springframework.web.bind.annotation.RequestBody;
+import org.springframework.web.bind.annotation.RequestMapping;
+import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.server.ResponseStatusException;
+import com.project.acados.domain.entity.User;
+import com.project.acados.domain.enums.UserRole;
+import com.project.acados.dto.request.ChangePasswordRequest;
+import com.project.acados.dto.response.UserProfileResponse;
+import com.project.acados.repository.StudentRepository;
+import com.project.acados.repository.TeacherRepository;
+import com.project.acados.repository.UserRepository;
+import org.springframework.security.crypto.password.PasswordEncoder;
+import org.springframework.web.bind.annotation.GetMapping;
+import org.springframework.web.bind.annotation.PutMapping;
+
+@RestController
+@RequestMapping(&quot;/api/v1/auth&quot;)
+public class AuthApiController {
+    private final AuthenticationManager authenticationManager;
+    private final TokenProvider tokenProvider;
+    private final UserRepository userRepository;
+    private final TeacherRepository teacherRepository;
+    private final StudentRepository studentRepository;
+    private final PasswordEncoder passwordEncoder;
+
+    public AuthApiController(
+            AuthenticationManager authenticationManager,
+            TokenProvider tokenProvider,
+            UserRepository userRepository,
+            TeacherRepository teacherRepository,
+            StudentRepository studentRepository,
+            PasswordEncoder passwordEncoder
+<span class="fc" id="L49">    ) {</span>
+<span class="fc" id="L50">        this.authenticationManager = authenticationManager;</span>
+<span class="fc" id="L51">        this.tokenProvider = tokenProvider;</span>
+<span class="fc" id="L52">        this.userRepository = userRepository;</span>
+<span class="fc" id="L53">        this.teacherRepository = teacherRepository;</span>
+<span class="fc" id="L54">        this.studentRepository = studentRepository;</span>
+<span class="fc" id="L55">        this.passwordEncoder = passwordEncoder;</span>
+<span class="fc" id="L56">    }</span>
+
+    @PostMapping(&quot;/login&quot;)
+    public AuthResponse login(@Valid @RequestBody LoginRequest request, HttpServletResponse response) {
+        try {
+<span class="fc" id="L61">            Authentication authentication = authenticationManager.authenticate(</span>
+<span class="fc" id="L62">                    new UsernamePasswordAuthenticationToken(request.universityId(), request.password())</span>
+            );
+<span class="fc" id="L64">            String role = authentication.getAuthorities().stream()</span>
+<span class="fc" id="L65">                    .map(GrantedAuthority::getAuthority)</span>
+<span class="fc" id="L66">                    .filter(authority -&gt; authority.startsWith(&quot;ROLE_&quot;))</span>
+<span class="fc" id="L67">                    .map(authority -&gt; authority.substring(&quot;ROLE_&quot;.length()))</span>
+<span class="fc" id="L68">                    .findFirst()</span>
+<span class="pc" id="L69">                    .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;Invalid credentials&quot;));</span>
+<span class="fc" id="L70">            String token = tokenProvider.generateToken(</span>
+<span class="fc" id="L71">                    (UserDetails) authentication.getPrincipal()</span>
+            );
+
+            // Set browser cookie for seamless page navigation
+<span class="fc" id="L75">            Cookie cookie = new Cookie(&quot;acados_token&quot;, token);</span>
+<span class="fc" id="L76">            cookie.setPath(&quot;/&quot;);</span>
+<span class="fc" id="L77">            cookie.setHttpOnly(false);</span>
+<span class="fc" id="L78">            cookie.setMaxAge(86400);</span>
+<span class="fc" id="L79">            response.addCookie(cookie);</span>
+
+<span class="fc" id="L81">            return new AuthResponse(token, role);</span>
+<span class="fc" id="L82">        } catch (org.springframework.security.core.AuthenticationException exception) {</span>
+<span class="fc" id="L83">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;Invalid University ID or password&quot;);</span>
+        }
+    }
+
+    @GetMapping(&quot;/me&quot;)
+    public ResponseEntity&lt;UserProfileResponse&gt; getCurrentUser(Authentication authentication) {
+<span class="pc bpc" id="L89" title="1 of 2 branches missed.">        if (authentication == null) {</span>
+<span class="nc" id="L90">            return ResponseEntity.status(HttpStatus.UNAUTHORIZED).build();</span>
+        }
+<span class="fc" id="L92">        User user = userRepository.findByUniversityId(authentication.getName())</span>
+<span class="pc" id="L93">                .or(() -&gt; userRepository.findByEmail(authentication.getName()))</span>
+<span class="pc" id="L94">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;User not found&quot;));</span>
+
+<span class="fc" id="L96">        String fullName = user.getUniversityId();</span>
+<span class="fc" id="L97">        Long teacherId = null;</span>
+<span class="fc" id="L98">        Long studentId = null;</span>
+
+<span class="fc bfc" id="L100" title="All 2 branches covered.">        if (user.getRole() == UserRole.TEACHER) {</span>
+<span class="fc" id="L101">            var teacherOpt = teacherRepository.findByUserId(user.getId());</span>
+<span class="pc bpc" id="L102" title="1 of 2 branches missed.">            if (teacherOpt.isPresent()) {</span>
+<span class="fc" id="L103">                fullName = teacherOpt.get().getFullName();</span>
+<span class="fc" id="L104">                teacherId = teacherOpt.get().getId();</span>
+            }
+<span class="pc bpc" id="L106" title="1 of 2 branches missed.">        } else if (user.getRole() == UserRole.STUDENT) {</span>
+<span class="fc" id="L107">            var studentOpt = studentRepository.findByUserId(user.getId());</span>
+<span class="pc bpc" id="L108" title="1 of 2 branches missed.">            if (studentOpt.isPresent()) {</span>
+<span class="fc" id="L109">                fullName = studentOpt.get().getFullName();</span>
+<span class="fc" id="L110">                studentId = studentOpt.get().getId();</span>
+            }
+<span class="fc" id="L112">        } else {</span>
+<span class="nc" id="L113">            fullName = &quot;ผู้ดูแลระบบ (Admin)&quot;;</span>
+        }
+
+<span class="fc" id="L116">        return ResponseEntity.ok(new UserProfileResponse(</span>
+<span class="fc" id="L117">                user.getId(),</span>
+<span class="fc" id="L118">                user.getUniversityId(),</span>
+<span class="fc" id="L119">                user.getEmail(),</span>
+<span class="fc" id="L120">                user.getRole().name(),</span>
+                fullName,
+                teacherId,
+                studentId
+        ));
+    }
+
+    @PutMapping(&quot;/change-password&quot;)
+    public ResponseEntity&lt;Void&gt; changePassword(
+            @Valid @RequestBody ChangePasswordRequest request,
+            Authentication authentication
+    ) {
+<span class="pc bpc" id="L132" title="1 of 2 branches missed.">        if (authentication == null) {</span>
+<span class="nc" id="L133">            throw new ResponseStatusException(HttpStatus.UNAUTHORIZED, &quot;กรุณาเข้าสู่ระบบ&quot;);</span>
+        }
+<span class="fc" id="L135">        User user = userRepository.findByUniversityId(authentication.getName())</span>
+<span class="pc" id="L136">                .or(() -&gt; userRepository.findByEmail(authentication.getName()))</span>
+<span class="pc" id="L137">                .orElseThrow(() -&gt; new ResponseStatusException(HttpStatus.NOT_FOUND, &quot;ไม่พบข้อมูลผู้ใช้&quot;));</span>
+
+<span class="fc bfc" id="L139" title="All 2 branches covered.">        if (!passwordEncoder.matches(request.currentPassword(), user.getPasswordHash())) {</span>
+<span class="fc" id="L140">            throw new ResponseStatusException(HttpStatus.BAD_REQUEST, &quot;รหัสผ่านปัจจุบันไม่ถูกต้อง&quot;);</span>
+        }
+
+<span class="fc" id="L143">        user.setPasswordHash(passwordEncoder.encode(request.newPassword()));</span>
+<span class="fc" id="L144">        userRepository.save(user);</span>
+
+<span class="fc" id="L146">        return ResponseEntity.ok().build();</span>
+    }
+
+    @PostMapping(&quot;/logout&quot;)
+    public ResponseEntity&lt;Void&gt; logout(HttpServletResponse response) {
+<span class="nc" id="L151">        Cookie cookie = new Cookie(&quot;acados_token&quot;, &quot;&quot;);</span>
+<span class="nc" id="L152">        cookie.setPath(&quot;/&quot;);</span>
+<span class="nc" id="L153">        cookie.setMaxAge(0);</span>
+<span class="nc" id="L154">        response.addCookie(cookie);</span>
+<span class="nc" id="L155">        return ResponseEntity.ok().build();</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

@@ -56,30 +56,6 @@
         .password-toggle:hover {
             color: var(--ink-navy);
         }
-        .demo-credentials {
-            margin-top: 24px;
-            padding: 14px;
-            background: var(--surface-alt);
-            border: 1px dashed var(--border);
-            border-radius: var(--radius-md);
-            font-size: 0.8rem;
-        }
-        .demo-chip {
-            display: inline-block;
-            padding: 4px 10px;
-            border-radius: 6px;
-            background: var(--surface);
-            border: 1px solid var(--border);
-            cursor: pointer;
-            margin: 2px 0;
-            font-size: 0.8rem;
-            transition: all var(--transition-fast);
-        }
-        .demo-chip:hover {
-            border-color: var(--primary);
-            color: var(--primary);
-            background: var(--primary-50);
-        }
     </style>
 </head>
 <body>
@@ -130,39 +106,6 @@
         <div id="login-error" class="hidden" style="margin-top:14px; padding:10px 14px; border-radius:var(--radius-sm); background:var(--danger-bg); color:var(--danger-text); font-size:0.85rem;" role="alert"></div>
     </form>
 
-    <!-- Quick Demo Accounts Assist -->
-    <div class="demo-credentials">
-        <div style="font-weight:600; color:var(--ink-navy); margin-bottom:8px;">คลิกเพื่อใส่ข้อมูลบัญชีทดสอบ (Demo Quick Access):</div>
-        <div style="font-size:0.75rem; color:var(--ink-muted); margin-bottom:4px;">ล็อกอินด้วยรหัสผู้ใช้ (University ID):</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px; margin-bottom:8px;">
-            <button type="button" class="demo-chip" onclick="fillAccount('admin', 'password123')">
-                <strong>Admin:</strong> admin
-            </button>
-            <button type="button" class="demo-chip" onclick="fillAccount('T001', 'password123')">
-                <strong>Teacher A:</strong> T001
-            </button>
-            <button type="button" class="demo-chip" onclick="fillAccount('T002', 'password123')">
-                <strong>Teacher B:</strong> T002
-            </button>
-            <button type="button" class="demo-chip" onclick="fillAccount('S001', 'password123')">
-                <strong>Student:</strong> S001
-            </button>
-        </div>
-        <div style="font-size:0.75rem; color:var(--ink-muted); margin-bottom:4px;">หรือล็อกอินด้วยอีเมล (Email):</div>
-        <div style="display:flex; flex-wrap:wrap; gap:6px;">
-            <button type="button" class="demo-chip" onclick="fillAccount('admin@acados.kku.ac.th', 'password123')">
-                ✉ admin@acados.kku.ac.th
-            </button>
-            <button type="button" class="demo-chip" onclick="fillAccount('t001@acados.kku.ac.th', 'password123')">
-                ✉ t001@acados.kku.ac.th
-            </button>
-            <button type="button" class="demo-chip" onclick="fillAccount('s001@acados.kku.ac.th', 'password123')">
-                ✉ s001@acados.kku.ac.th
-            </button>
-        </div>
-        <div class="muted" style="margin-top:8px; font-size:0.75rem;">รหัสผ่านทุกบัญชีคือ <span class="mono">password123</span></div>
-    </div>
-
     <div style="margin-top:20px; text-align:center;">
         <a class="muted" style="font-size:0.85rem;" th:href="@{/}">← กลับหน้าหลัก</a>
     </div>
@@ -192,11 +135,6 @@
             }[existingRole];
             if (dest) window.location.replace(dest);
         }
-    }
-
-    function fillAccount(uid, pass) {
-        document.getElementById('university-id').value = uid;
-        document.getElementById('password').value = pass;
     }
 
     // Toggle password visibility

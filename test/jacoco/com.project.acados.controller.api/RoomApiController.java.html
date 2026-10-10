@@ -1,0 +1,66 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>RoomApiController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.api</a> &gt; <span class="el_source">RoomApiController.java</span></div><h1>RoomApiController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.api;
+
+import com.project.acados.domain.entity.Room;
+import com.project.acados.dto.request.RoomRequest;
+import com.project.acados.dto.response.RoomResponse;
+import com.project.acados.service.RoomService;
+import jakarta.validation.Valid;
+import lombok.RequiredArgsConstructor;
+import org.springframework.http.HttpStatus;
+import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.prepost.PreAuthorize;
+import org.springframework.web.bind.annotation.*;
+
+import java.util.List;
+
+/**
+ * REST API Controller for Room management.
+ * Reference: Implement_Plan-AcadOS.md §7, §16, class diagram.puml
+ */
+@RestController
+@RequestMapping(&quot;/api/v1/rooms&quot;)
+@RequiredArgsConstructor
+public class RoomApiController {
+
+    private final RoomService roomService;
+
+    @GetMapping
+    public ResponseEntity&lt;List&lt;RoomResponse&gt;&gt; getRooms() {
+<span class="fc" id="L29">        List&lt;RoomResponse&gt; rooms = roomService.getRooms().stream()</span>
+<span class="fc" id="L30">                .map(RoomResponse::fromEntity)</span>
+<span class="fc" id="L31">                .toList();</span>
+<span class="fc" id="L32">        return ResponseEntity.ok(rooms);</span>
+    }
+
+    @GetMapping(&quot;/{id}&quot;)
+    public ResponseEntity&lt;RoomResponse&gt; getRoom(@PathVariable Long id) {
+<span class="nc" id="L37">        Room room = roomService.getRoom(id);</span>
+<span class="nc" id="L38">        return ResponseEntity.ok(RoomResponse.fromEntity(room));</span>
+    }
+
+    @PostMapping
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;RoomResponse&gt; createRoom(@Valid @RequestBody RoomRequest request) {
+<span class="fc" id="L44">        Room created = roomService.createRoom(request);</span>
+<span class="fc" id="L45">        return ResponseEntity.status(HttpStatus.CREATED).body(RoomResponse.fromEntity(created));</span>
+    }
+
+    @PutMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;RoomResponse&gt; updateRoom(
+            @PathVariable Long id,
+            @Valid @RequestBody RoomRequest request
+    ) {
+<span class="fc" id="L54">        Room updated = roomService.updateRoom(id, request);</span>
+<span class="fc" id="L55">        return ResponseEntity.ok(RoomResponse.fromEntity(updated));</span>
+    }
+
+    @DeleteMapping(&quot;/{id}&quot;)
+    @PreAuthorize(&quot;hasRole('ADMIN')&quot;)
+    public ResponseEntity&lt;Void&gt; deleteRoom(@PathVariable Long id) {
+<span class="fc" id="L61">        roomService.deleteRoom(id);</span>
+<span class="fc" id="L62">        return ResponseEntity.noContent().build();</span>
+    }
+}
+
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

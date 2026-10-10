@@ -1,0 +1,84 @@
+<?xml version="1.0" encoding="UTF-8"?><!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Strict//EN" "http://www.w3.org/TR/xhtml1/DTD/xhtml1-strict.dtd"><html xmlns="http://www.w3.org/1999/xhtml" lang="en"><head><meta http-equiv="Content-Type" content="text/html;charset=UTF-8"/><link rel="stylesheet" href="../jacoco-resources/report.css" type="text/css"/><link rel="shortcut icon" href="../jacoco-resources/report.gif" type="image/gif"/><title>DashboardWebController.java</title><link rel="stylesheet" href="../jacoco-resources/prettify.css" type="text/css"/><script type="text/javascript" src="../jacoco-resources/prettify.js"></script></head><body onload="window['PR_TAB_WIDTH']=4;prettyPrint()"><div class="breadcrumb" id="breadcrumb"><span class="info"><a href="../jacoco-sessions.html" class="el_session">Sessions</a></span><a href="../index.html" class="el_report">acados</a> &gt; <a href="index.source.html" class="el_package">com.project.acados.controller.web</a> &gt; <span class="el_source">DashboardWebController.java</span></div><h1>DashboardWebController.java</h1><pre class="source lang-java linenums">package com.project.acados.controller.web;
+
+import org.springframework.stereotype.Controller;
+import org.springframework.web.bind.annotation.GetMapping;
+
+/**
+ * Web controller serving role-based dashboards, student registration,
+ * and admin operational views.
+ * Reference: Implement_Plan-AcadOS.md §7, sidebar.html
+ */
+@Controller
+<span class="fc" id="L12">public class DashboardWebController {</span>
+
+    // ========== Dashboards ==========
+    @GetMapping(&quot;/admin/dashboard&quot;)
+    public String adminDashboard() {
+<span class="fc" id="L17">        return &quot;admin/dashboard&quot;;</span>
+    }
+
+    @GetMapping(&quot;/teacher/dashboard&quot;)
+    public String teacherDashboard() {
+<span class="fc" id="L22">        return &quot;teacher/dashboard&quot;;</span>
+    }
+
+    @GetMapping(&quot;/student/dashboard&quot;)
+    public String studentDashboard() {
+<span class="fc" id="L27">        return &quot;student/dashboard&quot;;</span>
+    }
+
+    // ========== Teacher Features ==========
+    @GetMapping(&quot;/teacher/swaps&quot;)
+    public String teacherSwaps() {
+<span class="fc" id="L33">        return &quot;teacher/swaps&quot;;</span>
+    }
+
+    // ========== Student Features ==========
+    @GetMapping(&quot;/student/courses&quot;)
+    public String studentCourses() {
+<span class="fc" id="L39">        return &quot;student/courses&quot;;</span>
+    }
+
+    @GetMapping(&quot;/student/registrations&quot;)
+    public String studentRegistrations() {
+<span class="fc" id="L44">        return &quot;student/registrations&quot;;</span>
+    }
+
+    // ========== Notifications ==========
+    @GetMapping(&quot;/notifications&quot;)
+    public String notifications() {
+<span class="fc" id="L50">        return &quot;notifications&quot;;</span>
+    }
+
+    // ========== Admin Management ==========
+    @GetMapping(&quot;/admin/courses&quot;)
+    public String adminCourses() {
+<span class="fc" id="L56">        return &quot;admin/courses&quot;;</span>
+    }
+
+    @GetMapping(&quot;/admin/rooms&quot;)
+    public String adminRooms() {
+<span class="fc" id="L61">        return &quot;admin/rooms&quot;;</span>
+    }
+
+    @GetMapping(&quot;/admin/sections&quot;)
+    public String adminSections() {
+<span class="fc" id="L66">        return &quot;admin/sections&quot;;</span>
+    }
+
+    @GetMapping(&quot;/admin/users&quot;)
+    public String adminUsers() {
+<span class="fc" id="L71">        return &quot;admin/users&quot;;</span>
+    }
+
+    @GetMapping(&quot;/admin/registrations&quot;)
+    public String adminRegistrations() {
+<span class="fc" id="L76">        return &quot;admin/registrations&quot;;</span>
+    }
+
+    @GetMapping(&quot;/admin/swaps&quot;)
+    public String adminSwaps() {
+<span class="fc" id="L81">        return &quot;admin/swaps&quot;;</span>
+    }
+}
+</pre><div class="footer"><span class="right">Created with <a href="http://www.jacoco.org/jacoco">JaCoCo</a> 0.8.12.202403310830</span></div></body></html>

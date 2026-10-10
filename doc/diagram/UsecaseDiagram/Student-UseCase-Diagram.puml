@@ -30,6 +30,10 @@ rectangle "AcadOS (Student Scope)" {
         usecase "View Notification" as UC_SViewNotif
         usecase "Read Notification" as UC_SReadNotif
     }
+    package "Profile Modal" {
+        usecase "View Profile Info" as UC_SViewProfile
+        usecase "Change Password" as UC_SChangePassword
+    }
 }
 
 Student --> UC_SLogin
@@ -45,4 +49,6 @@ Student --> UC_SViewCalendar
 Student --> UC_SViewHoliday
 Student --> UC_SViewNotif
 Student --> UC_SReadNotif
+Student --> UC_SViewProfile
+Student --> UC_SChangePassword
 @enduml
