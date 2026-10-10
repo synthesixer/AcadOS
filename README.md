@@ -348,9 +348,10 @@ mvn spring-boot:run
 
 ## 11. Public Deployment URL & API Documentation
 
-- 🌐 **Web Application Public URL:** [https://acados.up.railway.app](https://acados.up.railway.app) *(หรือ Public Cloud URL ที่เปิดให้บริการจริง ณ วันตรวจประเมิน)*
-- 📑 **Swagger UI / OpenAPI Documentation:** [https://acados.up.railway.app/swagger-ui.html](https://acados.up.railway.app/swagger-ui.html)
-- 🩺 **Application Health Status:** [https://acados.up.railway.app/actuator/health](https://acados.up.railway.app/actuator/health)
+- 🌐 **Web Application Public URL:** 
+[https://acados.onrender.com/](https://acados.onrender.com/)
+- 📑 **Swagger UI / OpenAPI Documentation:** [https://acados.onrender.com/swagger-ui/index.htmll](https://acados.onrender.com/swagger-ui/index.html)
+- 🩺 **Application Health Status:** [https://acados.onrender.com/actuator/health](https://acados.onrender.com/actuator/health)
 
 ---
 
