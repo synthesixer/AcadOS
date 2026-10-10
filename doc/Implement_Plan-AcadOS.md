@@ -64,7 +64,8 @@
     - [15.1 Architecture Decisions (Security)](#151-architecture-decisions-security)
     - [15.2 Role Matrix](#152-role-matrix)
     - [15.3 สิ่งที่ไม่ทำใน v4 (Out of Scope for Rapid Delivery)](#153-สิ่งที่ไม่ทำใน-v4-out-of-scope-for-rapid-delivery)
-  - [16. RESTful API Specification ยังไม่เสร็จสามารถเพิ่มเติมได้](#16-restful-api-specification-ยังไม่เสร็จสามารถเพิ่มเติมได้)
+  - [16. RESTful API Specification](#16-restful-api-specification)
+    - [16.1 Standard Error Response Contract (ErrorResponse)](#161-standard-error-response-contract-errorresponse)
   - [17. Software Design Patterns](#17-software-design-patterns)
     - [17.1 Enterprise \& Architectural Patterns](#171-enterprise--architectural-patterns)
     - [17.2 Gang of Four (GoF) Patterns ที่ใช้งานจริง](#172-gang-of-four-gof-patterns-ที่ใช้งานจริง)
@@ -468,7 +469,7 @@ contain in doc/diagram
 | **`NotificationStrategy`** | `send()` | อินเทอร์เฟซสำหรับช่องทางการส่งการแจ้งเตือน (In-App และ Email) |
 | **`HolidayProvider`** | `fetchHolidays()` | อินเทอร์เฟซรับข้อมูลวันหยุดจากแหล่งข้อมูลภายนอก |
 | **`ExternalHolidayAdapter`** | `fetchHolidays()` | อะแดปเตอร์เชื่อมต่อไปยัง External Public Holiday API |
-| **`GlobalExceptionHandler`** | `handleException()` | ดักจับ Exception ส่วนกลางและแปลงเป็น HTTP Response ตามมาตรฐาน |
+| **`GlobalExceptionHandler`** | `handleBusinessRuleException()`, `handleResourceNotFoundException()`, `handleResponseStatusException()`, `handleValidationException()`, `handleAccessDeniedException()`, `handleBadCredentialsException()`, `handleIllegalArgumentException()`, `handleGenericException()` | ดักจับ Exception ส่วนกลางของ REST API Controllers และแปลงเป็น `ErrorResponse` DTO ตามมาตรฐาน HTTP Status Codes |
 
 ---
 
@@ -620,7 +621,7 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 
 ---
 
-## 16. RESTful API Specification ยังไม่เสร็จสามารถเพิ่มเติมได้
+## 16. RESTful API Specification
 
 ทุก Endpoint สื่อสารด้วย JSON และแยก **DTO 100%** (Request / Response) ออกจาก Entity:
 
@@ -714,6 +715,45 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 | Method | Endpoint | คำอธิบาย | สิทธิ์ผู้ใช้ |
 | :---: | :--- | :--- | :---: |
 | `GET` | `/api/v1/registrations` | STUDENT: ดูการลงทะเบียนของตนเอง / ADMIN: ดูทั้งหมด (กรองด้วย `?sectionId=`) | STUDENT, ADMIN |
+
+### 16.1 Standard Error Response Contract (ErrorResponse)
+
+ทุก REST API Endpoint ในกรณีที่เกิดข้อผิดพลาด จะส่งกลับข้อมูลรูปแบบ JSON โดยใช้ DTO `ErrorResponse` จัดการผ่าน `GlobalExceptionHandler` (`@RestControllerAdvice`):
+
+```json
+{
+  "timestamp": "2026-10-10T12:00:00",
+  "status": 400,
+  "error": "Bad Request",
+  "message": "BR-03: เวลาเรียนชนกับ Section ที่ลงทะเบียนไว้แล้ว",
+  "path": "/api/v1/registrations",
+  "details": ["courseCode: must not be blank"]
+}
+```
+
+**ตารางแจกแจงโครงสร้างฟิลด์ของ ErrorResponse:**
+
+| Field | ชนิดข้อมูล | คำอธิบาย | เงื่อนไขการแสดงผล |
+| :--- | :--- | :--- | :--- |
+| `timestamp` | `LocalDateTime` (ISO-8601) | วันและเวลาที่เกิดข้อผิดพลาด | มีเสมอ |
+| `status` | `int` | รหัสสถานะ HTTP Status Code (เช่น 400, 401, 403, 404, 409, 500) | มีเสมอ |
+| `error` | `String` | ข้อความมาตรฐานของ HTTP Status (เช่น "Bad Request", "Not Found") | มีเสมอ |
+| `message` | `String` | ข้อความอธิบายสาเหตุของข้อผิดพลาด หรือระบุข้อบังคับทางธุรกิจ (BR-xx) | มีเสมอ |
+| `path` | `String` | Request URI ที่ส่งคำขอเข้ามา (เช่น `/api/v1/registrations`) | มีเสมอ |
+| `details` | `List<String>` | รายการข้อผิดพลาดระดับ Field (สำหรับการตรวจทาน `@Valid` ล้มเหลว) | แสดงเฉพาะกรณีเกิด Field Validation Error |
+
+**ตารางการจับคู่ Exception กับ HTTP Status:**
+
+| Exception Type | HTTP Status | คำอธิบาย |
+| :--- | :---: | :--- |
+| `BusinessRuleException` | **400 Bad Request** | ละเมิดกฎธุรกิจ (BR-01 ถึง BR-11) เช่น ตารางชน, ซ้ำซ้อน, ความจุเกิน |
+| `ResourceNotFoundException` | **404 Not Found** | ไม่พบข้อมูลที่ต้องการในระบบ |
+| `ResponseStatusException` | **Dynamic Status** | ข้อผิดพลาดที่กำหนด HttpStatus ชัดเจนจาก Spring Web |
+| `MethodArgumentNotValidException` | **400 Bad Request** | ข้อมูล Input ไม่ผ่าน Jakarta Bean Validation (`@Valid`) มีฟิลด์ `details` |
+| `AccessDeniedException` | **403 Forbidden** | ผู้ใช้ไม่มีสิทธิ์เข้าถึง Endpoint ตาม `@PreAuthorize` |
+| `BadCredentialsException` | **401 Unauthorized** | ล็อกอินไม่สำเร็จ รหัสผ่านหรือ University ID ไม่ถูกต้อง |
+| `IllegalArgumentException` | **400 Bad Request** | พารามิเตอร์ที่ส่งเข้ามาไม่ถูกต้องตามเงื่อนไข |
+| `Exception` (Fallback) | **500 Internal Server Error** | ข้อผิดพลาดภายในระบบที่ไม่คาดคิด (บันทึก Log และซ่อน Stack trace) |
 
 ---
 
@@ -1028,7 +1068,7 @@ docker compose down
 - **D09:** ใช้ DTO 100% สำหรับทุก REST API Endpoint (ยกเลิก Mixed DTO)
 - **D10:** ใช้ Hibernate `ddl-auto=update` สำหรับ Dev ควบคู่กับการมีไฟล์ `schema.sql` และ `data.sql`
 - **D11:** Deploy ด้วย Docker และกำหนด Persistent Volume สำหรับ MySQL
-- **D12:** จัดการข้อผิดพลาดส่วนกลางผ่าน `GlobalExceptionHandler`
+- **D12:** จัดการข้อผิดพลาดส่วนกลางผ่าน `GlobalExceptionHandler` (`@RestControllerAdvice`) ร่วมกับ `ErrorResponse` DTO (Implemented & Verified 100%)
 - **D13:** ควบคุม Permission ภายในซอร์สโค้ด ไม่สร้างตารางในฐานข้อมูล
 - **D15:** Entity ใช้ `Long id` เป็น PK และจัดเก็บ `universityId` แยก
 - **D16:** Course 1 รายวิชา มีได้หลาย Section (1 : N)
