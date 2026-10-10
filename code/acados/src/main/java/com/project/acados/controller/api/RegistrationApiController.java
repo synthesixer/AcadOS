@@ -46,6 +46,14 @@ public class RegistrationApiController {
         return registrationMapper.toResponseList(registrations);
     }
 
+    @GetMapping("/my")
+    @PreAuthorize("hasRole('STUDENT')")
+    @Operation(summary = "List the signed-in student's registrations")
+    public List<RegistrationResponse> getMyRegistrations(Authentication authentication) {
+        List<Registration> registrations = registrationService.getRegistrations(authentication.getName(), null);
+        return registrationMapper.toResponseList(registrations);
+    }
+
     @PostMapping
     @PreAuthorize("hasRole('STUDENT')")
     @Operation(summary = "Register the signed-in student in a section")

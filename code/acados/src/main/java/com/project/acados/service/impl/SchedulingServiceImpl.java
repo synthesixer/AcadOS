@@ -180,19 +180,83 @@ public class SchedulingServiceImpl implements SchedulingService {
     }
 
     /**
-     * Generates non-overlapping TimeSlot combinations of the required size.
+     * Calculates duration of a TimeSlot in hours.
      */
-    private List<List<TimeSlot>> generateSlotCombinations(List<TimeSlot> allSlots, int count) {
-        if (allSlots == null || allSlots.isEmpty() || count <= 0) {
+    private int getSlotHours(TimeSlot slot) {
+        if (slot == null || slot.getStartTime() == null || slot.getEndTime() == null) {
+            return 1;
+        }
+        long hours = java.time.Duration.between(slot.getStartTime(), slot.getEndTime()).toHours();
+        return hours > 0 ? (int) hours : 1;
+    }
+
+    /**
+     * Generates non-overlapping TimeSlot combinations whose total duration matches requiredHours.
+     * Supports multi-session sections (e.g. 2 sessions of 2 hours for a 4-hour course)
+     * as well as single-session periods.
+     */
+    private List<List<TimeSlot>> generateSlotCombinations(List<TimeSlot> allSlots, int requiredHours) {
+        if (allSlots == null || allSlots.isEmpty() || requiredHours <= 0) {
             return Collections.emptyList();
         }
 
         List<List<TimeSlot>> result = new ArrayList<>();
-        findCombinationsRecursive(allSlots, count, 0, new ArrayList<>(), result);
+        // 1. Duration-based matching: total hours across slots == requiredHours
+        findDurationCombinationsRecursive(allSlots, requiredHours, 0, new ArrayList<>(), 0, result);
+
+        // 2. Fallback: if no combination matches exact total duration, fallback to count-based
+        if (result.isEmpty()) {
+            findCountCombinationsRecursive(allSlots, requiredHours, 0, new ArrayList<>(), result);
+        }
+
         return result;
     }
 
-    private void findCombinationsRecursive(
+    private void findDurationCombinationsRecursive(
+            List<TimeSlot> allSlots,
+            int targetHours,
+            int startIndex,
+            List<TimeSlot> current,
+            int currentHours,
+            List<List<TimeSlot>> accumulator
+    ) {
+        if (accumulator.size() >= MAX_SLOT_COMBINATIONS) {
+            return;
+        }
+
+        if (currentHours == targetHours) {
+            accumulator.add(new ArrayList<>(current));
+            return;
+        }
+
+        if (currentHours > targetHours) {
+            return;
+        }
+
+        for (int i = startIndex; i < allSlots.size(); i++) {
+            TimeSlot candidateSlot = allSlots.get(i);
+            int slotHours = getSlotHours(candidateSlot);
+            if (currentHours + slotHours > targetHours) {
+                continue;
+            }
+
+            boolean overlaps = false;
+            for (TimeSlot existing : current) {
+                if (existing.overlapsWith(candidateSlot)) {
+                    overlaps = true;
+                    break;
+                }
+            }
+
+            if (!overlaps) {
+                current.add(candidateSlot);
+                findDurationCombinationsRecursive(allSlots, targetHours, i + 1, current, currentHours + slotHours, accumulator);
+                current.remove(current.size() - 1);
+            }
+        }
+    }
+
+    private void findCountCombinationsRecursive(
             List<TimeSlot> allSlots,
             int targetSize,
             int startIndex,
@@ -220,7 +284,7 @@ public class SchedulingServiceImpl implements SchedulingService {
 
             if (!overlaps) {
                 current.add(candidateSlot);
-                findCombinationsRecursive(allSlots, targetSize, i + 1, current, accumulator);
+                findCountCombinationsRecursive(allSlots, targetSize, i + 1, current, accumulator);
                 current.remove(current.size() - 1);
             }
         }

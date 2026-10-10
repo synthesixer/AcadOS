@@ -302,14 +302,25 @@ package "repository" <<Repository>> {
 ' =====================================================================
 package "exception" {
   class GlobalExceptionHandler <<@RestControllerAdvice>> {
-    + handleException(ex: Exception): ResponseEntity<ErrorResponse>
+    + handleBusinessRuleException(ex: BusinessRuleException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleResourceNotFoundException(ex: ResourceNotFoundException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleResponseStatusException(ex: ResponseStatusException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleValidationException(ex: MethodArgumentNotValidException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleAccessDeniedException(ex: AccessDeniedException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleBadCredentialsException(ex: BadCredentialsException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleIllegalArgumentException(ex: IllegalArgumentException, req: HttpServletRequest): ResponseEntity<ErrorResponse>
+    + handleGenericException(ex: Exception, req: HttpServletRequest): ResponseEntity<ErrorResponse>
   }
   class BusinessRuleException
   class ResourceNotFoundException
-  class ErrorResponse
-  note bottom of ErrorResponse
-    field ของ ErrorResponse ยังไม่ระบุในเอกสาร
-  end note
+  class ErrorResponse {
+    - timestamp: LocalDateTime
+    - status: int
+    - error: String
+    - message: String
+    - path: String
+    - details: List<String>
+  }
 }
 class RuntimeException <<java.lang>>
 

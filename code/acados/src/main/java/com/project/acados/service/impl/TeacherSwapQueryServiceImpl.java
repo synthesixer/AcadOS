@@ -27,30 +27,71 @@ public class TeacherSwapQueryServiceImpl implements TeacherSwapQueryService {
                 .toList();
         List<SwapResponse> sent = requests.stream()
                 .filter(request -> request.getRequestingTeacher().getId().equals(teacherId))
-                .map(request -> new SwapResponse(
-                        request.getId(),
-                        request.getRequestingTeacher().getId(),
-                        request.getRequestingSchedule() == null ? null : request.getRequestingSchedule().getId(),
-                        request.getTargetTeacher().getId(),
-                        request.getTargetSchedule() == null ? null : request.getTargetSchedule().getId(),
-                        request.getStatus(),
-                        request.getCreatedAt(),
-                        request.getRespondedAt(),
-                        request.getReviewedAt()
-                )).toList();
+                .map(this::mapToResponse)
+                .toList();
         List<SwapResponse> received = requests.stream()
                 .filter(request -> request.getTargetTeacher().getId().equals(teacherId))
-                .map(request -> new SwapResponse(
-                        request.getId(),
-                        request.getRequestingTeacher().getId(),
-                        request.getRequestingSchedule() == null ? null : request.getRequestingSchedule().getId(),
-                        request.getTargetTeacher().getId(),
-                        request.getTargetSchedule() == null ? null : request.getTargetSchedule().getId(),
-                        request.getStatus(),
-                        request.getCreatedAt(),
-                        request.getRespondedAt(),
-                        request.getReviewedAt()
-                )).toList();
+                .map(this::mapToResponse)
+                .toList();
         return new SwapInboxResponse(sent, received);
+    }
+
+    @Override
+    public List<SwapResponse> getAllRequests() {
+        return requestRepository.findAll().stream()
+                .sorted(Comparator.comparing(TeacherSwapRequest::getCreatedAt).reversed())
+                .map(this::mapToResponse)
+                .toList();
+    }
+
+    private SwapResponse mapToResponse(TeacherSwapRequest request) {
+        String reqTeacherName = request.getRequestingTeacher() != null ? request.getRequestingTeacher().getFullName() : null;
+        String targetTeacherName = request.getTargetTeacher() != null ? request.getTargetTeacher().getFullName() : null;
+        String reqSchedDetails = formatScheduleDetails(request.getRequestingSchedule());
+        String targetSchedDetails = formatScheduleDetails(request.getTargetSchedule());
+
+        return new SwapResponse(
+                request.getId(),
+                request.getRequestingTeacher().getId(),
+                request.getRequestingSchedule() == null ? null : request.getRequestingSchedule().getId(),
+                request.getTargetTeacher().getId(),
+                request.getTargetSchedule() == null ? null : request.getTargetSchedule().getId(),
+                request.getStatus(),
+                request.getCreatedAt(),
+                request.getRespondedAt(),
+                request.getReviewedAt(),
+                reqTeacherName,
+                targetTeacherName,
+                reqSchedDetails,
+                targetSchedDetails
+        );
+    }
+
+    private String formatScheduleDetails(com.project.acados.domain.entity.Schedule schedule) {
+        if (schedule == null) return "—";
+        StringBuilder sb = new StringBuilder();
+        if (schedule.getSection() != null && schedule.getSection().getCourse() != null) {
+            sb.append(schedule.getSection().getCourse().getCourseCode())
+              .append(" ")
+              .append(schedule.getSection().getCourse().getTitle())
+              .append(" (กลุ่ม ")
+              .append(schedule.getSection().getSectionNumber())
+              .append(")");
+        }
+        if (schedule.getTimeSlot() != null) {
+            sb.append(" [")
+              .append(schedule.getTimeSlot().getDayOfWeek())
+              .append(" ")
+              .append(schedule.getTimeSlot().getStartTime())
+              .append("-")
+              .append(schedule.getTimeSlot().getEndTime())
+              .append("]");
+        }
+        if (schedule.getRoom() != null) {
+            String bldg = schedule.getRoom().getBuilding() != null ? schedule.getRoom().getBuilding() : "";
+            String rm = schedule.getRoom().getRoomNumber() != null ? schedule.getRoom().getRoomNumber() : "";
+            sb.append(" ห้อง ").append((bldg + " " + rm).trim());
+        }
+        return sb.toString().trim();
     }
 }

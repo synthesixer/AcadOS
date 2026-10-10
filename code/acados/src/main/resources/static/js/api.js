@@ -37,15 +37,18 @@ const api = (() => {
 
     /**
      * options.redirectOn401 = false keeps the user on the page when the session is missing
-     * (used by background calls such as the unread notification count).
      */
     async function request(method, url, body, options) {
         const redirectOn401 = !options || options.redirectOn401 !== false;
+        const token = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('acadosToken') : null;
         const init = {
             method: method,
             credentials: 'same-origin',
             headers: { 'Accept': 'application/json' }
         };
+        if (token) {
+            init.headers['Authorization'] = 'Bearer ' + token;
+        }
         if (body !== undefined && body !== null) {
             init.headers['Content-Type'] = 'application/json';
             init.body = JSON.stringify(body);
@@ -77,6 +80,7 @@ const api = (() => {
         get: (url, options) => request('GET', url, null, options),
         post: (url, body, options) => request('POST', url, body, options),
         put: (url, body, options) => request('PUT', url, body, options),
-        del: (url, options) => request('DELETE', url, null, options)
+        del: (url, options) => request('DELETE', url, null, options),
+        delete: (url, options) => request('DELETE', url, null, options)
     };
 })();

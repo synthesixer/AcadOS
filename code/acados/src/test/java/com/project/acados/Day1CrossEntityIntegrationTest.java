@@ -45,7 +45,7 @@ class Day1CrossEntityIntegrationTest {
         Student student = studentRepository.save(Student.builder().user(userStudent).fullName("นายจิรภัทร").build());
 
         // 3. [Person 1] สร้าง Course
-        Course course = courseRepository.save(Course.builder().courseCode("CP353002").title("SQA").weeklyHours(3).build());
+        Course course = courseRepository.save(Course.builder().courseCode("CP353002").title("Software Architecture").weeklyHours(3).build());
 
         // 4. [Person 3] สร้าง Section
         Section section = sectionRepository.save(Section.builder().course(course).sectionNumber(1).capacity(50).status(SectionStatus.ACTIVE).build());

@@ -174,5 +174,59 @@ class SchedulingServiceIntegrationTest {
         List<Schedule> stillPublished = schedulingService.getPublishedSchedules();
         assertEquals(1, stillPublished.size(), "Previously published schedules must remain untouched");
     }
+
+    @Test
+    @DisplayName("Support 2 sessions per week (4 hours total, 2 hours per session)")
+    void testMultiSessionTwoHourScheduling() {
+        // Deactivate setup section to test English section independently
+        section.setStatus(SectionStatus.CANCELLED);
+        sectionRepository.save(section);
+
+        // Course: English (4 hours weekly)
+        Course englishCourse = courseRepository.save(Course.builder()
+                .courseCode("EN012001")
+                .title("Technical English for Computing")
+                .weeklyHours(4)
+                .build());
+
+        Section englishSection = sectionRepository.save(Section.builder()
+                .course(englishCourse)
+                .sectionNumber(1)
+                .capacity(30)
+                .status(SectionStatus.ACTIVE)
+                .build());
+
+        teacherQualificationRepository.save(TeacherQualification.builder()
+                .teacher(teacher)
+                .course(englishCourse)
+                .build());
+
+        // Create two 2-hour slots: Mon 09:00-11:00 and Wed 09:00-11:00
+        timeSlotRepository.save(TimeSlot.builder()
+                .dayOfWeek(DayOfWeek.MONDAY)
+                .startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(11, 0))
+                .build());
+
+        timeSlotRepository.save(TimeSlot.builder()
+                .dayOfWeek(DayOfWeek.WEDNESDAY)
+                .startTime(LocalTime.of(9, 0))
+                .endTime(LocalTime.of(11, 0))
+                .build());
+
+        schedulingService.generateSchedule();
+
+        List<Schedule> drafts = schedulingService.getDraftSchedules();
+        assertEquals(2, drafts.size(), "Should generate exactly 2 draft schedules for 2 sessions per week");
+
+        long totalHours = drafts.stream()
+                .mapToLong(s -> java.time.Duration.between(s.getTimeSlot().getStartTime(), s.getTimeSlot().getEndTime()).toHours())
+                .sum();
+        assertEquals(4, totalHours, "Total scheduled hours across 2 sessions must equal 4 hours");
+
+        List<DayOfWeek> days = drafts.stream().map(s -> s.getTimeSlot().getDayOfWeek()).toList();
+        assertTrue(days.contains(DayOfWeek.MONDAY));
+        assertTrue(days.contains(DayOfWeek.WEDNESDAY));
+    }
 }
 

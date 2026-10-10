@@ -156,7 +156,7 @@ class TrackBRepositoryTests {
         Teacher teacherA = createSampleTeacher("T005", "teacher5@kku.ac.th", "Teacher A");
         Teacher teacherB = createSampleTeacher("T006", "teacher6@kku.ac.th", "Teacher B");
 
-        Course course = createSampleCourse("CP353002", "SQA");
+        Course course = createSampleCourse("CP353002", "Software Architecture");
         Section section = Section.builder().course(course).sectionNumber(1).capacity(30).status(SectionStatus.ACTIVE).build();
         entityManager.persist(section);
 

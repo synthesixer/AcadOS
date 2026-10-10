@@ -131,7 +131,8 @@ public class UserServiceImpl implements UserService {
             if (registrationRepository.existsByStudentId(student.getId())) {
                 throw new ResponseStatusException(HttpStatus.CONFLICT, "Student has linked registrations");
             }
-            studentRepository.deleteAndFlush(student);
+            studentRepository.delete(student);
+            studentRepository.flush();
         } else if (user.getRole() == UserRole.TEACHER) {
             Teacher teacher = teacherRepository.findByUserId(id)
                     .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND, "Teacher profile not found"));
@@ -142,9 +143,11 @@ public class UserServiceImpl implements UserService {
             accountCleanupRepository.deleteAvailabilities(teacher.getId());
             accountCleanupRepository.deletePreferences(teacher.getId());
             accountCleanupRepository.deleteQualifications(teacher.getId());
-            teacherRepository.deleteAndFlush(teacher);
+            teacherRepository.delete(teacher);
+            teacherRepository.flush();
         }
-        userRepository.deleteAndFlush(user);
+        userRepository.delete(user);
+        userRepository.flush();
     }
 
     @Override

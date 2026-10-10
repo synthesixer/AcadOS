@@ -1,0 +1,165 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>การแจ้งเตือน | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header" style="display:flex; justify-content:space-between; align-items:flex-start; flex-wrap:wrap; gap:16px; margin-bottom:24px;">
+        <div>
+            <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px;">
+                <span style="font-size:0.8rem; font-weight:600; text-transform:uppercase; letter-spacing:0.05em; color:var(--teal-primary);">Communication Hub</span>
+            </div>
+            <h1 style="font-size:1.75rem; font-weight:700; color:var(--ink-navy); margin:0;">ศูนย์การแจ้งเตือน (Notifications)</h1>
+            <p class="muted" style="margin:4px 0 0; font-size:0.95rem;">แจ้งเตือนผลการลงทะเบียน การเปลี่ยนแปลงตารางสอน และประกาศสำคัญทางวิชาการ</p>
+        </div>
+        <div>
+            <button id="btn-read-all" class="btn btn--secondary btn--sm" type="button" onclick="markAllAsRead()">
+                ✔ อ่านทั้งหมด
+            </button>
+        </div>
+    </div>
+
+    <!-- Status Ledger Pills -->
+    <div class="status-ledger" style="margin-bottom:20px;">
+        <button type="button" class="status-ledger__item is-active" id="filter-notif-all" onclick="setNotifFilter('ALL')">
+            <span class="status-ledger__dot" style="background:var(--ink-navy);"></span>
+            <span>ทั้งหมด</span>
+            <span class="status-ledger__count num" id="count-notif-all">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-notif-unread" onclick="setNotifFilter('UNREAD')">
+            <span class="status-ledger__dot" style="background:var(--teal-primary);"></span>
+            <span>ยังไม่อ่าน</span>
+            <span class="status-ledger__count num" id="count-notif-unread">0</span>
+        </button>
+        <button type="button" class="status-ledger__item" id="filter-notif-read" onclick="setNotifFilter('READ')">
+            <span class="status-ledger__dot" style="background:var(--slate-neutral);"></span>
+            <span>อ่านแล้ว</span>
+            <span class="status-ledger__count num" id="count-notif-read">0</span>
+        </button>
+    </div>
+
+    <!-- Notifications List Workbench -->
+    <div class="card" style="padding:20px;">
+        <div id="notifications-list" style="display:grid; gap:12px;">
+            <!-- Rendered by JS -->
+        </div>
+    </div>
+</main>
+
+<script>
+    let allNotifications = [];
+    let currentNotifFilter = 'ALL';
+
+    function setNotifFilter(filter) {
+        currentNotifFilter = filter;
+        document.querySelectorAll('.status-ledger__item').forEach(el => el.classList.remove('is-active'));
+        if (filter === 'ALL') document.getElementById('filter-notif-all').classList.add('is-active');
+        if (filter === 'UNREAD') document.getElementById('filter-notif-unread').classList.add('is-active');
+        if (filter === 'READ') document.getElementById('filter-notif-read').classList.add('is-active');
+        renderNotifications();
+    }
+
+    async function markAsRead(id) {
+        const res = await api.put(`/api/v1/notifications/${id}/read`);
+        if (res.ok) {
+            ui.toast('success', 'ทำเครื่องหมายว่าอ่านแล้ว');
+            await loadNotifications();
+            ui.refreshUnreadCount();
+        } else {
+            ui.toast('error', res.error.message || 'เกิดข้อผิดพลาด');
+        }
+    }
+
+    async function markAllAsRead() {
+        const res = await api.put('/api/v1/notifications/read-all');
+        if (res.ok) {
+            ui.toast('success', 'ทำเครื่องหมายว่าอ่านแล้วทั้งหมด');
+            await loadNotifications();
+            ui.refreshUnreadCount();
+        } else {
+            ui.toast('error', res.error.message || 'เกิดข้อผิดพลาด');
+        }
+    }
+
+    function renderNotifications() {
+        const list = document.getElementById('notifications-list');
+
+        let filtered = allNotifications.filter(n => {
+            const isRead = n.read || n.isRead;
+            if (currentNotifFilter === 'UNREAD') return !isRead;
+            if (currentNotifFilter === 'READ') return isRead;
+            return true;
+        });
+
+        if (filtered.length === 0) {
+            ui.renderEmpty(list, 'ไม่มีข้อความแจ้งเตือนในหมวดหมู่นี้');
+            return;
+        }
+
+        list.innerHTML = '';
+        filtered.forEach(n => {
+            const isRead = n.read || n.isRead;
+            const card = document.createElement('div');
+            card.style.padding = '16px 20px';
+            card.style.border = '1px solid var(--border-subtle)';
+            card.style.borderRadius = '8px';
+            card.style.display = 'flex';
+            card.style.justifyContent = 'space-between';
+            card.style.alignItems = 'flex-start';
+            card.style.flexWrap = 'wrap';
+            card.style.gap = '14px';
+            card.style.background = isRead ? 'var(--surface)' : 'var(--teal-50)';
+            card.style.borderLeft = isRead ? '4px solid var(--slate-neutral)' : '4px solid var(--teal-primary)';
+
+            card.innerHTML = `
+                <div style="flex:1; min-width:0; overflow-wrap:break-word;">
+                    <div style="display:flex; align-items:center; gap:8px; margin-bottom:4px; flex-wrap:wrap;">
+                        <strong style="color:var(--ink-navy); font-size:1rem;">${ui.escapeHtml(n.title)}</strong>
+                        ${!isRead ? '<span style="font-size:0.75rem; font-weight:700; padding:2px 8px; background:var(--primary); color:white; border-radius:10px;">ใหม่</span>' : ''}
+                    </div>
+                    <p style="margin:4px 0 8px; font-size:0.92rem; color:var(--ink-navy); line-height:1.55; overflow-wrap:break-word;">${ui.escapeHtml(n.message)}</p>
+                    <div class="muted" style="font-size:0.8rem;">
+                        <span class="mono">${n.createdAt ? n.createdAt.replace('T', ' ').substring(0, 16) : ''}</span>
+                    </div>
+                </div>
+                <div style="flex-shrink:0;">
+                    ${!isRead ? `
+                        <button type="button" class="btn btn--secondary btn--sm" onclick="markAsRead(${n.id})">
+                            ทำเครื่องหมายว่าอ่านแล้ว
+                        </button>
+                    ` : `
+                        <span class="muted" style="font-size:0.82rem;">อ่านแล้ว</span>
+                    `}
+                </div>
+            `;
+            list.appendChild(card);
+        });
+    }
+
+    async function loadNotifications() {
+        const list = document.getElementById('notifications-list');
+        ui.renderLoading(list, 3);
+        const res = await api.get('/api/v1/notifications');
+        if (!res.ok) {
+            ui.renderError(list, res.error);
+            return;
+        }
+
+        allNotifications = Array.isArray(res.data) ? res.data : (res.data.content || []);
+
+        const unreadCount = allNotifications.filter(n => !(n.read || n.isRead)).length;
+        const readCount = allNotifications.filter(n => (n.read || n.isRead)).length;
+
+        document.getElementById('count-notif-all').textContent = allNotifications.length;
+        document.getElementById('count-notif-unread').textContent = unreadCount;
+        document.getElementById('count-notif-read').textContent = readCount;
+
+        renderNotifications();
+    }
+
+    loadNotifications();
+</script>
+</body>
+</html>

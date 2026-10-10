@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="th" xmlns:th="http://www.thymeleaf.org"
+      th:replace="~{layout/main-layout :: layout(~{::title}, ~{::main}, ~{::script})}">
+<head>
+    <title>ภาพรวมระบบ (Admin Dashboard) | AcadOS</title>
+</head>
+<body>
+<main>
+    <div class="page-header">
+        <div>
+            <h1>ภาพรวมระบบ (Admin Operations Command)</h1>
+            <p class="muted">ศูนย์ควบคุมและบริหารจัดการงานวิชาการ</p>
+        </div>
+        <div style="display:flex; gap:8px;">
+            <a class="btn btn--primary" th:href="@{/admin/schedules}">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg>
+                จัดตารางสอนอัตโนมัติ
+            </a>
+            <a class="btn btn--secondary" th:href="@{/admin/swaps}">
+                ตรวจคำขอแลกคาบ
+            </a>
+        </div>
+    </div>
+
+    <!-- Status Ledger Pills -->
+    <div class="status-ledger" id="admin-status-ledger">
+        <div class="status-pill is-active">
+            <span class="status-pill__dot status-pill__dot--published"></span>
+            <span>สถานะระบบ: ปกติ</span>
+        </div>
+        <div class="status-pill">
+            <span class="status-pill__dot status-pill__dot--draft"></span>
+            <span>ตารางร่าง (DRAFT): <span class="status-pill__count" id="stat-draft-count">-</span></span>
+        </div>
+        <div class="status-pill">
+            <span class="status-pill__dot status-pill__dot--published"></span>
+            <span>เผยแพร่แล้ว (PUBLISHED): <span class="status-pill__count" id="stat-published-count">-</span></span>
+        </div>
+        <div class="status-pill">
+            <span class="status-pill__dot status-pill__dot--neutral"></span>
+            <span>กลุ่มเรียนทั้งหมด: <span class="status-pill__count" id="stat-section-count">-</span></span>
+        </div>
+    </div>
+
+    <!-- Operations Grid -->
+    <div style="display:grid; grid-template-columns:repeat(auto-fit, minmax(250px, 1fr)); gap:16px; margin-bottom:24px;">
+        <div class="card card--highlight">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3>จัดตารางสอนอัตโนมัติ</h3>
+                <span class="badge badge--info">Core Engine</span>
+            </div>
+            <p class="muted" style="margin:8px 0 16px; font-size:0.88rem;">
+                คำนวณและประเมินผลตารางสอนแบบอัตโนมัติ ตรวจสอบ DRAFT และ Publish ให้ผู้ใช้
+            </p>
+            <a class="btn btn--primary btn--sm" th:href="@{/admin/schedules}">เข้าสู่หน้าจัดตาราง →</a>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3>จัดการกลุ่มเรียน (Sections)</h3>
+                <span class="badge badge--ok">Capacity</span>
+            </div>
+            <p class="muted" style="margin:8px 0 16px; font-size:0.88rem;">
+                เปิดกลุ่มเรียน ปรับความจุที่นั่ง และสั่งยกเลิกกลุ่มเรียน (Cancel Section)
+            </p>
+            <a class="btn btn--secondary btn--sm" th:href="@{/admin/sections}">จัดการกลุ่มเรียน →</a>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3>คำขอแลกคาบสอน (Teacher Swaps)</h3>
+                <span class="badge badge--warn">Pending Review</span>
+            </div>
+            <p class="muted" style="margin:8px 0 16px; font-size:0.88rem;">
+                พิจารณาและอนุมัติคำขอสลับคาบสอนที่คณาจารย์ตอบรับแล้ว
+            </p>
+            <a class="btn btn--secondary btn--sm" th:href="@{/admin/swaps}">ตรวจสอบคำขอ →</a>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3>รายวิชาและหลักสูตร</h3>
+                <span class="badge badge--neutral">Catalog</span>
+            </div>
+            <p class="muted" style="margin:8px 0 16px; font-size:0.88rem;">
+                กำหนดรหัสวิชา ชื่อวิชา และจำนวนชั่วโมงเรียนต่อสัปดาห์
+            </p>
+            <a class="btn btn--secondary btn--sm" th:href="@{/admin/courses}">จัดการรายวิชา →</a>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3>ห้องเรียนและสถานที่</h3>
+                <span class="badge badge--neutral">Facilities</span>
+            </div>
+            <p class="muted" style="margin:8px 0 16px; font-size:0.88rem;">
+                ข้อมูลอาคาร ชั้น ความจุห้อง และความพร้อมใช้งานของห้อง
+            </p>
+            <a class="btn btn--secondary btn--sm" th:href="@{/admin/rooms}">จัดการห้องเรียน →</a>
+        </div>
+
+        <div class="card">
+            <div style="display:flex; justify-content:space-between; align-items:flex-start;">
+                <h3>บัญชีผู้ใช้และสิทธิ์</h3>
+                <span class="badge badge--neutral">Security</span>
+            </div>
+            <p class="muted" style="margin:8px 0 16px; font-size:0.88rem;">
+                จัดการบัญชีผู้ดูแล อาจารย์ และนักศึกษา พร้อมควบคุม Role-based Access
+            </p>
+            <a class="btn btn--secondary btn--sm" th:href="@{/admin/users}">จัดการผู้ใช้ →</a>
+        </div>
+    </div>
+</main>
+
+<script>
+    async function loadAdminStats() {
+        // Load schedule draft vs published counts
+        try {
+            const [schedDraft, schedPub, sections] = await Promise.all([
+                api.get('/api/v1/schedules?status=DRAFT'),
+                api.get('/api/v1/schedules?status=PUBLISHED'),
+                api.get('/api/v1/sections')
+            ]);
+            if (schedDraft.ok && Array.isArray(schedDraft.data)) {
+                document.getElementById('stat-draft-count').textContent = schedDraft.data.length;
+            }
+            if (schedPub.ok && Array.isArray(schedPub.data)) {
+                document.getElementById('stat-published-count').textContent = schedPub.data.length;
+            }
+            if (sections.ok) {
+                const secList = Array.isArray(sections.data) ? sections.data : (sections.data.content || []);
+                document.getElementById('stat-section-count').textContent = secList.length;
+            }
+        } catch(e) {}
+    }
+    loadAdminStats();
+</script>
+</body>
+</html>
