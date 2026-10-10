@@ -1,12 +1,18 @@
 # AcadOS — Automated Proctor Scheduling and Academic Operations System
 
+- 🌐 **Web Application Public URL:** 
+[https://acados.onrender.com/](https://acados.onrender.com/)
+
 [![Java](https://img.shields.io/badge/Java-21%20LTS-orange.svg)](https://www.oracle.com/java/)
 [![Spring Boot](https://img.shields.io/badge/Spring%20Boot-3.3.4-brightgreen.svg)](https://spring.io/projects/spring-boot)
 [![Build & Tests](https://img.shields.io/badge/Tests-326%20Passed%20(100%25)-success.svg)](code/acados/)
 [![Database](https://img.shields.io/badge/Database-MySQL%208.x-blue.svg)](https://www.mysql.com/)
 [![CI/CD](https://img.shields.io/badge/CI%2FCD-GitHub%20Actions-blueviolet.svg)](.github/workflows/ci-cd.yml)
 
-**AcadOS** คือระบบบริหารจัดการงานวิชาการ จัดตารางเรียน/ตารางสอน และจัดสรรตารางคุมสอบอัตโนมัติ พัฒนาด้วยเทคโนโลยี **Spring Boot 3.3.4** และ **Java 21 LTS** ตามสถาปัตยกรรม **Clean 3-Tier Layered Architecture** และหลักการ **SOLID Principles 100%** จุดเด่นของระบบคือการใช้อัลกอริทึมจัดตารางแบบมีเงื่อนไขบังคับ (Hard Constraints) ร่วมกับระบบให้คะแนนความเหมาะสมแบบหลายมิติ (Multi-factor Scoring Strategy) เพื่อขจัดปัญหาตารางชนกันอย่างเด็ดขาด กระจายภาระงานอาจารย์อย่างเป็นธรรม และรองรับกระบวนการขอแลกคาบสอน (Teacher Swap Workflow) ตลอดจนการลงทะเบียนเรียนของนักศึกษาแบบเรียลไทม์
+**AcadOS** คือระบบบริหารจัดการงานวิชาการ จัดตารางเรียน/ตารางสอน และจัดสรรตารางคุมสอบอัตโนมัติ พัฒนาด้วยเทคโนโลยี **Spring Boot 3.3.4** และ **Java 21 LTS** ตามสถาปัตยกรรม **Clean 3-Tier Layered Architecture** และหลักการ **SOLID Principles 100%** จุดเด่นของระบบคือการใช้อัลกอริทึมจัดตารางแบบมีเงื่อนไขบังคับ (Hard Constraints) ร่วมกับระบบให้คะแนนความเหมาะสมแบบหลายมิติ (Multi-factor Scoring Strategy) เพื่อขจัดปัญหาตารางชนกันอย่างเด็ดขาด กระจายภาระงานอาจารย์อย่างเป็นธรรม และรองรับกระบวนการขอแลกคาบสอน (Teacher Swap Workflow) ตลอดจนการลงทะเบียนเรียนของนักศึกษาแบบเรียลไทม
+
+
+
 
 > 📖 **เอกสารข้อกำหนดทางเทคนิคฉบับเต็ม:** ดูรายละเอียดทั้งหมดได้ที่ [doc/Implement_Plan-AcadOS.md](doc/Implement_Plan-AcadOS.md) · [doc/solid-analysis.md](doc/solid-analysis.md) · [doc/design-patterns.md](doc/design-patterns.md)
 
@@ -30,7 +36,12 @@
   - [9. ผลการดำเนินงานและการทดสอบ (Implementation Results \& Verification)](#9-ผลการดำเนินงานและการทดสอบ-implementation-results--verification)
     - [9.1 ผลการทดสอบอัตโนมัติ (Automated Testing Proof)](#91-ผลการทดสอบอัตโนมัติ-automated-testing-proof)
     - [9.2 คู่มือการรัน JaCoCo Code Coverage ในเครื่องตนเอง (How to Run JaCoCo Locally)](#92-คู่มือการรัน-jacoco-code-coverage-ในเครื่องตนเอง-how-to-run-jacoco-locally)
+      - [1. คำสั่งรันชุดทดสอบและสร้างรายงาน:](#1-คำสั่งรันชุดทดสอบและสร้างรายงาน)
+      - [2. วิธีการเปิดดูรายงานความครอบคลุม (Interactive HTML Report):](#2-วิธีการเปิดดูรายงานความครอบคลุม-interactive-html-report)
     - [9.3 การทดสอบยอมรับระบบด้วย Robot Framework E2E (Positive \& Negative Scenarios)](#93-การทดสอบยอมรับระบบด้วย-robot-framework-e2e-positive--negative-scenarios)
+      - [1. การติดตั้งเครื่องมือที่จำเป็น (Prerequisites):](#1-การติดตั้งเครื่องมือที่จำเป็น-prerequisites)
+      - [2. คำสั่งรันชุดทดสอบ Robot Framework:](#2-คำสั่งรันชุดทดสอบ-robot-framework)
+      - [3. สรุปผลการทดสอบ Robot Framework (8 Scenarios, 8 Passed, 0 Failed — 100% Green):](#3-สรุปผลการทดสอบ-robot-framework-8-scenarios-8-passed-0-failed--100-green)
     - [9.4 การทดสอบ 4 สถานการณ์จำลองหลัก (4 Demo Scenarios)](#94-การทดสอบ-4-สถานการณ์จำลองหลัก-4-demo-scenarios)
   - [10. การติดตั้งและวิธีรันเพื่อทำซ้ำ (Installation \& How to Run Locally)](#10-การติดตั้งและวิธีรันเพื่อทำซ้ำ-installation--how-to-run-locally)
     - [10.1 สิ่งที่ต้องเตรียม (Prerequisites)](#101-สิ่งที่ต้องเตรียม-prerequisites)
@@ -348,9 +359,10 @@ mvn spring-boot:run
 
 ## 11. Public Deployment URL & API Documentation
 
-- 🌐 **Web Application Public URL:** [https://acados.up.railway.app](https://acados.up.railway.app) *(หรือ Public Cloud URL ที่เปิดให้บริการจริง ณ วันตรวจประเมิน)*
-- 📑 **Swagger UI / OpenAPI Documentation:** [https://acados.up.railway.app/swagger-ui.html](https://acados.up.railway.app/swagger-ui.html)
-- 🩺 **Application Health Status:** [https://acados.up.railway.app/actuator/health](https://acados.up.railway.app/actuator/health)
+- 🌐 **Web Application Public URL:** 
+[https://acados.onrender.com/](https://acados.onrender.com/)
+- 📑 **Swagger UI / OpenAPI Documentation:** [https://acados.onrender.com/swagger-ui/index.htmll](https://acados.onrender.com/swagger-ui/index.html)
+- 🩺 **Application Health Status:** [https://acados.onrender.com/actuator/health](https://acados.onrender.com/actuator/health)
 
 ---
 
