@@ -1,5 +1,5 @@
 -- =============================================================================
--- AcadOS v4 — Mock & Demo Seed Script (data.sql)
+-- AcadOS — Mock & Demo Seed Script (data.sql)
 -- Environment: MySQL 8.x / Docker Compose
 -- Order: Topological Order based on Foreign Key Dependencies
 -- Passwords: All user accounts have password 'password123'

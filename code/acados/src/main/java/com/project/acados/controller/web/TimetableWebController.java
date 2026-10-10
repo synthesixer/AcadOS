@@ -35,7 +35,7 @@ public class TimetableWebController {
         return "timetable/calendar";
     }
 
-    @GetMapping("/admin/holidays")
+    @GetMapping({"/holidays", "/admin/holidays"})
     public String holidays() {
         return "timetable/holidays";
     }

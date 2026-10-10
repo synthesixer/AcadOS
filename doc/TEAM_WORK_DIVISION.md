@@ -28,7 +28,7 @@
 | **Design Patterns (GoF 4 แบบ)** | • **Strategy Pattern** (`ScoringStrategy`)<br>• **Adapter Pattern** (`HolidayProvider`) | • **Observer Pattern** (Subject/Publisher: `ScheduleChangePublisher`) | • **State Pattern** (`SectionState`)<br>• **Strategy Pattern** (`NotificationStrategy`)<br>• **Observer Pattern** (Listener) | ครบ 4 รูปแบบ (Strategy, Observer, State, Adapter) |
 | **REST Controllers (11 ตัว)** | 5 Controllers (`Course`, `Room`, `Schedule`, `AcademicEvent`, `Holiday`) | 3 Controllers (`Auth`, `User`, `TeacherSwap`) + Spring Security Config | 3 Controllers (`Registration`, `Section`, `Notification`) + Swagger Config | ครบ 11 REST Controllers |
 | **Frontend UI (Thymeleaf)** | หน้า Timetable Grid, หน้ารายวิชา/ห้องเรียน, ปฏิทินการศึกษา | หน้า Login, หน้า Teacher Dashboard, หน้าขอแลกคาบ (Swap UI) | โครงสร้าง Master Layout (Navbar/Sidebar/Footer/CSS), หน้า Admin Dashboard, หน้าลงทะเบียนนักศึกษา | ครบทุก Role (Admin, Teacher, Student) |
-| **งาน Infrastructure & เครื่องมือ** | Unit Test Algorithm & Nager.Date API Client | Dockerfile, Docker Compose, MySQL DB Schema Scripts & Cloud VPS Deployment | Mailtrap Sandbox Email Configuration & Swagger OpenAPI UI | ครบตามเกณฑ์ประเมิน 100% |
+| **งาน Infrastructure & เครื่องมือ** | Unit Test Algorithm & ThailandFormats API Client | Dockerfile, Docker Compose, MySQL DB Schema Scripts & Cloud VPS Deployment | Mailtrap Sandbox Email Configuration & Swagger OpenAPI UI | ครบตามเกณฑ์ประเมิน 100% |
 | **จำนวน Commit ขั้นต่ำ** | $\ge 15$ Commits | $\ge 15$ Commits | $\ge 15$ Commits | รวม $\ge 45$ Commits |
 
 ---
@@ -62,7 +62,7 @@ com.project.acados/
 │
 ├── pattern/
 │   ├── scoring/ (Strategy: Preference, Workload, etc) [Person 1]
-│   ├── holiday/ (Adapter: HolidayProvider, Nager.Date)[Person 1]
+│   ├── holiday/ (Adapter: HolidayProvider, ThailandFormats)[Person 1]
 │   ├── observer/ (Publisher & Subject) -------------- [Person 2]
 │   ├── state/ (SectionState, Active, Cancelled) ----- [Person 3]
 │   └── notification/ (Strategy: InApp, Email/Mailtrap)[Person 3]
@@ -113,7 +113,7 @@ com.project.acados/
    * สร้าง `SchedulingService`: Orchestrator รับคำสั่ง Generate (บันทึกเป็น DRAFT ลงใน `Schedule.room_id`), Publish (เปลี่ยน DRAFT -> PUBLISHED), และ Discard (ลบ DRAFT ทิ้ง)
 3. **Design Patterns:**
    * **Strategy Pattern:** สร้าง Interface `ScoringStrategy` และ Concrete Classes: `PreferenceScoreStrategy` (+30), `WorkloadScoreStrategy` (+20), `RoomSuitabilityScoreStrategy` (+20)
-   * **Adapter Pattern:** สร้าง `HolidayProvider` (Target Interface) และ `ExternalHolidayAdapter` เชื่อมต่อ Nager.Date API (`https://date.nager.at/api/v3/publicholidays/{year}/TH`) ดึงวันหยุดไทยเข้าสู่ระบบ
+   * **Adapter Pattern:** สร้าง `HolidayProvider` (Target Interface) และ `ExternalHolidayAdapter` เชื่อมต่อ ThailandFormats API (`https://thailandformats.com/api/v1/holidays/{year}`) ดึงวันหยุดไทยเข้าสู่ระบบ
 4. **REST APIs & Controllers:**
    * `CourseApiController` (CRUD สมบูรณ์), `RoomApiController` (CRUD สมบูรณ์)
    * `ScheduleApiController`: `POST /generate`, `GET /schedules`, `PUT /publish`, `DELETE /discard`
@@ -251,7 +251,7 @@ gantt
 ### 📅 DAY 3: REST APIs, DTOs & Thymeleaf Views
 * **Person 1 (Track A):**
   1. สร้าง REST Controllers: `CourseApiController`, `RoomApiController`, `ScheduleApiController`
-  2. เชื่อมต่อ Nager.Date API ด้วย Spring `RestClient` ภายใน `ExternalHolidayAdapter`
+  2. เชื่อมต่อ ThailandFormats API ด้วย Spring `RestClient` ภายใน `ExternalHolidayAdapter`
   3. พัฒนาหน้าเว็บ Thymeleaf: Timetable Grid แสดงตารางสอน และปฏิทินวันหยุด
 * **Person 2 (Track B):**
   1. สร้าง REST Controllers: `AuthApiController`, `TeacherSwapApiController`, `UserApiController`
@@ -296,7 +296,7 @@ gantt
 7. `feat: implement scoring strategy pattern with preference scoring`
 8. `feat: implement workload balance scoring strategy`
 9. `feat: add tie-breaking randomization for candidate schedule selection`
-10. `feat: implement external holiday adapter consuming nager.date api`
+10. `feat: implement external holiday adapter consuming thailandformats api`
 11. `feat: implement course and room rest controllers with bean validation`
 12. `feat: implement schedule generation, publish, and discard endpoints`
 13. `feat: build responsive timetable grid view with thymeleaf`

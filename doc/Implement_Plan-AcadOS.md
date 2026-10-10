@@ -175,7 +175,7 @@ $$\text{Database} \longrightarrow \text{Authentication} \longrightarrow \text{Co
 | **Containerization** | Docker & Docker Compose (Multi-Container) | รองรับ 3 คอนเทนเนอร์: `acados-app` (Spring Boot 3.3.4 บน Eclipse Temurin 21 JRE), `acados-db` (MySQL 8.4 LTS), และ `acados-phpmyadmin` พร้อม Docker Persistent Volume `mysql_data` |
 | **Deployment** | Cloud Host Server (VPS / Cloud VM) + Docker Compose + Public URL | รันผ่าน Docker Compose บน Linux VPS เข้าถึงโดยตรง Port 8080 (No Nginx), phpMyAdmin Port 8081, ฐานข้อมูลภายใน Port 3306 พร้อม Healthcheck `mysqladmin ping` และ Auto-restart policy |
 | **Email Service** | Mailtrap (mailtrap.io) Sandbox SMTP | บริการ Sandbox SMTP ทดสอบส่งอีเมลผ่าน `spring-boot-starter-mail` (Host: `sandbox.smtp.mailtrap.io`, Port 587) ตรวจสอบผลบน Web Inbox ตอน Demo ได้ทันที |
-| **External Holiday API** | Nager.Date Public Holiday API | บริการดึงข้อมูลวันหยุดราชการไทยฟรีแบบไม่ต้องมี API Key ผ่าน `https://date.nager.at/api/v3/publicholidays/{year}/TH` |
+| **External Holiday API** | ThailandFormats Public Holiday API | บริการดึงข้อมูลวันหยุดราชการไทยฟรีแบบไม่ต้องมี API Key ผ่าน `https://thailandformats.com/api/v1/holidays/{year}` |
 
 ---
 
@@ -587,9 +587,9 @@ $$\text{Admin Cancel Section} \longrightarrow \text{Update Section State (ACTIVE
 ### 14.7 Academic Calendar & Public Holiday Integration
 - **Academic Calendar:** รองรับ CRUD ผ่าน REST API (Semester Start, Semester End, Registration Period, Midterm Exam, Final Exam)
 - **Public Holiday API Flow:**
-$$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
+$$\text{External Holiday API (ThailandFormats)} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
 *(ระบบไม่เรียก External API ทุกครั้งที่เปิดหน้า Timetable เพื่อป้องกัน Latency และปัญหา API Limit)*
-- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **Nager.Date Public Holiday API** (`https://date.nager.at/api/v3/publicholidays/{year}/TH`) ซึ่งเป็น Open REST API ฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token และได้ผลลัพธ์เป็น JSON วันหยุดประจำปีของไทยทันที ดึงข้อมูลผ่าน Spring `RestClient` / `RestTemplate` ภายใน Adapter
+- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **ThailandFormats Public Holiday API** (`https://thailandformats.com/api/v1/holidays/{year}`) ซึ่งเป็น Open REST API สำหรับข้อมูลมาตรฐานวันหยุดราชการไทยและวันสำคัญทางพระพุทธศาสนาโดยเฉพาะ ให้บริการฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token ดึงข้อมูลผ่าน Spring `RestClient` ภายใน `ExternalHolidayAdapter` พร้อมระบบขยายช่วงวันหยุดหลายวัน (Multi-day Range Expansion เช่น วันสงกรานต์ 13-15 เม.ย.) และ Fallback ปฏิทินราชการไทยอัตโนมัติ เพื่อรับประกันความครบถ้วนสมบูรณ์ของข้อมูล 100%
 
 ---
 
@@ -706,7 +706,7 @@ $$\text{External Holiday API (Nager.Date)} \longrightarrow \text{ExternalHoliday
 | Method | Endpoint | คำอธิบาย | สิทธิ์ผู้ใช้ |
 | :---: | :--- | :--- | :---: |
 | `GET` | `/api/v1/holidays` | ดึงวันหยุดที่บันทึกไว้ในฐานข้อมูล | Authenticated |
-| `POST` | `/api/v1/holidays/sync` | สั่ง Sync วันหยุดราชการจาก Nager.Date API ลงฐานข้อมูล (Admin Extension เพื่อการทดสอบและการ Demo สด) | ADMIN |
+| `POST` | `/api/v1/holidays/sync` | สั่ง Sync วันหยุดราชการจาก ThailandFormats API ลงฐานข้อมูล (Admin Extension เพื่อการทดสอบและการ Demo สด) | ADMIN |
 
 *(ระบบรองรับ `POST /api/v1/holidays/sync` สำหรับ ADMIN ในการ Trigger ทดสอบ และสามารถดึงจาก External API อัตโนมัติในเบื้องหลังได้)*
 
@@ -963,7 +963,7 @@ AcadOS/
   - **Inbound TCP 8080:** อนุญาตเข้าถึง Application Web UI (Thymeleaf), REST APIs, Swagger UI (`/swagger-ui.html`), และ Spring Actuator (`/actuator/health`) โดยตรงแบบ Direct Port Access (No Nginx Reverse Proxy ตาม Decision FL-05 / 2A)
   - **Inbound TCP 8081:** อนุญาตเข้าถึง phpMyAdmin Web Console สำหรับผู้ดูแลระบบจัดการฐานข้อมูล
   - **Inbound TCP 22:** สำหรับการเชื่อมต่อรีโมตเซิร์ฟเวอร์ผ่าน SSH
-  - **Outbound TCP 443 (HTTPS):** สำหรับเชื่อมต่อไปยัง External Nager.Date Public Holiday API (`https://date.nager.at/api/v3/publicholidays/{year}/TH`)
+  - **Outbound TCP 443 (HTTPS):** สำหรับเชื่อมต่อไปยัง External ThailandFormats Public Holiday API (`https://thailandformats.com/api/v1/holidays/{year}`)
   - **Outbound TCP 587 (SMTP / STARTTLS):** สำหรับเชื่อมต่อไปยัง Mailtrap Sandbox SMTP (`sandbox.smtp.mailtrap.io:587`) เพื่อทดสอบการส่งอีเมล
 
 #### 2. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)

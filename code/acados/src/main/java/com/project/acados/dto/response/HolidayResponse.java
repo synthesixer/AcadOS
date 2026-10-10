@@ -21,6 +21,11 @@ public class HolidayResponse {
     private String name;
     private String description;
 
+    @com.fasterxml.jackson.annotation.JsonProperty("holidayDate")
+    public LocalDate getHolidayDate() {
+        return date;
+    }
+
     public static HolidayResponse fromEntity(PublicHoliday holiday) {
         if (holiday == null) {
             return null;

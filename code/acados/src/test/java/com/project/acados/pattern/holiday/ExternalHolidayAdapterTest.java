@@ -17,76 +17,117 @@ import static org.springframework.test.web.client.match.MockRestRequestMatchers.
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withServerError;
 import static org.springframework.test.web.client.response.MockRestResponseCreators.withSuccess;
 
-@DisplayName("ExternalHolidayAdapter Unit Tests (Adapter Pattern)")
+@DisplayName("ExternalHolidayAdapter Unit Tests (Adapter Pattern - ThailandFormats API)")
 class ExternalHolidayAdapterTest {
 
     @Test
-    @DisplayName("Should successfully fetch and adapt public holidays from Nager.Date API")
+    @DisplayName("Should successfully fetch, adapt and expand public holidays from ThailandFormats API")
     void shouldFetchAndAdaptHolidays() {
-        RestClient.Builder builder = RestClient.builder().baseUrl("https://date.nager.at");
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://thailandformats.com/api/v1");
         MockRestServiceServer mockServer = MockRestServiceServer.bindTo(builder).build();
 
         String jsonResponse = """
-                [
+                {
+                  "year": 2026,
+                  "count": 2,
+                  "holidays": [
                     {
-                        "date": "2026-01-01",
-                        "localName": "วันขึ้นปีใหม่",
-                        "name": "New Year's Day",
-                        "countryCode": "TH",
-                        "fixed": true,
-                        "global": true
+                      "title": "New Year's Day",
+                      "start_date": "2026-01-01",
+                      "end_date": "2026-01-01",
+                      "type": "holiday",
+                      "alcohol_ban": false,
+                      "details": "Celebrates the first day of the Gregorian calendar year.",
+                      "slug": "new-years-day"
                     },
                     {
-                        "date": "2026-04-13",
-                        "localName": "วันสงกรานต์",
-                        "name": "Songkran Festival",
-                        "countryCode": "TH",
-                        "fixed": true,
-                        "global": true
+                      "title": "Songkran Festival",
+                      "start_date": "2026-04-13",
+                      "end_date": "2026-04-15",
+                      "type": "holiday",
+                      "alcohol_ban": false,
+                      "details": "The traditional Thai New Year festival, famously celebrated with nationwide water fights.",
+                      "slug": "songkran-festival"
                     }
-                ]
+                  ]
+                }
                 """;
 
-        mockServer.expect(requestTo("https://date.nager.at/api/v3/publicholidays/2026/TH"))
+        mockServer.expect(requestTo("https://thailandformats.com/api/v1/holidays/2026"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withSuccess(jsonResponse, MediaType.APPLICATION_JSON));
 
-        ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build(), "TH");
+        ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build());
 
         List<PublicHoliday> holidays = adapter.fetchHolidays(2026);
 
         mockServer.verify();
         assertNotNull(holidays);
-        assertEquals(2, holidays.size());
+        // 1 day for New Year's Day + 3 days expanded for Songkran (13, 14, 15) = 4 dates
+        assertEquals(4, holidays.size());
 
         PublicHoliday h1 = holidays.get(0);
         assertEquals(LocalDate.of(2026, 1, 1), h1.getDate());
-        assertEquals("วันขึ้นปีใหม่", h1.getName());
-        assertEquals("New Year's Day", h1.getDescription());
+        assertTrue(h1.getName().contains("วันขึ้นปีใหม่"));
 
         PublicHoliday h2 = holidays.get(1);
         assertEquals(LocalDate.of(2026, 4, 13), h2.getDate());
-        assertEquals("วันสงกรานต์", h2.getName());
-        assertEquals("Songkran Festival", h2.getDescription());
+        assertTrue(h2.getName().contains("วันสงกรานต์"));
+
+        PublicHoliday h3 = holidays.get(2);
+        assertEquals(LocalDate.of(2026, 4, 14), h3.getDate());
+        assertTrue(h3.getName().contains("วันสงกรานต์"));
+
+        PublicHoliday h4 = holidays.get(3);
+        assertEquals(LocalDate.of(2026, 4, 15), h4.getDate());
+        assertTrue(h4.getName().contains("วันสงกรานต์"));
     }
 
     @Test
-    @DisplayName("Should gracefully handle external server errors by returning empty list")
-    void shouldHandleServerErrorsGracefully() {
-        RestClient.Builder builder = RestClient.builder().baseUrl("https://date.nager.at");
+    @DisplayName("Should fallback to official Thai calendar when API returns empty holiday list")
+    void shouldFallbackWhenApiReturnsEmpty() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://thailandformats.com/api/v1");
         MockRestServiceServer mockServer = MockRestServiceServer.bindTo(builder).build();
 
-        mockServer.expect(requestTo("https://date.nager.at/api/v3/publicholidays/2026/TH"))
+        String emptyResponse = """
+                {
+                  "year": 2025,
+                  "count": 0,
+                  "holidays": []
+                }
+                """;
+
+        mockServer.expect(requestTo("https://thailandformats.com/api/v1/holidays/2025"))
+                .andExpect(method(HttpMethod.GET))
+                .andRespond(withSuccess(emptyResponse, MediaType.APPLICATION_JSON));
+
+        ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build());
+
+        List<PublicHoliday> holidays = adapter.fetchHolidays(2025);
+
+        mockServer.verify();
+        assertNotNull(holidays);
+        assertFalse(holidays.isEmpty());
+        assertTrue(holidays.size() >= 16);
+    }
+
+    @Test
+    @DisplayName("Should gracefully fallback to official Thai calendar on external server errors")
+    void shouldHandleServerErrorsGracefully() {
+        RestClient.Builder builder = RestClient.builder().baseUrl("https://thailandformats.com/api/v1");
+        MockRestServiceServer mockServer = MockRestServiceServer.bindTo(builder).build();
+
+        mockServer.expect(requestTo("https://thailandformats.com/api/v1/holidays/2026"))
                 .andExpect(method(HttpMethod.GET))
                 .andRespond(withServerError());
 
-        ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build(), "TH");
+        ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build());
 
         List<PublicHoliday> holidays = adapter.fetchHolidays(2026);
 
         mockServer.verify();
         assertNotNull(holidays);
-        assertTrue(holidays.isEmpty());
+        assertFalse(holidays.isEmpty());
+        assertTrue(holidays.size() >= 16);
     }
 }
-

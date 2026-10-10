@@ -135,7 +135,7 @@ node "<<device>>\nCloud Host Server (VPS / Cloud VM)\n[Linux OS]" as CloudHost #
 ' ==========================================
 ' 3. External Services
 ' ==========================================
-cloud "<<system>>\nExternal Public Holiday API\n(e.g., Nager.Date API)" as HolidayAPI
+cloud "<<system>>\nExternal Public Holiday API\n(ThailandFormats API)" as HolidayAPI
 
 cloud "<<system>>\nExternal Mail Server / SMTP Service\n(e.g., Mailtrap / SMTP)" as MailServer
 
@@ -148,7 +148,7 @@ TomcatServer --> MySQLServer : JDBC / MySQL Protocol [Port 3306]\n(Docker Bridge
 
 MySQLServer --> DbVolume : Mounts to /var/lib/mysql\n(Data Persistence)
 
-AdapterComp ..> HolidayAPI : HTTPS [Port 443]\nGET /api/v3/publicholidays/{year}/TH
+AdapterComp ..> HolidayAPI : HTTPS [Port 443]\nGET /api/v1/holidays/{year}
 
 AdapterComp ..> MailServer : SMTP / TLS [Port 587]\n(Notifications: Success, Swap Approved)
 

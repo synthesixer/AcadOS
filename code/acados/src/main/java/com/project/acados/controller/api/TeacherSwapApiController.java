@@ -22,15 +22,18 @@ public class TeacherSwapApiController {
     private final TeacherSwapService teacherSwapService;
     private final TeacherSwapQueryService queryService;
     private final UserService userService;
+    private final com.project.acados.repository.ScheduleRepository scheduleRepository;
 
     public TeacherSwapApiController(
             TeacherSwapService teacherSwapService,
             TeacherSwapQueryService queryService,
-            UserService userService
+            UserService userService,
+            com.project.acados.repository.ScheduleRepository scheduleRepository
     ) {
         this.teacherSwapService = teacherSwapService;
         this.queryService = queryService;
         this.userService = userService;
+        this.scheduleRepository = scheduleRepository;
     }
 
     @GetMapping
@@ -38,6 +41,15 @@ public class TeacherSwapApiController {
     public SwapInboxResponse getMyRequests(Authentication authentication) {
         Long teacherId = userService.getTeacherIdByUniversityId(authentication.getName());
         return queryService.getRequestsForTeacher(teacherId);
+    }
+
+    @GetMapping("/my-schedules")
+    @PreAuthorize("hasRole('TEACHER')")
+    public java.util.List<com.project.acados.dto.response.ScheduleResponse> getMySchedules(Authentication authentication) {
+        Long teacherId = userService.getTeacherIdByUniversityId(authentication.getName());
+        return scheduleRepository.findByTeacherId(teacherId).stream()
+                .map(com.project.acados.dto.response.ScheduleResponse::fromEntity)
+                .toList();
     }
 
     @PostMapping
@@ -91,7 +103,15 @@ public class TeacherSwapApiController {
         return ResponseEntity.ok().build();
     }
 
+    @GetMapping("/all")
+    @PreAuthorize("hasRole('ADMIN')")
+    public ResponseEntity<java.util.List<SwapResponse>> getAllRequests() {
+        return ResponseEntity.ok(queryService.getAllRequests());
+    }
+
     private SwapResponse toResponse(TeacherSwapRequest request) {
+        String reqTeacherName = request.getRequestingTeacher() != null ? request.getRequestingTeacher().getFullName() : null;
+        String targetTeacherName = request.getTargetTeacher() != null ? request.getTargetTeacher().getFullName() : null;
         return new SwapResponse(
                 request.getId(),
                 request.getRequestingTeacher().getId(),
@@ -101,7 +121,11 @@ public class TeacherSwapApiController {
                 request.getStatus(),
                 request.getCreatedAt(),
                 request.getRespondedAt(),
-                request.getReviewedAt()
+                request.getReviewedAt(),
+                reqTeacherName,
+                targetTeacherName,
+                null,
+                null
         );
     }
 }
