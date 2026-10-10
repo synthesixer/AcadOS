@@ -4,9 +4,11 @@ import com.project.acados.domain.entity.PublicHoliday;
 import org.junit.jupiter.api.DisplayName;
 import org.junit.jupiter.api.Test;
 import org.springframework.http.HttpMethod;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.MediaType;
 import org.springframework.test.web.client.MockRestServiceServer;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.List;
@@ -84,8 +86,8 @@ class ExternalHolidayAdapterTest {
     }
 
     @Test
-    @DisplayName("Should fallback to official Thai calendar when API returns empty holiday list")
-    void shouldFallbackWhenApiReturnsEmpty() {
+    @DisplayName("Should throw ResponseStatusException when API returns empty holiday list")
+    void shouldThrowExceptionWhenApiReturnsEmpty() {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://thailandformats.com/api/v1");
         MockRestServiceServer mockServer = MockRestServiceServer.bindTo(builder).build();
 
@@ -103,17 +105,16 @@ class ExternalHolidayAdapterTest {
 
         ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build());
 
-        List<PublicHoliday> holidays = adapter.fetchHolidays(2025);
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> adapter.fetchHolidays(2025));
 
         mockServer.verify();
-        assertNotNull(holidays);
-        assertFalse(holidays.isEmpty());
-        assertTrue(holidays.size() >= 16);
+        assertEquals(HttpStatus.BAD_GATEWAY, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("empty holiday list"));
     }
 
     @Test
-    @DisplayName("Should gracefully fallback to official Thai calendar on external server errors")
-    void shouldHandleServerErrorsGracefully() {
+    @DisplayName("Should throw ResponseStatusException on external server errors")
+    void shouldThrowExceptionOnServerErrors() {
         RestClient.Builder builder = RestClient.builder().baseUrl("https://thailandformats.com/api/v1");
         MockRestServiceServer mockServer = MockRestServiceServer.bindTo(builder).build();
 
@@ -123,11 +124,10 @@ class ExternalHolidayAdapterTest {
 
         ExternalHolidayAdapter adapter = new ExternalHolidayAdapter(builder.build());
 
-        List<PublicHoliday> holidays = adapter.fetchHolidays(2026);
+        ResponseStatusException ex = assertThrows(ResponseStatusException.class, () -> adapter.fetchHolidays(2026));
 
         mockServer.verify();
-        assertNotNull(holidays);
-        assertFalse(holidays.isEmpty());
-        assertTrue(holidays.size() >= 16);
+        assertEquals(HttpStatus.BAD_GATEWAY, ex.getStatusCode());
+        assertTrue(ex.getReason().contains("Failed to fetch public holidays from ThailandFormats API"));
     }
 }

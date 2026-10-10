@@ -6,12 +6,13 @@ import com.project.acados.pattern.holiday.dto.ThailandFormatsResponse;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Value;
+import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Component;
 import org.springframework.web.client.RestClient;
+import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDate;
 import java.util.ArrayList;
-import java.util.Collections;
 import java.util.List;
 
 /**
@@ -61,8 +62,11 @@ public class ExternalHolidayAdapter implements HolidayProvider {
                     .body(ThailandFormatsResponse.class);
 
             if (response == null || response.getHolidays() == null || response.getHolidays().isEmpty()) {
-                log.warn("ThailandFormats API returned empty holiday list for year: {}. Falling back to official public calendar.", year);
-                return getThaiPublicHolidaysFallback(year);
+                log.error("ThailandFormats API returned empty holiday list for year: {}", year);
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "ThailandFormats API returned empty holiday list for year " + year
+                );
             }
 
             List<PublicHoliday> result = new ArrayList<>();
@@ -97,11 +101,25 @@ public class ExternalHolidayAdapter implements HolidayProvider {
                 }
             }
 
+            if (result.isEmpty()) {
+                log.error("No valid public holiday dates could be adapted from ThailandFormats API for year: {}", year);
+                throw new ResponseStatusException(
+                        HttpStatus.BAD_GATEWAY,
+                        "No valid public holiday dates could be adapted from ThailandFormats API for year " + year
+                );
+            }
+
             log.info("Successfully fetched and adapted {} public holiday dates from ThailandFormats API for year {}", result.size(), year);
             return result;
+        } catch (ResponseStatusException rse) {
+            throw rse;
         } catch (Exception e) {
-            log.warn("Failed to fetch public holidays from ThailandFormats API: {}. Falling back to official public calendar.", e.getMessage());
-            return getThaiPublicHolidaysFallback(year);
+            log.error("Failed to fetch public holidays from ThailandFormats API for year {}: {}", year, e.getMessage(), e);
+            throw new ResponseStatusException(
+                    HttpStatus.BAD_GATEWAY,
+                    "Failed to fetch public holidays from ThailandFormats API: " + e.getMessage(),
+                    e
+            );
         }
     }
 
@@ -171,68 +189,6 @@ public class ExternalHolidayAdapter implements HolidayProvider {
             }
         }
         return title != null && !title.isBlank() ? title : "วันหยุดราชการ";
-    }
-
-    /**
-     * Comprehensive official Thai Public Holiday calendar fallback for years when
-     * external API has no data or network connection is unavailable.
-     */
-    private List<PublicHoliday> getThaiPublicHolidaysFallback(int year) {
-        List<PublicHoliday> holidays = new ArrayList<>();
-
-        // 1. New Year
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 1, 1)).name("วันขึ้นปีใหม่ (New Year's Day)").description("วันหยุดราชการประจำปี วันขึ้นปีใหม่").build());
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 1, 2)).name("วันหยุดพิเศษช่วงปีใหม่ (Special Public Holiday)").description("วันหยุดราชการพิเศษตามมติ ครม.").build());
-
-        // 2. Makha Bucha
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 2, 26)).name("วันมาฆบูชา (Makha Bucha Day)").description("วันสำคัญทางพระพุทธศาสนา ขึ้น 15 ค่ำ เดือน 3").build());
-
-        // 3. Chakri Memorial Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 4, 6)).name("วันจักรี (Chakri Memorial Day)").description("วันพระบาทสมเด็จพระพุทธยอดฟ้าจุฬาโลกมหาราชและวันที่ระลึกมหาจักรีบรมราชวงศ์").build());
-
-        // 4. Songkran Festival (3 Days)
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 4, 13)).name("วันสงกรานต์ (Songkran Festival)").description("วันมหาสงกรานต์").build());
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 4, 14)).name("วันสงกรานต์ (Songkran Festival)").description("วันเนา").build());
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 4, 15)).name("วันสงกรานต์ (Songkran Festival)").description("วันเถลิงศก").build());
-
-        // 5. National Labour Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 5, 1)).name("วันแรงงานแห่งชาติ (National Labour Day)").description("วันแรงงานสากล").build());
-
-        // 6. Coronation Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 5, 4)).name("วันฉัตรมงคล (Coronation Day)").description("วันครบรอบวันบรมราชาภิเษก พระบาทสมเด็จพระเจ้าอยู่หัว รัชกาลที่ 10").build());
-
-        // 7. Visakha Bucha Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 5, 24)).name("วันวิสาขบูชา (Visakha Bucha Day)").description("วันสำคัญสากลทางพระพุทธศาสนา ขึ้น 15 ค่ำ เดือน 6").build());
-
-        // 8. Queen Suthida's Birthday
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 6, 3)).name("วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าฯ พระบรมราชินี").description("วันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสุทิดา พัชรสุธาพิมลลักษณ พระบรมราชินี").build());
-
-        // 9. King Rama X's Birthday
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 7, 28)).name("วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระเจ้าอยู่หัว (ร.10)").description("วันเฉลิมพระชนมพรรษาพระบาทสมเด็จพระวชิรเกล้าเจ้าอยู่หัว").build());
-
-        // 10. Asanha Bucha & Buddhist Lent Days
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 7, 22)).name("วันอาสาฬหบูชา (Asanha Bucha Day)").description("วันสำคัญทางพระพุทธศาสนา ขึ้น 15 ค่ำ เดือน 8").build());
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 7, 23)).name("วันเข้าพรรษา (Buddhist Lent Day)").description("วันแรม 1 ค่ำ เดือน 8 เริ่มต้นเทศกาลเข้าพรรษา").build());
-
-        // 11. Queen Mother's Birthday & Mother's Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 8, 12)).name("วันเฉลิมพระชนมพรรษาสมเด็จพระบรมราชชนนีพันปีหลวง และวันแม่แห่งชาติ").description("วันแม่แห่งชาติและวันเฉลิมพระชนมพรรษาสมเด็จพระนางเจ้าสิริกิติ์ พระบรมราชินีนาถ พระบรมราชชนนีพันปีหลวง").build());
-
-        // 12. King Bhumibol Memorial Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 10, 13)).name("วันนวมินทรมหาราช (King Bhumibol Memorial Day)").description("วันคล้ายวันสวรรคตพระบาทสมเด็จพระบรมชนกาธิเบศร มหาภูมิพลอดุลยเดชมหาราช บรมนาถบพิตร").build());
-
-        // 13. Chulalongkorn Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 10, 23)).name("วันปิยมหาราช (Chulalongkorn Memorial Day)").description("วันคล้ายวันสวรรคตพระบาทสมเด็จพระจุลจอมเกล้าเจ้าอยู่หัว รัชกาลที่ 5").build());
-
-        // 14. King Rama IX's Birthday & Father's Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 12, 5)).name("วันคล้ายวันพระบรมราชสมภพ ร.9 วันชาติ และวันพ่อแห่งชาติ").description("วันพ่อแห่งชาติและวันคล้ายวันพระบรมราชสมภพพระบาทสมเด็จพระมหาภูมิพลอดุลยเดชมหาราช บรมนาถบพิตร").build());
-
-        // 15. Constitution Day
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 12, 10)).name("วันรัฐธรรมนูญ (Constitution Day)").description("วันระลึกถึงพระบาทสมเด็จพระปกเกล้าเจ้าอยู่หัว พระราชทานรัฐธรรมนูญฉบับแรก").build());
-
-        // 16. New Year's Eve
-        holidays.add(PublicHoliday.builder().date(LocalDate.of(year, 12, 31)).name("วันสิ้นปี (New Year's Eve)").description("วันส่งท้ายปีเก่า").build());
-
-        return holidays;
     }
 
     private static String normalizeBaseUrl(String url) {

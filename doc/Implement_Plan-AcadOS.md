@@ -589,7 +589,7 @@ $$\text{Admin Cancel Section} \longrightarrow \text{Update Section State (ACTIVE
 - **Public Holiday API Flow:**
 $$\text{External Holiday API (ThailandFormats)} \longrightarrow \text{ExternalHolidayAdapter} \longrightarrow \text{HolidayService} \longrightarrow \text{Validate \& Transform} \longrightarrow \text{PublicHolidayRepository} \longrightarrow \text{MySQL DB}$$
 *(ระบบไม่เรียก External API ทุกครั้งที่เปิดหน้า Timetable เพื่อป้องกัน Latency และปัญหา API Limit)*
-- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **ThailandFormats Public Holiday API** (`https://thailandformats.com/api/v1/holidays/{year}`) ซึ่งเป็น Open REST API สำหรับข้อมูลมาตรฐานวันหยุดราชการไทยและวันสำคัญทางพระพุทธศาสนาโดยเฉพาะ ให้บริการฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token ดึงข้อมูลผ่าน Spring `RestClient` ภายใน `ExternalHolidayAdapter` พร้อมระบบขยายช่วงวันหยุดหลายวัน (Multi-day Range Expansion เช่น วันสงกรานต์ 13-15 เม.ย.) และ Fallback ปฏิทินราชการไทยอัตโนมัติ เพื่อรับประกันความครบถ้วนสมบูรณ์ของข้อมูล 100%
+- **บริการที่ยืนยันใช้งาน:** กำหนดใช้ **ThailandFormats Public Holiday API** (`https://thailandformats.com/api/v1/holidays/{year}`) ซึ่งเป็น Open REST API สำหรับข้อมูลมาตรฐานวันหยุดราชการไทยและวันสำคัญทางพระพุทธศาสนาโดยเฉพาะ ให้บริการฟรี 100% ไม่ต้องขอสิทธิ์ ไม่ต้องใช้ API Key / Token ดึงข้อมูลผ่าน Spring `RestClient` ภายใน `ExternalHolidayAdapter` พร้อมระบบขยายช่วงวันหยุดหลายวัน (Multi-day Range Expansion เช่น วันสงกรานต์ 13-15 เม.ย.) โดยดึงข้อมูลสดจาก API ทั้งหมด หากการเชื่อมต่อล้มเหลวหรือไม่สามารถดึงข้อมูลได้ ระบบจะส่งข้อผิดพลาด (502 Bad Gateway) ทันทีโดยไม่มีการใช้ข้อมูล Hardcoded Fallback
 
 ---
 
