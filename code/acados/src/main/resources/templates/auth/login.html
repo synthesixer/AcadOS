@@ -169,16 +169,29 @@
 </main>
 
 <script>
-    // Auto-redirect if already authenticated
-    const existingToken = sessionStorage.getItem('acadosToken');
-    const existingRole = sessionStorage.getItem('acadosRole');
-    if (existingToken && existingRole) {
-        const dest = {
-            ADMIN: '/admin/dashboard',
-            TEACHER: '/teacher/dashboard',
-            STUDENT: '/student/dashboard'
-        }[existingRole];
-        if (dest) window.location.replace(dest);
+    // Handle explicit logout / reset parameter
+    const urlParams = new URLSearchParams(window.location.search);
+    const isLogoutRequested = urlParams.get('logout') === 'true' || urlParams.get('reset') === 'true';
+    if (isLogoutRequested) {
+        try {
+            sessionStorage.clear();
+            localStorage.removeItem('acadosToken');
+            localStorage.removeItem('acadosRole');
+            localStorage.removeItem('acadosUniversityId');
+            document.cookie = 'acados_token=; path=/; max-age=0; expires=Thu, 01 Jan 1970 00:00:00 GMT';
+        } catch(e) {}
+    } else {
+        // Auto-redirect if already authenticated and not explicitly logging out
+        const existingToken = sessionStorage.getItem('acadosToken');
+        const existingRole = sessionStorage.getItem('acadosRole');
+        if (existingToken && existingRole) {
+            const dest = {
+                ADMIN: '/admin/dashboard',
+                TEACHER: '/teacher/dashboard',
+                STUDENT: '/student/dashboard'
+            }[existingRole];
+            if (dest) window.location.replace(dest);
+        }
     }
 
     function fillAccount(uid, pass) {

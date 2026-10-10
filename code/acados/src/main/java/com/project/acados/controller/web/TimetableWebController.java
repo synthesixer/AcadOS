@@ -10,7 +10,7 @@ import org.springframework.web.bind.annotation.GetMapping;
 @Controller
 public class TimetableWebController {
 
-    @GetMapping("/admin/schedules")
+    @GetMapping({"/admin/schedules", "/admin/timetable"})
     public String adminSchedules() {
         return "timetable/grid";
     }

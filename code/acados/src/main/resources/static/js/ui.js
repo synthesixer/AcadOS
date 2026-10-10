@@ -309,6 +309,28 @@ const ui = (() => {
             if (guestLogin) guestLogin.classList.add('hidden');
         }
 
+        // Activity Diagram Security Guard for Client Routes
+        try {
+            const currentPath = window.location.pathname;
+            const token = (typeof sessionStorage !== 'undefined') ? sessionStorage.getItem('acadosToken') : null;
+            if (currentPath.startsWith('/admin/')) {
+                if (!token || (clientRole && clientRole !== 'ADMIN')) {
+                    window.location.replace('/error');
+                    return;
+                }
+            } else if (currentPath.startsWith('/teacher/')) {
+                if (!token || (clientRole && clientRole !== 'TEACHER')) {
+                    window.location.replace('/error');
+                    return;
+                }
+            } else if (currentPath.startsWith('/student/')) {
+                if (!token || (clientRole && clientRole !== 'STUDENT')) {
+                    window.location.replace('/error');
+                    return;
+                }
+            }
+        } catch(e) {}
+
         // Logout handling
         const handleLogout = async () => {
             sessionStorage.removeItem('acadosToken');
@@ -488,6 +510,32 @@ const ui = (() => {
         });
     }
 
+    function timeToMinutes(t) {
+        if (!t) return 0;
+        if (Array.isArray(t)) {
+            return t[0] * 60 + (t[1] || 0);
+        }
+        if (typeof t === 'string') {
+            const parts = t.split(':');
+            return parseInt(parts[0], 10) * 60 + parseInt(parts[1] || '0', 10);
+        }
+        return 0;
+    }
+
+    function timesOverlap(startA, endA, startB, endB) {
+        return startA < endB && endA > startB;
+    }
+
+    let currentAvailabilities = [];
+
+    const AVAILABILITY_PERIODS = [
+        { label: 'คาบเช้า 1<br><span style="font-size:0.72rem; color:var(--ink-muted);">09:00 - 10:30 น.</span>', start: 9 * 60, end: 10 * 60 + 30 },
+        { label: 'คาบเช้า 2<br><span style="font-size:0.72rem; color:var(--ink-muted);">10:30 - 12:00 น.</span>', start: 10 * 60 + 30, end: 12 * 60 },
+        { label: 'คาบบ่าย 1<br><span style="font-size:0.72rem; color:var(--ink-muted);">13:00 - 14:30 น.</span>', start: 13 * 60, end: 14 * 60 + 30 },
+        { label: 'คาบบ่าย 2<br><span style="font-size:0.72rem; color:var(--ink-muted);">14:30 - 16:00 น.</span>', start: 14 * 60 + 30, end: 16 * 60 },
+        { label: 'คาบเสริม / เย็น<br><span style="font-size:0.72rem; color:var(--ink-muted);">16:00 - 17:00 น.</span>', start: 16 * 60, end: 17 * 60 }
+    ];
+
     async function loadTeacherAvailabilities() {
         const gridBody = document.getElementById('teacher-availability-grid');
         if (!gridBody) return;
@@ -501,15 +549,11 @@ const ui = (() => {
             }
 
             const availabilities = res.data;
+            currentAvailabilities = availabilities;
             const days = ['MONDAY', 'TUESDAY', 'WEDNESDAY', 'THURSDAY', 'FRIDAY'];
 
-            const periods = [
-                { label: 'ช่วงเช้า<br><span style="font-size:0.72rem; color:var(--ink-muted);">09:00 - 12:00 น.</span>', isMorning: true },
-                { label: 'ช่วงบ่าย<br><span style="font-size:0.72rem; color:var(--ink-muted);">13:00 - 16:00 น.</span>', isMorning: false }
-            ];
-
             gridBody.innerHTML = '';
-            periods.forEach(period => {
+            AVAILABILITY_PERIODS.forEach(period => {
                 const tr = document.createElement('tr');
                 const th = document.createElement('th');
                 th.style.textAlign = 'left';
@@ -522,18 +566,21 @@ const ui = (() => {
                     const td = document.createElement('td');
                     td.style.padding = '6px';
 
-                    // Find matching slot (3h standard slot or earliest slot for that period)
-                    const slot = availabilities.find(a => {
+                    // Find any slot for this day that overlaps with period
+                    const overlappingSlots = availabilities.filter(a => {
                         if (a.dayOfWeek !== day) return false;
-                        const startH = typeof a.startTime === 'string' ? parseInt(a.startTime.split(':')[0], 10) :
-                                       (Array.isArray(a.startTime) ? a.startTime[0] : 9);
-                        return period.isMorning ? (startH >= 8 && startH < 12) : (startH >= 12 && startH <= 16);
+                        const sMin = timeToMinutes(a.startTime);
+                        const eMin = timeToMinutes(a.endTime);
+                        return timesOverlap(sMin, eMin, period.start, period.end);
                     });
 
-                    if (!slot) {
+                    if (overlappingSlots.length === 0) {
                         td.innerHTML = '<span class="muted" style="font-size:0.75rem;">-</span>';
                     } else {
-                        const isAvail = slot.isAvailable !== false;
+                        // If any overlapping slot is marked unavailable, the teacher cannot teach during this period (BR-07)
+                        const hasUnavailable = overlappingSlots.some(s => s.isAvailable === false);
+                        const isAvail = !hasUnavailable;
+
                         const btn = document.createElement('button');
                         btn.type = 'button';
                         btn.style.width = '100%';
@@ -563,25 +610,37 @@ const ui = (() => {
                             btn.disabled = true;
                             const newAvail = !isAvail;
                             try {
-                                let toggleRes = await api.put('/api/v1/teacher/availabilities', {
-                                    timeSlotId: slot.timeSlotId,
-                                    isAvailable: newAvail
-                                });
-                                if (!toggleRes.ok) {
-                                    toggleRes = await api.put('/api/v1/availabilities', {
-                                        timeSlotId: slot.timeSlotId,
-                                        isAvailable: newAvail
-                                    });
-                                }
-                                if (toggleRes.ok) {
-                                    toast('success', newAvail ? 'บันทึกเป็นสะดวกสอนแล้ว' : 'บันทึกเป็นไม่สะดวกสอน (Hard Constraint BR-07) แล้ว');
-                                    loadTeacherAvailabilities();
+                                if (newAvail) {
+                                    // Turning AVAILABLE: set all overlapping unavailable slots to true
+                                    const slotsToEnable = overlappingSlots.filter(s => s.isAvailable === false);
+                                    await Promise.all(slotsToEnable.map(s => 
+                                        api.put('/api/v1/teacher/availabilities', {
+                                            timeSlotId: s.timeSlotId,
+                                            isAvailable: true
+                                        })
+                                    ));
+                                    toast('success', 'บันทึกเป็นสะดวกสอนแล้ว');
                                 } else {
-                                    toast('error', toggleRes.error.message || 'บันทึกไม่สำเร็จ');
-                                    btn.disabled = false;
+                                    // Turning UNAVAILABLE: set contained slots (or exact slot) to false
+                                    let slotsToDisable = overlappingSlots.filter(s => {
+                                        const sMin = timeToMinutes(s.startTime);
+                                        const eMin = timeToMinutes(s.endTime);
+                                        return sMin >= period.start && eMin <= period.end;
+                                    });
+                                    if (slotsToDisable.length === 0) {
+                                        slotsToDisable = overlappingSlots;
+                                    }
+                                    await Promise.all(slotsToDisable.map(s =>
+                                        api.put('/api/v1/teacher/availabilities', {
+                                            timeSlotId: s.timeSlotId,
+                                            isAvailable: false
+                                        })
+                                    ));
+                                    toast('success', 'บันทึกเป็นไม่สะดวกสอน (Hard Constraint BR-07) แล้ว');
                                 }
+                                await loadTeacherAvailabilities();
                             } catch (e) {
-                                toast('error', 'เชื่อมต่อล้มเหลว');
+                                toast('error', 'บันทึกล้มเหลว');
                                 btn.disabled = false;
                             }
                         };
@@ -593,6 +652,91 @@ const ui = (() => {
             });
         } catch (e) {
             gridBody.innerHTML = '<tr><td colspan="6" class="muted">เกิดข้อผิดพลาดในการโหลด</td></tr>';
+        }
+    }
+
+    async function applyCustomUnavailableRange(isAvailable) {
+        const daySelect = document.getElementById('avail-day-select');
+        const startInput = document.getElementById('avail-start-time');
+        const endInput = document.getElementById('avail-end-time');
+        if (!daySelect || !startInput || !endInput) return;
+
+        const selectedDay = daySelect.value;
+        const startTimeStr = startInput.value;
+        const endTimeStr = endInput.value;
+
+        if (!startTimeStr || !endTimeStr) {
+            toast('error', 'กรุณาระบุเวลาเริ่มต้นและเวลาสิ้นสุด');
+            return;
+        }
+
+        const startMin = timeToMinutes(startTimeStr);
+        const endMin = timeToMinutes(endTimeStr);
+
+        if (startMin >= endMin) {
+            toast('error', 'เวลาเริ่มต้นต้องน้อยกว่าเวลาสิ้นสุด');
+            return;
+        }
+
+        if (!currentAvailabilities || currentAvailabilities.length === 0) {
+            toast('error', 'ยังไม่มีข้อมูลช่วงเวลาในระบบ');
+            return;
+        }
+
+        // Find all matching time slots
+        const matchingSlots = currentAvailabilities.filter(slot => {
+            if (selectedDay !== 'ALL' && slot.dayOfWeek !== selectedDay) return false;
+            const sMin = timeToMinutes(slot.startTime);
+            const eMin = timeToMinutes(slot.endTime);
+            return timesOverlap(sMin, eMin, startMin, endMin);
+        });
+
+        if (matchingSlots.length === 0) {
+            toast('warning', 'ไม่พบช่วงเวลาในระบบที่คาบเกี่ยวกับเวลาที่ระบุ');
+            return;
+        }
+
+        let slotsToUpdate = [];
+        if (isAvailable) {
+            slotsToUpdate = matchingSlots.filter(s => s.isAvailable === false);
+        } else {
+            let contained = matchingSlots.filter(s => {
+                const sMin = timeToMinutes(s.startTime);
+                const eMin = timeToMinutes(s.endTime);
+                return sMin >= startMin && eMin <= endMin;
+            });
+            if (contained.length === 0) {
+                contained = matchingSlots;
+            }
+            slotsToUpdate = contained.filter(s => s.isAvailable !== false);
+        }
+
+        if (slotsToUpdate.length === 0) {
+            toast('info', isAvailable ? 'ช่วงเวลาดังกล่าวเป็นสะดวกสอนอยู่แล้ว' : 'ช่วงเวลาดังกล่าวถูกกำหนดเป็นไม่สะดวกสอนอยู่แล้ว');
+            return;
+        }
+
+        const btnMarkUnavail = document.getElementById('btn-mark-unavailable');
+        const btnMarkAvail = document.getElementById('btn-mark-available');
+        setBusy(btnMarkUnavail, true);
+        setBusy(btnMarkAvail, true);
+
+        try {
+            await Promise.all(slotsToUpdate.map(slot =>
+                api.put('/api/v1/teacher/availabilities', {
+                    timeSlotId: slot.timeSlotId,
+                    isAvailable: isAvailable
+                })
+            ));
+            toast('success', isAvailable ?
+                `รีเซ็ตเป็นสะดวกสอนเรียบร้อย (${slotsToUpdate.length} ช่วงเวลา)` :
+                `กำหนดเป็นไม่สะดวกสอนเรียบร้อย (BR-07, ${slotsToUpdate.length} ช่วงเวลา)`);
+            await loadTeacherAvailabilities();
+        } catch (err) {
+            toast('error', 'เกิดข้อผิดพลาดในการบันทึกข้อมูล');
+        } finally {
+            setBusy(btnMarkUnavail, false);
+            setBusy(btnMarkAvail, false);
         }
     }
 
@@ -738,6 +882,7 @@ const ui = (() => {
         openProfileModal: openProfileModal,
         closeProfileModal: closeProfileModal,
         deleteTeacherPreference: deleteTeacherPreference,
-        loadTeacherAvailabilities: loadTeacherAvailabilities
+        loadTeacherAvailabilities: loadTeacherAvailabilities,
+        applyCustomUnavailableRange: applyCustomUnavailableRange
     };
 })();

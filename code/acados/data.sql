@@ -19,51 +19,51 @@ SET FOREIGN_KEY_CHECKS = 0;
 -- Login Username: university_id, Password: password123
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `users` (`id`, `university_id`, `email`, `password_hash`, `role`) VALUES
-(1, 'admin', 'admin@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'ADMIN'),
-(2, 'T001', 't001@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'TEACHER'),
-(3, 'T002', 't002@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'TEACHER'),
-(4, 'T003', 't003@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'TEACHER'),
-(5, 'S001', 's001@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'STUDENT'),
-(6, 'S002', 's002@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'STUDENT'),
-(7, 'S003', 's003@acados.kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'STUDENT');
+(1, 'admin', 'admin@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'ADMIN'),
+(2, 'T001', 't001@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'TEACHER'),
+(3, 'T002', 't002@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'TEACHER'),
+(4, 'T003', 't003@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'TEACHER'),
+(5, 'S001', 's001@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'STUDENT'),
+(6, 'S002', 's002@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'STUDENT'),
+(7, 'S003', 's003@kku.ac.th', '$2a$10$8IeHXrOY5n2VPONWnydm3eTrmYSOtzRZN3k/ttVlzWEpgUsOEG8nS', 'STUDENT');
 
 -- -----------------------------------------------------------------------------
 -- 2. teachers (1:1 with users id 2, 3, 4)
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `teachers` (`id`, `user_id`, `full_name`) VALUES
-(1, 2, 'ผศ.ดร.พุฒิเมธ สิทธิชัย'),
-(2, 3, 'รศ.ดร.วงศกร นครินทร์'),
-(3, 4, 'อ.จิรภัทร ชาญวิทยา');
+(1, 2, 'ผศ.ดร.พุฒิเมธ ชมศรีสวัสดิ์'),
+(2, 3, 'รศ.ดร.วงศกร สงวนกลิ่น'),
+(3, 4, 'อ.จิรภัทร สีสาร');
 
 -- -----------------------------------------------------------------------------
 -- 3. students (1:1 with users id 5, 6, 7)
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `students` (`id`, `user_id`, `full_name`) VALUES
-(1, 5, 'นายกิตติคุณ มั่นคง'),
-(2, 6, 'นางสาวสุดารัตน์ เรียนดี'),
-(3, 7, 'นายธนวัฒน์ พัฒนกิจ');
+(1, 5, 'นายเอ นามสกุลบี'),
+(2, 6, 'นางสาวซี นามสกุลดี'),
+(3, 7, 'นายเอบีเอ นามสกุลวีวี');
 
 -- -----------------------------------------------------------------------------
 -- 4. courses
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `courses` (`id`, `course_code`, `title`, `weekly_hours`) VALUES
-(1, 'CP353001', 'Software Engineering', 3),
-(2, 'CP353002', 'Database Systems', 3),
-(3, 'CP353003', 'Software Quality Assurance and Testing', 3),
-(4, 'CP353004', 'Cloud Architecture and DevOps', 3),
-(5, 'CP351001', 'Computer Programming I', 1),
-(6, 'EN012001', 'Technical English for Computing', 4);
+(1, 'CP353201', '	Software Quality Assurance', 3),
+(2, 'CP353003', 'Artificial Intelligence', 4),
+(3, 'SC403602', 'NUMERICAL METHODS FOR COMPUTER SCIENCE', 3),
+(4, 'CP353002', 'Principles of Software Design and Development', 3),
+(5, 'CP353001', 'Operating Systems and System Calls Programming', 1),
+(6, 'GE362785', '	CREATIVE THINKING AND PROBLEM SOLVING', 2);
 
 -- -----------------------------------------------------------------------------
 -- 5. rooms
 -- -----------------------------------------------------------------------------
 INSERT IGNORE INTO `rooms` (`id`, `room_number`, `building`, `floor`, `capacity`, `is_available`) VALUES
-(1, 'SC0101', 'อาคาร SC01', 1, 50, true),
-(2, 'SC0102', 'อาคาร SC01', 1, 40, true),
-(3, 'SC0201', 'อาคาร SC02', 2, 60, true),
-(4, 'SC0202', 'อาคาร SC02', 2, 30, true),
-(5, 'LAB-501', 'อาคาร SC03', 5, 35, true),
-(6, 'AUDITORIUM', 'อาคารวิทยบริการ', 1, 120, true);
+(1, 'SC9127', 'อาคาร SC01', 1, 30, true),
+(2, 'SC9201', 'อาคาร SC01', 1, 50, true),
+(3, 'SC9202', 'อาคาร SC02', 2, 60, true),
+(4, 'SC9203', 'อาคาร SC02', 2, 30, true),
+(5, 'SC7301', 'อาคาร SC03', 5, 25, true),
+(6, 'GL01', 'อาคารวิทยบริการ', 1, 120, true);
 
 -- -----------------------------------------------------------------------------
 -- 6. time_slots
@@ -102,7 +102,49 @@ INSERT IGNORE INTO `time_slots` (`id`, `day_of_week`, `start_time`, `end_time`) 
 (28, 'WEDNESDAY', '09:00:00', '11:00:00'),
 (29, 'WEDNESDAY', '13:00:00', '15:00:00'),
 (30, 'FRIDAY', '09:00:00', '11:00:00'),
-(31, 'FRIDAY', '13:00:00', '15:00:00');
+(31, 'FRIDAY', '13:00:00', '15:00:00'),
+-- 1.5-hour academic period slots (09:00-10:30, 10:30-12:00, 13:00-14:30, 14:30-16:00, 16:00-17:00)
+(32, 'MONDAY', '09:00:00', '10:30:00'),
+(33, 'MONDAY', '10:30:00', '12:00:00'),
+(34, 'MONDAY', '13:00:00', '14:30:00'),
+(35, 'MONDAY', '14:30:00', '16:00:00'),
+(36, 'MONDAY', '16:00:00', '17:00:00'),
+(37, 'TUESDAY', '09:00:00', '10:30:00'),
+(38, 'TUESDAY', '10:30:00', '12:00:00'),
+(39, 'TUESDAY', '13:00:00', '14:30:00'),
+(40, 'TUESDAY', '14:30:00', '16:00:00'),
+(41, 'TUESDAY', '16:00:00', '17:00:00'),
+(42, 'WEDNESDAY', '09:00:00', '10:30:00'),
+(43, 'WEDNESDAY', '10:30:00', '12:00:00'),
+(44, 'WEDNESDAY', '13:00:00', '14:30:00'),
+(45, 'WEDNESDAY', '14:30:00', '16:00:00'),
+(46, 'WEDNESDAY', '16:00:00', '17:00:00'),
+(47, 'THURSDAY', '09:00:00', '10:30:00'),
+(48, 'THURSDAY', '10:30:00', '12:00:00'),
+(49, 'THURSDAY', '13:00:00', '14:30:00'),
+(50, 'THURSDAY', '14:30:00', '16:00:00'),
+(51, 'THURSDAY', '16:00:00', '17:00:00'),
+(52, 'FRIDAY', '09:00:00', '10:30:00'),
+(53, 'FRIDAY', '10:30:00', '12:00:00'),
+(54, 'FRIDAY', '13:00:00', '14:30:00'),
+(55, 'FRIDAY', '14:30:00', '16:00:00'),
+(56, 'FRIDAY', '16:00:00', '17:00:00'),
+-- 1-hour afternoon slots (13:00-14:00, 14:00-15:00, 15:00-16:00)
+(57, 'MONDAY', '13:00:00', '14:00:00'),
+(58, 'MONDAY', '14:00:00', '15:00:00'),
+(59, 'MONDAY', '15:00:00', '16:00:00'),
+(60, 'TUESDAY', '13:00:00', '14:00:00'),
+(61, 'TUESDAY', '14:00:00', '15:00:00'),
+(62, 'TUESDAY', '15:00:00', '16:00:00'),
+(63, 'WEDNESDAY', '13:00:00', '14:00:00'),
+(64, 'WEDNESDAY', '14:00:00', '15:00:00'),
+(65, 'WEDNESDAY', '15:00:00', '16:00:00'),
+(66, 'THURSDAY', '13:00:00', '14:00:00'),
+(67, 'THURSDAY', '14:00:00', '15:00:00'),
+(68, 'THURSDAY', '15:00:00', '16:00:00'),
+(69, 'FRIDAY', '13:00:00', '14:00:00'),
+(70, 'FRIDAY', '14:00:00', '15:00:00'),
+(71, 'FRIDAY', '15:00:00', '16:00:00');
 
 -- -----------------------------------------------------------------------------
 -- 7. teacher_qualifications (BR-06)

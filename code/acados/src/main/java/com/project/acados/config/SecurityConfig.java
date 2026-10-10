@@ -30,14 +30,34 @@ public class SecurityConfig {
                 .csrf(csrf -> csrf.disable())
                 .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
                 .authorizeHttpRequests(authorize -> authorize
+                        // Public auth & error endpoints
                         .requestMatchers("/api/v1/auth/**").permitAll()
+                        .requestMatchers("/login", "/error", "/favicon.svg", "/css/**", "/js/**").permitAll()
+                        .requestMatchers("/", "/calendar", "/holidays", "/timetable", "/timetable/grid").permitAll()
+                        .requestMatchers("/api-docs", "/api-docs/**", "/swagger-ui/**", "/swagger-ui.html").permitAll()
+
+                        // Role-based Web Routes according to Activity Diagrams & Implement Plan
+                        .requestMatchers("/admin/**").hasRole("ADMIN")
+                        .requestMatchers("/teacher/**").hasRole("TEACHER")
+                        .requestMatchers("/student/**").hasRole("STUDENT")
+                        .requestMatchers("/notifications").authenticated()
+
+                        // REST API Endpoints
                         .requestMatchers("/api/v1/**").authenticated()
-                        .anyRequest().permitAll()
+
+                        .anyRequest().authenticated()
                 )
                 .exceptionHandling(exceptions -> exceptions
                         .authenticationEntryPoint((request, response, exception) ->
-                                response.sendError(HttpStatus.UNAUTHORIZED.value())
+                                response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unauthorized: Authentication required")
                         )
+                        .accessDeniedHandler((request, response, exception) -> {
+                            if (request.getRequestURI().startsWith("/api/")) {
+                                response.sendError(HttpStatus.FORBIDDEN.value(), "Forbidden: Access denied");
+                            } else {
+                                response.sendError(HttpStatus.UNAUTHORIZED.value(), "Unauthorized: Access denied");
+                            }
+                        })
                 )
                 .addFilterBefore(jwtAuthenticationFilter, UsernamePasswordAuthenticationFilter.class);
 
