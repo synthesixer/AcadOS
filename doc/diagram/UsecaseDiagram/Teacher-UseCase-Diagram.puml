@@ -1,0 +1,60 @@
+
+@startuml
+title AcadOS - Teacher Use Case Diagram
+left to right direction
+skinparam packageStyle rectangle
+
+actor "Teacher" as Teacher
+
+rectangle "AcadOS (Teacher Scope)" {
+    package "Authentication" {
+        usecase "Login" as UC_TLogin
+        usecase "Logout" as UC_TLogout
+    }
+    package "Teaching Schedule" {
+        usecase "View Own Schedule" as UC_TViewSchedule
+        usecase "View Assigned Section" as UC_TViewSection
+        usecase "View Timetable" as UC_TViewTimetable
+    }
+    package "Profile & Availability (Profile Modal)" {
+        usecase "Manage Availability\n(D22, BR-07)" as UC_TManageAvail
+        usecase "View Own Availability" as UC_TViewAvail
+        usecase "View Own Qualification\n(BR-06)" as UC_TViewQual
+        usecase "Manage Course Preferences\n(Priority 1-5, D21)" as UC_TManagePref
+        usecase "Change Password" as UC_TChangePassword
+    }
+    package "Teacher Swap Management" {
+        usecase "Create Swap Request" as UC_TCreateSwap
+        usecase "Cancel Swap Request\n(PENDING only)" as UC_TCancelSwap
+        usecase "Respond to Swap Request\n(Accept / Reject) [Teacher B]" as UC_TRespondSwap
+        usecase "View Swap Request Status" as UC_TViewSwapStatus
+    }
+    package "Academic Calendar & Events" {
+        usecase "View Academic Calendar" as UC_TViewCalendar
+        usecase "View Public Holiday" as UC_TViewHoliday
+    }
+    package "Notification" {
+        usecase "View Notification" as UC_TViewNotif
+        usecase "Read Notification" as UC_TReadNotif
+    }
+}
+
+Teacher --> UC_TLogin
+Teacher --> UC_TLogout
+Teacher --> UC_TViewSchedule
+Teacher --> UC_TViewSection
+Teacher --> UC_TViewTimetable
+Teacher --> UC_TManageAvail
+Teacher --> UC_TViewAvail
+Teacher --> UC_TViewQual
+Teacher --> UC_TManagePref
+Teacher --> UC_TChangePassword
+Teacher --> UC_TCreateSwap
+Teacher --> UC_TCancelSwap
+Teacher --> UC_TRespondSwap
+Teacher --> UC_TViewSwapStatus
+Teacher --> UC_TViewCalendar
+Teacher --> UC_TViewHoliday
+Teacher --> UC_TViewNotif
+Teacher --> UC_TReadNotif
+@enduml
