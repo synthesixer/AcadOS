@@ -1070,9 +1070,21 @@ AcadOS/
 
 ### 23.1 Cloud Production Deployment Environment & Container Architecture (ตรงตาม Implementation จริง)
 
-สถาปัตยกรรมและสภาพแวดล้อมสำหรับการ Deploy ระบบบน Cloud Production Server อ้างอิงตามโค้ดจริงใน `code/acados/Dockerfile`, `code/acados/docker-compose.yml`, และ `application.properties`:
+สถาปัตยกรรมและสภาพแวดล้อมสำหรับการ Deploy ระบบบน Cloud Production Server อ้างอิงตามโค้ดจริงใน `code/acados/Dockerfile`, `code/acados/docker-compose.yml`, `application.properties`, และ `.github/workflows/ci-cd.yml`:
 
-#### 1. ข้อกำหนดสภาพแวดล้อม Cloud Server (Host Specifications)
+ระบบออกแบบและรองรับสถาปัตยกรรมคลาวด์ 2 ทางเลือก (Dual Cloud Deployment Architecture):
+- **ทางเลือกที่ 1 (Primary / Recommended):** **Cloud PaaS (Render Web Service / Railway) + Managed Cloud MySQL (TiDB Cloud Serverless / Aiven for MySQL)** — ทางเลือกฟรี 100% มีใบรับรอง SSL/HTTPS อัตโนมัติ ปลอดภัย และเหมาะสำหรับการส่งตรวจประเมิน
+- **ทางเลือกที่ 2 (Alternative / Self-Hosted):** **Cloud VPS (Ubuntu 22.04 LTS บน AWS EC2, DigitalOcean, Linode) + Docker Compose** — รันครบ 3 Services ในโฮสต์เดียวตาม `docker-compose.yml`
+
+#### 1. สถาปัตยกรรมทางเลือกที่ 1: Cloud PaaS + Managed Cloud DB (Primary)
+- **Web Application Host:** Render Web Service (รันผ่าน Dockerfile จากโฟลเดอร์ `code/acados`)
+- **Database Host:** TiDB Cloud Serverless หรือ Aiven for MySQL (MySQL 8.0 Protocol Compatible พร้อม SSL)
+- **Security & Domain:** Public HTTPS URL อัตโนมัติ (`https://acados.onrender.com`) พร้อมใบรับรอง SSL ฟรี
+- **Dynamic Port Binding:** กำหนด `server.port=${PORT:8080}` ใน `application.properties` รองรับตัวแปร `$PORT` จาก Cloud Platform อัตโนมัติ
+- **JVM Memory Optimization:** กำหนด `-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0` ใน `Dockerfile` ป้องกันปัญหา Out-of-Memory (OOM Killer) บน Free Tier 512MB RAM
+- **Automated CI/CD Pipeline:** ติดตั้ง GitHub Actions ([`.github/workflows/ci-cd.yml`](../.github/workflows/ci-cd.yml)) เพื่อทดสอบอัตโนมัติ `mvn clean test` และตรวจสอบการแพ็กเกจทุกครั้งที่มีการ Push/PR (รับคะแนนพิเศษตามเกณฑ์อาจารย์ §11)
+
+#### 2. สถาปัตยกรรมทางเลือกที่ 2: Cloud VPS Host Specifications (Docker Compose 3 Services)
 - **Host Machine:** Cloud Host Server (VPS / Cloud VM เช่น DigitalOcean Droplet, AWS EC2, Linode หรือ Cloud VPS ที่มี Public IPv4)
 - **Operating System:** Linux OS (Ubuntu 22.04 LTS / Ubuntu 24.04 LTS หรือ Debian 12)
 - **Hardware Sizing (Recommended):** $\ge$ 2 vCPU, $\ge$ 2-4 GB RAM, $\ge$ 20 GB SSD Storage
@@ -1084,49 +1096,44 @@ AcadOS/
   - **Outbound TCP 443 (HTTPS):** สำหรับเชื่อมต่อไปยัง External ThailandFormats Public Holiday API (`https://thailandformats.com/api/v1/holidays/{year}`)
   - **Outbound TCP 587 (SMTP / STARTTLS):** สำหรับเชื่อมต่อไปยัง Mailtrap Sandbox SMTP (`sandbox.smtp.mailtrap.io:587`) เพื่อทดสอบการส่งอีเมล
 
-#### 2. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)
+#### 3. โครงสร้างคอนเทนเนอร์ใน Docker Compose (3 Services Architecture)
 ระบบรันด้วย Multi-Container Architecture ควบคุมผ่าน `code/acados/docker-compose.yml`:
 
 | Service Name | Container Name | Image / Base | Internal Port | Host Port | รายละเอียดการทำงานและคอนฟิกูเรชัน |
 | :--- | :--- | :--- | :---: | :---: | :--- |
-| **`app`** | `acados-app` | Multi-stage Build (`eclipse-temurin:21-jre`) | 8080 | **8080** | **Spring Boot 3.3.4 Application**<br>• ติดต่อ DB ผ่าน `jdbc:mysql://db:3306/acados_db`<br>• กำหนด `depends_on: db: condition: service_healthy`<br>• รองรับตัวแปร `ACADOS_JWT_SECRET` ผ่าน Environment Variable |
+| **`app`** | `acados-app` | Multi-stage Build (`eclipse-temurin:21-jre`) | 8080 | **8080** | **Spring Boot 3.3.4 Application**<br>• ติดต่อ DB ผ่าน `jdbc:mysql://db:3306/acados_db`<br>• กำหนด `depends_on: db: condition: service_healthy`<br>• รองรับตัวแปร `ACADOS_JWT_SECRET` ผ่าน Environment Variable<br>• รองรับ Dynamic Port `${PORT:8080}` |
 | **`db`** | `acados-db` | `mysql:8.4` (LTS) | 3306 | **3306** | **MySQL Database System**<br>• สร้างฐานข้อมูล `acados_db`<br>• รหัสผ่าน Root ควบคุมผ่าน `${MYSQL_ROOT_PASSWORD:-root}`<br>• Healthcheck ผ่าน `mysqladmin ping` ทุก 5 วินาที<br>• แมปพื้นที่จัดเก็บถาวรผ่าน Persistent Volume `mysql_data` |
 | **`phpmyadmin`** | `acados-phpmyadmin` | `phpmyadmin/phpmyadmin:latest` | 80 | **8081** | **Database Management GUI**<br>• เชื่อมต่อไปยังโฮสต์ `db` พอร์ต 3306 อัตโนมัติ (`PMA_HOST: db`)<br>• เข้าใช้งานผ่าน Web Browser ที่พอร์ต 8081 สำหรับ Audit และตรวจสอบข้อมูล |
 
-#### 3. รายละเอียด Multi-Stage Dockerfile (`code/acados/Dockerfile`)
+#### 4. รายละเอียด Multi-Stage Dockerfile (`code/acados/Dockerfile`)
 - **Stage 1 (Build Stage):** Base Image `maven:3.9.9-eclipse-temurin-21` ทำการคอมไพล์ซอร์สโค้ดและแพ็กเกจเป็น JAR ไฟล์ด้วยคำสั่ง `mvn -B -DskipTests package` ใน Working Directory `/workspace`
 - **Stage 2 (Runtime Stage):** Lightweight JRE Image `eclipse-temurin:21-jre` คัดลอกเฉพาะ `/workspace/target/acados-1.0-SNAPSHOT.jar` ไปไว้ที่ `/app/app.jar` เพื่อความปลอดภัยและลดขนาด Image (Zero Maven/Build SDK footprint in production)
-- **Execution:** รันด้วย `ENTRYPOINT ["java", "-jar", "/app/app.jar"]` พร้อมเปิด `EXPOSE 8080`
+- **Execution:** รันด้วย `ENTRYPOINT ["java", "-XX:+UseContainerSupport", "-XX:MaxRAMPercentage=75.0", "-jar", "/app/app.jar"]` พร้อมเปิด `EXPOSE 8080`
 
-#### 4. กลไกความทนทานและการคงอยู่ของข้อมูล (Data Persistence & Healthcheck)
-- **Data Persistence (D11):** กำหนด Docker Named Volume `mysql_data` แมปเข้ากับ `/var/lib/mysql` ของคอนเทนเนอร์ `acados-db` ป้องกันข้อมูลสูญหายเมื่อคอนเทนเนอร์หยุดทำงานหรือ Re-deploy
+#### 5. กลไกความทนทานและการคงอยู่ของข้อมูล (Data Persistence & Healthcheck)
+- **Data Persistence (D11):** กำหนด Docker Named Volume `mysql_data` แมปเข้ากับ `/var/lib/mysql` ของคอนเทนเนอร์ `acados-db` ป้องกันข้อมูลสูญหายเมื่อคอนเทนเนอร์หยุดทำงานหรือ Re-deploy (สำหรับ Managed Cloud DB ข้อมูลจะถูกจัดเก็บบน Cloud Storage อัตโนมัติ)
 - **Startup Dependency & Healthcheck:** คอนเทนเนอร์ `app` มีเงื่อนไข `condition: service_healthy` รอจนกว่า MySQL จะพร้อมรับการเชื่อมต่อจริงจากผลตรวจ `mysqladmin ping -h localhost -uroot -p$${MYSQL_ROOT_PASSWORD} --silent` (Retries: 20 ครั้ง, Interval: 5 วินาที) แก้ไขปัญหา Application Crash จาก DB Connection Timeout
 - **Restart Policy:** คอนเทนเนอร์ `db` และ `phpmyadmin` กำหนด `restart: always` กู้คืนการทำงานอัตโนมัติหากเซอร์วิสขัดข้อง
 
-#### 5. สรุป Service Endpoints บน Cloud Production Host (`http://<SERVER_PUBLIC_IP>`)
-- **Web Application & UI (Thymeleaf):** `http://<SERVER_PUBLIC_IP>:8080/`
-- **API Documentation (Swagger UI):** `http://<SERVER_PUBLIC_IP>:8080/swagger-ui.html`
-- **OpenAPI Schema (JSON):** `http://<SERVER_PUBLIC_IP>:8080/api-docs`
-- **Health & Liveness Check (Spring Actuator):** `http://<SERVER_PUBLIC_IP>:8080/actuator/health`
-- **System Metrics (Spring Actuator):** `http://<SERVER_PUBLIC_IP>:8080/actuator/metrics`
-- **Database Administration (phpMyAdmin):** `http://<SERVER_PUBLIC_IP>:8081/`
+#### 6. สรุป Service Endpoints บน Cloud Production Host
+- **Web Application & UI (Thymeleaf):** `https://<APP_NAME>.onrender.com/` (หรือ `http://<SERVER_PUBLIC_IP>:8080/`)
+- **API Documentation (Swagger UI):** `https://<APP_NAME>.onrender.com/swagger-ui.html` (หรือ `http://<SERVER_PUBLIC_IP>:8080/swagger-ui.html`)
+- **OpenAPI Schema (JSON):** `https://<APP_NAME>.onrender.com/api-docs` (หรือ `http://<SERVER_PUBLIC_IP>:8080/api-docs`)
+- **Health & Liveness Check (Spring Actuator):** `https://<APP_NAME>.onrender.com/actuator/health` (หรือ `http://<SERVER_PUBLIC_IP>:8080/actuator/health`)
+- **System Metrics (Spring Actuator):** `https://<APP_NAME>.onrender.com/actuator/metrics` (หรือ `http://<SERVER_PUBLIC_IP>:8080/actuator/metrics`)
+- **Database Administration (phpMyAdmin - สำหรับ VPS):** `http://<SERVER_PUBLIC_IP>:8081/`
 
-#### 6. คำสั่งในการ Deploy และจัดการบน Production Server
+#### 7. คำสั่งในการ Deploy และจัดการบน Production Server
 ```bash
-# 1. โคลนโปรเจกต์และเข้าสู่โฟลเดอร์ซอร์สโค้ด
+# กรณีที่ 1: Deploy ผ่าน Render / Railway
+# เชื่อมต่อ GitHub Repo ตั้งค่า Root Directory = code/acados และกำหนด Environment Variables ตามคู่มือ walkthrough.md
+
+# กรณีที่ 2: Deploy ผ่าน Linux VPS ด้วย Docker Compose
 git clone <REPOSITORY_URL>
 cd AcadOS/code/acados
-
-# 2. บิลด์อิมเมจและสตาร์ตคอนเทนเนอร์ทั้งหมดในพื้นหลัง (Detached mode)
 docker compose up -d --build
-
-# 3. ตรวจสอบสถานะการทำงานของคอนเทนเนอร์และผล Healthcheck
 docker compose ps
-
-# 4. ดูบันทึกการทำงานของแอปพลิเคชัน (Log monitoring)
 docker compose logs -f app
-
-# 5. สั่งหยุดการทำงาน (รักษา Persistent Volume mysql_data ไว้)
 docker compose down
 ```
 
@@ -1246,10 +1253,10 @@ docker compose down
 
 ส่วนสรุปรายการที่ยังต้องระบุหรือตัดสินใจเพิ่มเติมในขั้นตอนการพัฒนา (Implementation Phase):
 1. **Database Seed Scripts (Complete):** จัดทำ Initial Mock Data ใน `data.sql` เรียบร้อยแล้ว จัดเรียงตามลำดับ Foreign Key Topology 16 ตาราง พร้อมรหัสผ่าน BCrypt (`password123`) รองรับการทดสอบและการซักซ้อม Demo ทั้ง 4 Scenarios แบบ Idempotent (`INSERT IGNORE`) และคอนฟิก `spring.jpa.defer-datasource-initialization=true` ใน Spring Boot 3
-2. **Cloud Provider & Public URL (Confirmed):** ยืนยันสถาปัตยกรรมตามโค้ดจริงใน `code/acados/docker-compose.yml` และ `Dockerfile`: รันด้วย Docker Compose บน Linux VPS Host โดยมี 3 คอนเทนเนอร์ (`acados-app` พอร์ต 8080, `acados-db` MySQL 8.4 พอร์ต 3306, `acados-phpmyadmin` พอร์ต 8081) เข้าถึงแอปพลิเคชันโดยตรงผ่าน Public URL `http://<SERVER_PUBLIC_IP>:8080` (Direct Port Access / No Nginx) พร้อมตรวจสุขภาพระบบผ่าน Spring Actuator `/actuator/health` และจัดการความคงอยู่ของฐานข้อมูลด้วย Persistent Volume `mysql_data`
+2. **Cloud Provider & Public URL (Confirmed):** ยืนยันสถาปัตยกรรมคลาวด์ 2 ทางเลือก: ทางเลือกที่ 1 (Render Web Service + Managed Cloud MySQL บน TiDB Cloud/Aiven พร้อม HTTPS และ CI/CD GitHub Actions รับคะแนนพิเศษ §11) และทางเลือกที่ 2 (Linux VPS Host + Docker Compose 3 คอนเทนเนอร์ `acados-app`, `acados-db`, `acados-phpmyadmin` พร้อม Persistent Volume `mysql_data`) รองรับ Public URL จริงสำหรับวันนำเสนอตามเกณฑ์ `prof_ruleset.md` §11 และ §14
 3. **Data Dictionary & ER Diagram (TBA):** รายละเอียดพจนานุกรมข้อมูล (ชนิดข้อมูล, ความยาว, Constraints) และไฟล์รูปภาพ ER Diagram ฉบับสมบูรณ์จะจัดทำในโฟลเดอร์ `doc/`
 4. **Use Case Descriptions (TBA):** เอกสารอธิบาย Use Case แต่ละตัวแบบละเอียด (Main Flow, Alternative Flow, Pre/Post-condition) จะถูกจัดทำเพิ่มเติมใน `doc/`
 5. **Teacher B Respond Endpoint & State (TBA):** รูปแบบ Request Body และ Endpoint ย่อยสำหรับการตอบรับคำขอสลับสอนของ Teacher B จะถูกกำหนดในขั้นตอน Implement
-6. **Room Suitability Scoring Algorithm (TBA):** สูตรคำนวณความเหมาะสมของห้องเรียน (+20 คะแนน) จะถูกกำหนดเกณฑ์ความเข้ากันได้เพิ่มเติมใน `RoomSuitabilityScoreStrategy`
-7. **SOLID Analysis Evidence (TBA):** หมายเลขบรรทัดและชื่อไฟล์ที่ระบุใน `doc/solid-analysis.md` จะต้องอ้างอิงจากโค้ดจริงหลังการเขียนเสร็จสิ้น
+6. **Room Suitability Scoring Algorithm (Complete):** พัฒนาคลาส `RoomSuitabilityScoreStrategy` (+20 คะแนน) เสร็จสิ้นและมี Unit Test รองรับเรียบร้อยแล้ว
+7. **SOLID Analysis Evidence (Complete):** จัดทำเอกสาร [`doc/solid-analysis.md`](solid-analysis.md) วิเคราะห์หลักการ SOLID Principles ครบทั้ง 5 ข้อ (S, O, L, I, D) พร้อมระบุชื่อคลาส ตำแหน่งไฟล์ และหมายเลขบรรทัดจริงจากซอร์สโค้ดเรียบร้อยแล้ว
 8. **Slide Presentation (TBA):** สไลด์นำเสนอจะถูกจัดทำเป็นไฟล์ PDF/PPTX และบันทึกไว้ในโฟลเดอร์ `doc/slide/` ก่อนวันนำเสนอโครงงาน

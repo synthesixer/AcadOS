@@ -56,6 +56,12 @@
       - เพิ่ม Cross-reference Link ใน `Implement_Plan-AcadOS.md` §17.2 ไปยัง `doc/design-patterns.md`
 12. **[SOLID Principles Documentation - Prof Ruleset §4] การจัดทำเอกสารวิเคราะห์ SOLID Principles:**
     - **การดำเนินการ:** จัดทำเอกสาร [`doc/solid-analysis.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/solid-analysis.md) วิเคราะห์และตรวจสอบการปฏิบัติตามหลักการ SOLID Principles ทั้ง 5 ข้อ (SRP, OCP, LSP, ISP, DIP) อย่างละเอียด พร้อมระบุชื่อคลาส หมายเลขบรรทัดจริงในซอร์สโค้ด และเหตุผลทางวิศวกรรมรองรับ 100% ตรงตามข้อกำหนดอาจารย์ใน `doc/prof_ruleset.md` §4
+13. **[Cloud Deployment & CI/CD Pipeline - Prof Ruleset §11 & §14] การเตรียมความพร้อม Cloud Deployment (ทางเลือกที่ 1):**
+    - **การดำเนินการ:**
+      - ปรับปรุง [`application.properties`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/application.properties) รองรับ Dynamic Port `${PORT:8080}`, Cloud Datasource Environment Variables, JWT Secret, และ Mail Host
+      - ปรับปรุง [`Dockerfile`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/Dockerfile) เพิ่ม JVM Container Memory Constraints (`-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`) ป้องกัน OOM บน Cloud Free Tier
+      - ติดตั้ง GitHub Actions Automated Workflow ([`.github/workflows/ci-cd.yml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/.github/workflows/ci-cd.yml)) รัน `mvn clean test` และอัปโหลด JaCoCo Report อัตโนมัติ (รับคะแนนพิเศษตามเกณฑ์ §11)
+      - จัดทำแผนปฏิบัติการ [Cloud Deployment Implementation Plan](file:///C:/Users/WINDOWS%2011/.gemini/antigravity/brain/3170965d-6e40-43ee-a4a2-3141241a48cc/cloud_deployment_plan.md)
 
 ---
 
@@ -68,15 +74,20 @@
 - [`TeacherPreferenceApiControllerTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/controller/api/TeacherPreferenceApiControllerTest.java): ปรับปรุง Unit Test ให้ mock Service Layer
 - [`TeacherPreferenceServiceImplTest.java`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/test/java/com/project/acados/service/TeacherPreferenceServiceImplTest.java): สร้างใหม่ Unit Test 8 ข้อ ครอบคลุม BR-06, BR-07, CRUD, และ Authorization (ผ่าน 100%)
 - [`admin/sections.html`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/templates/admin/sections.html): เพิ่ม Event Listener ให้แบบฟอร์ม Assign Teacher Modal (`#assign-teacher-form`) เพื่อยิง `PUT /api/v1/sections/{id}/teacher` ได้จริง
+- [`Dockerfile`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/Dockerfile): เพิ่ม JVM Container Memory Constraints (`-XX:+UseContainerSupport -XX:MaxRAMPercentage=75.0`)
+- [`application.properties`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/code/acados/src/main/resources/application.properties): ปรับปรุงให้รองรับ Dynamic Port `${PORT:8080}` และ Cloud Database Environment Variables
 
 ### 2.2 Documentation & Specification
 - [`README.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/README.md): แก้ไข Broken Links, โครงสร้างไดเรกทอรี, ระบุ TBA ตามมติผู้ใช้
 - [`doc/database.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/database.md): บันทึกรายละเอียด TimeSlots IDs 32–56 (1.5 ชม.) ในตาราง `time_slots` และ `teacher_availabilities`
-- [`doc/Implement_Plan-AcadOS.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/Implement_Plan-AcadOS.md): อัปเดตรายการ Service Layer และ Cross-reference ถึง `design-patterns.md`
+- [`doc/Implement_Plan-AcadOS.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/Implement_Plan-AcadOS.md): อัปเดตรายการ Service Layer, Cross-reference ถึง `design-patterns.md`, และอัปเดตสถาปัตยกรรมคลาวด์ใน Section 23 (Dual Cloud Architecture: Render PaaS + Managed MySQL, VPS Docker Compose, JVM memory optimization, และ CI/CD GitHub Actions)
 - [`doc/design-patterns.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/design-patterns.md): จัดทำเอกสารสรุป GoF Patterns 8 แบบ และ Architectural Patterns พร้อมไดอะแกรมและผลการทดสอบ
 - [`doc/solid-analysis.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/solid-analysis.md): จัดทำเอกสารวิเคราะห์ SOLID Principles พร้อมระบุชื่อคลาส หมายเลขบรรทัด และเหตุผลทางวิศวกรรมครบทั้ง 5 ข้อ
 
-### 2.3 System Architecture & UML Diagrams
+### 2.3 Automation & CI/CD
+- [`.github/workflows/ci-cd.yml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/.github/workflows/ci-cd.yml): สร้าง GitHub Actions Workflow สำหรับ Automated Testing (`mvn clean test`) และอัปโหลด JaCoCo Report อัตโนมัติ (รับคะแนนพิเศษ §11)
+
+### 2.4 System Architecture & UML Diagrams
 - [`doc/diagram/class diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/class%20diagram.puml): ปรับปรุง `SectionService` (เพิ่ม `assignTeacher`), เพิ่ม `TeacherPreferenceService`, เพิ่ม `TeacherSwapQueryService`, ลบ `TeacherAssignmentService`
 - [`doc/diagram/component-diagram.puml`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/component-diagram.puml): อัปเดต Components และความสัมพันธ์ให้ตรงกับโครงสร้าง Service Layer ล่าสุด
 - [`doc/diagram/Userflow_diagram.md`](file:///e:/Doc/Code/GitHub/SQA/AcadOS/doc/diagram/Userflow_diagram.md): อัปเดต Flow วันหยุดราชการในตารางสรุปให้รองรับ Admin Manual Sync

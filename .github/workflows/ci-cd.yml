@@ -1,0 +1,47 @@
+name: AcadOS CI/CD Pipeline
+
+on:
+  push:
+    branches:
+      - main
+      - Develop
+      - 'puttimed_*'
+      - 'wongsakorn_*'
+      - 'jirapat_*'
+  pull_request:
+    branches:
+      - main
+      - Develop
+
+jobs:
+  build-and-test:
+    name: Build & Run Automated Tests (JUnit 5 + Mockito)
+    runs-on: ubuntu-latest
+
+    steps:
+      - name: Checkout Source Code
+        uses: actions/checkout@v4
+
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
+
+      - name: Run Automated Tests & Generate JaCoCo Report
+        working-directory: code/acados
+        run: mvn clean test
+
+      - name: Verify Application Packaging
+        working-directory: code/acados
+        run: mvn -B -DskipTests package
+
+      - name: Upload JaCoCo Test Coverage Report
+        uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: jacoco-coverage-report
+          path: code/acados/target/site/jacoco/
+          retention-days: 14
+
